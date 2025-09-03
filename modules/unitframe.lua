@@ -38,7 +38,7 @@ end
 -- Estas variables locales guardan la configuración para evitar leerla en combate.
 -- =====================================================================
 local safeConfig = {
-    player = {},
+
     target = {},
     focus = {},
     party = {},
@@ -52,7 +52,7 @@ function unitframe.UpdateSafeConfig()
     end
     local db = addon.db.profile.unitframe
 
-    safeConfig.player = db.player or {}
+
     safeConfig.target = db.target or {}
     safeConfig.focus = db.focus or {}
     safeConfig.party = db.party or {}
@@ -266,7 +266,7 @@ function addon:RefreshUnitFrames()
     end
 
     -- Second, re-style all frames with their respective textures and colors
-    unitframe.ChangePlayerframe()
+    
     unitframe.ChangeTargetFrame()
     unitframe.ReApplyTargetFrame()
     unitframe.ChangeStatusIcons()
@@ -827,31 +827,7 @@ function unitframe:ApplySettings()
     -- Use centralized settings from database.lua
     -- No need for local copies of defaults
 
-    -- playerframe
-    do
-        local playerConfig = addon:GetConfigValue("unitframe", "player") or {}
-
-        if not localSettings.player then
-            localSettings.player = {}
-        end
-        local objLocal = localSettings.player
-
-        -- Use database values if override is active, otherwise use local (default) settings
-        local anchor = playerConfig.override and playerConfig.anchor or objLocal.anchor
-        local anchorParent = playerConfig.override and playerConfig.anchorParent or objLocal.anchorParent
-        local anchorPoint = playerConfig.override and playerConfig.anchorPoint or objLocal.anchorParent -- ✅ Get the correct anchor point
-        local x = playerConfig.override and playerConfig.x or objLocal.x
-        local y = playerConfig.override and playerConfig.y or objLocal.y
-
-        if playerConfig.override then
-            PlayerFrame:SetUserPlaced(true)
-        end
-
-        -- ✅ Call MovePlayerFrame with the correct arguments
-        unitframe.MovePlayerFrame(anchor, anchorParent, anchorPoint, x, y)
-        PlayerFrame:SetScale(playerConfig.scale or 1)
-    end
-
+   
     -- target
     do
         -- ✅ CORRECCIÓN: Cargar la configuración del target desde la base de datos.
@@ -2449,47 +2425,9 @@ function unitframe.HookDrag()
 end
 
 function unitframe.HookVertexColor()
-    -- Player frame health bar hook for persistent colors (ADDED TO FIX COLOR ISSUES)
-    PlayerFrameHealthBar:HookScript('OnValueChanged', function(self)
-        if addon:GetConfigValue("unitframe", "player", "classcolor") then
-            PlayerFrameHealthBar:GetStatusBarTexture():SetTexture(
-                'Interface\\Addons\\DragonUI\\Textures\\Unitframe\\UI-HUD-UnitFrame-Player-PortraitOn-Bar-Health-Status')
-            local localizedClass, englishClass, classIndex = UnitClass('player')
-            if RAID_CLASS_COLORS[englishClass] then
-                PlayerFrameHealthBar:SetStatusBarColor(RAID_CLASS_COLORS[englishClass].r,
-                    RAID_CLASS_COLORS[englishClass].g, RAID_CLASS_COLORS[englishClass].b, 1)
-            end
-        else
-            PlayerFrameHealthBar:GetStatusBarTexture():SetTexture(
-                'Interface\\Addons\\DragonUI\\Textures\\Unitframe\\UI-HUD-UnitFrame-Player-PortraitOn-Bar-Health')
-            PlayerFrameHealthBar:SetStatusBarColor(1, 1, 1, 1)
-        end
-    end)
+   
 
-    -- FIXED: Player frame mana bar hook for persistent colors (fixes level up color reset)
-    PlayerFrameManaBar:HookScript('OnValueChanged', function(self)
-        local powerType, powerTypeString = UnitPowerType('player')
-
-        if powerTypeString == 'MANA' then
-            PlayerFrameManaBar:GetStatusBarTexture():SetTexture(
-                'Interface\\Addons\\DragonUI\\Textures\\Unitframe\\UI-HUD-UnitFrame-Player-PortraitOn-Bar-Mana')
-        elseif powerTypeString == 'RAGE' then
-            PlayerFrameManaBar:GetStatusBarTexture():SetTexture(
-                'Interface\\Addons\\DragonUI\\Textures\\Unitframe\\UI-HUD-UnitFrame-Player-PortraitOn-Bar-Rage')
-        elseif powerTypeString == 'FOCUS' then
-            PlayerFrameManaBar:GetStatusBarTexture():SetTexture(
-                'Interface\\Addons\\DragonUI\\Textures\\Unitframe\\UI-HUD-UnitFrame-Player-PortraitOn-Bar-Focus')
-        elseif powerTypeString == 'ENERGY' then
-            PlayerFrameManaBar:GetStatusBarTexture():SetTexture(
-                'Interface\\Addons\\DragonUI\\Textures\\Unitframe\\UI-HUD-UnitFrame-Player-PortraitOn-Bar-Energy')
-        elseif powerTypeString == 'RUNIC_POWER' then
-            PlayerFrameManaBar:GetStatusBarTexture():SetTexture(
-                'Interface\\Addons\\DragonUI\\Textures\\Unitframe\\UI-HUD-UnitFrame-Player-PortraitOn-Bar-RunicPower')
-        end
-
-        -- Force white color to work with DragonUI textures
-        PlayerFrameManaBar:SetStatusBarColor(1, 1, 1, 1)
-    end)
+    
 
     -- Target frame health bar hook for persistent colors
     TargetFrameHealthBar:HookScript('OnValueChanged', function(self)
@@ -2596,559 +2534,14 @@ function unitframe.HookVertexColor()
     end
 end
 
--- FIXED: Utility function to force correct player frame colors (fixes level up issues)
-function unitframe.ForcePlayerFrameColors()
-    -- Force health bar colors
-    if addon:GetConfigValue("unitframe", "player", "classcolor") then
-        PlayerFrameHealthBar:GetStatusBarTexture():SetTexture(
-            'Interface\\Addons\\DragonUI\\Textures\\Unitframe\\UI-HUD-UnitFrame-Player-PortraitOn-Bar-Health-Status')
-        local localizedClass, englishClass, classIndex = UnitClass('player')
-        if RAID_CLASS_COLORS[englishClass] then
-            PlayerFrameHealthBar:SetStatusBarColor(RAID_CLASS_COLORS[englishClass].r, RAID_CLASS_COLORS[englishClass].g,
-                RAID_CLASS_COLORS[englishClass].b, 1)
-        end
-    else
-        PlayerFrameHealthBar:GetStatusBarTexture():SetTexture(
-            'Interface\\Addons\\DragonUI\\Textures\\Unitframe\\UI-HUD-UnitFrame-Player-PortraitOn-Bar-Health')
-        PlayerFrameHealthBar:SetStatusBarColor(1, 1, 1, 1)
-    end
 
-    -- Force mana bar colors
-    local powerType, powerTypeString = UnitPowerType('player')
 
-    if powerTypeString == 'MANA' then
-        PlayerFrameManaBar:GetStatusBarTexture():SetTexture(
-            'Interface\\Addons\\DragonUI\\Textures\\Unitframe\\UI-HUD-UnitFrame-Player-PortraitOn-Bar-Mana')
-    elseif powerTypeString == 'RAGE' then
-        PlayerFrameManaBar:GetStatusBarTexture():SetTexture(
-            'Interface\\Addons\\DragonUI\\Textures\\Unitframe\\UI-HUD-UnitFrame-Player-PortraitOn-Bar-Rage')
-    elseif powerTypeString == 'FOCUS' then
-        PlayerFrameManaBar:GetStatusBarTexture():SetTexture(
-            'Interface\\Addons\\DragonUI\\Textures\\Unitframe\\UI-HUD-UnitFrame-Player-PortraitOn-Bar-Focus')
-    elseif powerTypeString == 'ENERGY' then
-        PlayerFrameManaBar:GetStatusBarTexture():SetTexture(
-            'Interface\\Addons\\DragonUI\\Textures\\Unitframe\\UI-HUD-UnitFrame-Player-PortraitOn-Bar-Energy')
-    elseif powerTypeString == 'RUNIC_POWER' then
-        PlayerFrameManaBar:GetStatusBarTexture():SetTexture(
-            'Interface\\Addons\\DragonUI\\Textures\\Unitframe\\UI-HUD-UnitFrame-Player-PortraitOn-Bar-RunicPower')
-    end
-
-    -- Force white color to work with DragonUI textures
-    PlayerFrameManaBar:SetStatusBarColor(1, 1, 1, 1)
-end
-
-function unitframe.ChangePlayerframe()
-    local base = 'Interface\\Addons\\DragonUI\\Textures\\uiunitframe'
-
-    -- Ensure DragonUI player frame textures are created first
-    unitframe.CreatePlayerFrameTextures()
-
-    -- Hide Blizzard's default player frame elements
-    PlayerFrameTexture:Hide()
-    PlayerFrameBackground:Hide()
-    PlayerFrameVehicleTexture:Hide()
-
-    PlayerPortrait:ClearAllPoints()
-    PlayerPortrait:SetPoint('TOPLEFT', PlayerFrame, 'TOPLEFT', 42, -15)
-    PlayerPortrait:SetDrawLayer('ARTWORK', 5)
-    PlayerPortrait:SetSize(56, 56)
-
-    -- @TODO: change text spacing
-    PlayerName:ClearAllPoints()
-    PlayerName:SetPoint('BOTTOMLEFT', PlayerFrameHealthBar, 'TOPLEFT', 0, 1)
-
-    PlayerLevelText:ClearAllPoints()
-    PlayerLevelText:SetPoint('BOTTOMRIGHT', PlayerFrameHealthBar, 'TOPRIGHT', -5, 1)
-
-    -- Health 119,12
-    PlayerFrameHealthBar:SetSize(125, 20)
-    PlayerFrameHealthBar:ClearAllPoints()
-    PlayerFrameHealthBar:SetPoint('LEFT', PlayerPortrait, 'RIGHT', 1, 0)
-
-    if addon:GetConfigValue("unitframe", "player", "classcolor") then
-        PlayerFrameHealthBar:GetStatusBarTexture():SetTexture(
-            'Interface\\Addons\\DragonUI\\Textures\\Unitframe\\UI-HUD-UnitFrame-Player-PortraitOn-Bar-Health-Status')
-
-        local localizedClass, englishClass, classIndex = UnitClass('player')
-        PlayerFrameHealthBar:SetStatusBarColor(RAID_CLASS_COLORS[englishClass].r, RAID_CLASS_COLORS[englishClass].g,
-            RAID_CLASS_COLORS[englishClass].b, 1)
-    else
-        PlayerFrameHealthBar:GetStatusBarTexture():SetTexture(
-            'Interface\\Addons\\DragonUI\\Textures\\Unitframe\\UI-HUD-UnitFrame-Player-PortraitOn-Bar-Health')
-        PlayerFrameHealthBar:SetStatusBarColor(1, 1, 1, 1)
-    end
-
-    -- Fix text overlap when Character info panel is open
-    if PlayerFrameHealthBarText and not PlayerFrameHealthBarText.DragonUINoShow then
-        -- Permanently disable Blizzard's health text by overriding its Show method.
-        PlayerFrameHealthBarText.Show = function()
-        end
-        PlayerFrameHealthBarText:Hide() -- Hide it one last time just in case.
-        PlayerFrameHealthBarText.DragonUINoShow = true -- Flag it as handled.
-    end
-
-    if PlayerFrameManaBarText and not PlayerFrameManaBarText.DragonUINoShow then
-        -- Permanently disable Blizzard's mana text by overriding its Show method.
-        PlayerFrameManaBarText.Show = function()
-        end
-        PlayerFrameManaBarText:Hide() -- Hide it one last time.
-        PlayerFrameManaBarText.DragonUINoShow = true -- Flag it as handled.
-    end
-    -- End of fix
-
-    -- Hide original Blizzard text elements - we use custom ones
-    PlayerFrameHealthBarText:Hide()
-    PlayerFrameHealthBarText:SetPoint('CENTER', PlayerFrameHealthBar, 'CENTER', 0, 0)
-
-    local dx = 5
-    -- PlayerFrameHealthBarTextLeft:SetPoint('LEFT', PlayerFrameHealthBar, 'LEFT', dx, 0)
-    -- PlayerFrameHealthBarTextRight:SetPoint('RIGHT', PlayerFrameHealthBar, 'RIGHT', -dx, 0)
-
-    -- Mana 119,12
-    PlayerFrameManaBar:ClearAllPoints()
-    PlayerFrameManaBar:SetPoint('LEFT', PlayerPortrait, 'RIGHT', 1, -17 + 0.5)
-    PlayerFrameManaBar:SetSize(125, 8)
-
-    -- Hide original Blizzard mana text - we use custom ones
-    PlayerFrameManaBarText:Hide()
-    PlayerFrameManaBarText:SetPoint('CENTER', PlayerFrameManaBar, 'CENTER', 0, 0)
-    -- PlayerFrameManaBarTextLeft:SetPoint('LEFT', PlayerFrameManaBar, 'LEFT', dx, 0)
-    -- PlayerFrameManaBarTextRight:SetPoint('RIGHT', PlayerFrameManaBar, 'RIGHT', -dx, 0)
-
-    local powerType, powerTypeString = UnitPowerType('player')
-
-    if powerTypeString == 'MANA' then
-        PlayerFrameManaBar:GetStatusBarTexture():SetTexture(
-            'Interface\\Addons\\DragonUI\\Textures\\Unitframe\\UI-HUD-UnitFrame-Player-PortraitOn-Bar-Mana')
-    elseif powerTypeString == 'RAGE' then
-        PlayerFrameManaBar:GetStatusBarTexture():SetTexture(
-            'Interface\\Addons\\DragonUI\\Textures\\Unitframe\\UI-HUD-UnitFrame-Player-PortraitOn-Bar-Rage')
-    elseif powerTypeString == 'FOCUS' then
-        PlayerFrameManaBar:GetStatusBarTexture():SetTexture(
-            'Interface\\Addons\\DragonUI\\Textures\\Unitframe\\UI-HUD-UnitFrame-Player-PortraitOn-Bar-Focus')
-    elseif powerTypeString == 'ENERGY' then
-        PlayerFrameManaBar:GetStatusBarTexture():SetTexture(
-            'Interface\\Addons\\DragonUI\\Textures\\Unitframe\\UI-HUD-UnitFrame-Player-PortraitOn-Bar-Energy')
-    elseif powerTypeString == 'RUNIC_POWER' then
-        PlayerFrameManaBar:GetStatusBarTexture():SetTexture(
-            'Interface\\Addons\\DragonUI\\Textures\\Unitframe\\UI-HUD-UnitFrame-Player-PortraitOn-Bar-RunicPower')
-    end
-
-    PlayerFrameManaBar:SetStatusBarColor(1, 1, 1, 1)
-
-    -- UI-HUD-UnitFrame-Player-PortraitOn-Status
-    PlayerStatusTexture:SetTexture(base)
-    PlayerStatusTexture:SetSize(192, 71)
-    PlayerStatusTexture:SetTexCoord(unitframe.GetCoords('UI-HUD-UnitFrame-Player-PortraitOn-InCombat'))
-
-    PlayerStatusTexture:ClearAllPoints()
-
-    -- Get reference to the DragonUI frame for PlayerFrameBorder
-    local dragonFrame = _G["DragonUIUnitframeFrame"]
-    if dragonFrame and dragonFrame.PlayerFrameBorder then
-        PlayerStatusTexture:SetPoint('TOPLEFT', dragonFrame.PlayerFrameBorder, 'TOPLEFT', 1, 1)
-    end
-
-    -- Create custom health text for player frame (similar to target/focus)
-    if not dragonFrame.PlayerFrameHealthBarText then
-        local PlayerFrameHealthBarDummy = CreateFrame('FRAME', 'PlayerFrameHealthBarDummy')
-        PlayerFrameHealthBarDummy:SetPoint('LEFT', PlayerFrameHealthBar, 'LEFT', 0, 0)
-        PlayerFrameHealthBarDummy:SetPoint('TOP', PlayerFrameHealthBar, 'TOP', 0, 0)
-        PlayerFrameHealthBarDummy:SetPoint('RIGHT', PlayerFrameHealthBar, 'RIGHT', 0, 0)
-        PlayerFrameHealthBarDummy:SetPoint('BOTTOM', PlayerFrameHealthBar, 'BOTTOM', 0, 0)
-        PlayerFrameHealthBarDummy:SetParent(PlayerFrame)
-        PlayerFrameHealthBarDummy:SetFrameStrata('LOW')
-        PlayerFrameHealthBarDummy:SetFrameLevel(3)
-        PlayerFrameHealthBarDummy:EnableMouse(true)
-
-        dragonFrame.PlayerFrameHealthBarDummy = PlayerFrameHealthBarDummy
-
-        local t = PlayerFrameHealthBarDummy:CreateFontString('PlayerFrameCustomHealthBarText', 'OVERLAY',
-            'TextStatusBarText')
-        -- Set manually larger font size for health text while keeping base template
-        local font, originalSize, flags = t:GetFont()
-        if font and originalSize then
-            t:SetFont(font, originalSize + 1, flags) -- Make health text 2 points larger than mana
-        end
-        t:SetPoint('CENTER', PlayerFrameHealthBarDummy, 0, 0)
-        t:SetText('HP')
-        t:Hide()
-        dragonFrame.PlayerFrameHealthBarText = t
-
-        local function UpdatePlayerCustomHealthText()
-            local dragonFrame = _G["DragonUIUnitframeFrame"]
-            if not dragonFrame then
-                return
-            end
-
-            if addon and addon.db and addon.db.profile and addon.db.profile.unitframe then
-                local config = addon.db.profile.unitframe.player or {}
-                local textFormat = config.textFormat or "numeric"
-
-                if UnitExists('player') then
-                    local current = UnitHealth('player') or 0
-                    local maximum = UnitHealthMax('player') or 1
-                    local formattedText = FormatStatusText(current, maximum, textFormat)
-
-                    if textFormat == "both" and type(formattedText) == "table" then
-                        -- Update dual text elements
-                        if dragonFrame.PlayerFrameHealthBarTextLeft then
-                            dragonFrame.PlayerFrameHealthBarTextLeft:SetText(formattedText.percentage)
-                        end
-                        if dragonFrame.PlayerFrameHealthBarTextRight then
-                            dragonFrame.PlayerFrameHealthBarTextRight:SetText(formattedText.current)
-                        end
-                    else
-                        -- Update single text element
-                        local displayText = type(formattedText) == "table" and formattedText.combined or formattedText
-                        if dragonFrame.PlayerFrameHealthBarText then
-                            dragonFrame.PlayerFrameHealthBarText:SetText(displayText)
-                        end
-                    end
-                end
-            end
-        end
-
-        PlayerFrameHealthBarDummy:HookScript('OnEnter', function(self)
-            local dragonFrame = _G["DragonUIUnitframeFrame"]
-            if dragonFrame and addon and addon.db and addon.db.profile and addon.db.profile.unitframe then
-                local config = addon.db.profile.unitframe.player or {}
-                local showHealthAlways = config.showHealthTextAlways or false
-                local textFormat = config.textFormat or "numeric"
-
-                if not showHealthAlways then
-                    if textFormat == "both" then
-                        -- Show dual text elements for "both" format
-                        if dragonFrame.PlayerFrameHealthBarTextLeft and dragonFrame.PlayerFrameHealthBarTextRight then
-                            UpdatePlayerCustomHealthText()
-                            dragonFrame.PlayerFrameHealthBarTextLeft:Show()
-                            dragonFrame.PlayerFrameHealthBarTextRight:Show()
-                        end
-                    else
-                        -- Show single text element for other formats
-                        UpdatePlayerCustomHealthText()
-                        dragonFrame.PlayerFrameHealthBarText:Show()
-                    end
-                end
-            end
-        end)
-
-        PlayerFrameHealthBarDummy:HookScript('OnLeave', function(self)
-            local dragonFrame = _G["DragonUIUnitframeFrame"]
-            if dragonFrame and addon and addon.db and addon.db.profile and addon.db.profile.unitframe then
-                local config = addon.db.profile.unitframe.player or {}
-                local showHealthAlways = config.showHealthTextAlways or false
-                local textFormat = config.textFormat or "numeric"
-
-                if not showHealthAlways then
-                    if textFormat == "both" then
-                        -- Hide dual text elements for "both" format
-                        if dragonFrame.PlayerFrameHealthBarTextLeft and dragonFrame.PlayerFrameHealthBarTextRight then
-                            dragonFrame.PlayerFrameHealthBarTextLeft:Hide()
-                            dragonFrame.PlayerFrameHealthBarTextRight:Hide()
-                        end
-                    else
-                        -- Hide single text element for other formats
-                        dragonFrame.PlayerFrameHealthBarText:Hide()
-                    end
-                end
-            end
-        end)
-    end
-
-    -- Create custom mana text for player frame (similar to target/focus)
-    if not dragonFrame.PlayerFrameManaBarText then
-        local PlayerFrameManaBarDummy = CreateFrame('FRAME', 'PlayerFrameManaBarDummy')
-        PlayerFrameManaBarDummy:SetPoint('LEFT', PlayerFrameManaBar, 'LEFT', 0, 0)
-        PlayerFrameManaBarDummy:SetPoint('TOP', PlayerFrameManaBar, 'TOP', 0, 0)
-        PlayerFrameManaBarDummy:SetPoint('RIGHT', PlayerFrameManaBar, 'RIGHT', 0, 0)
-        PlayerFrameManaBarDummy:SetPoint('BOTTOM', PlayerFrameManaBar, 'BOTTOM', 0, 0)
-        PlayerFrameManaBarDummy:SetParent(PlayerFrame)
-        PlayerFrameManaBarDummy:SetFrameStrata('LOW')
-        PlayerFrameManaBarDummy:SetFrameLevel(3)
-        PlayerFrameManaBarDummy:EnableMouse(true)
-
-        dragonFrame.PlayerFrameManaBarDummy = PlayerFrameManaBarDummy
-
-        local t = PlayerFrameManaBarDummy:CreateFontString('PlayerFrameCustomManaBarText', 'OVERLAY',
-            'TextStatusBarText')
-        t:SetPoint('CENTER', PlayerFrameManaBarDummy, 0, 0)
-        t:SetText('MANA')
-        t:Hide()
-        dragonFrame.PlayerFrameManaBarText = t
-
-        local function UpdatePlayerCustomManaText()
-            local dragonFrame = _G["DragonUIUnitframeFrame"]
-            if not dragonFrame then
-                return
-            end
-
-            if addon and addon.db and addon.db.profile and addon.db.profile.unitframe then
-                local config = addon.db.profile.unitframe.player or {}
-                local textFormat = config.textFormat or "numeric"
-
-                if UnitExists('player') then
-                    local currentMana = UnitPower('player') or 0
-                    local maximumMana = UnitPowerMax('player') or 1
-                    local formattedText = FormatStatusText(currentMana, maximumMana, textFormat)
-
-                    if textFormat == "both" and type(formattedText) == "table" then
-                        -- Update dual text elements
-                        if dragonFrame.PlayerFrameManaBarTextLeft then
-                            dragonFrame.PlayerFrameManaBarTextLeft:SetText(formattedText.percentage)
-                        end
-                        if dragonFrame.PlayerFrameManaBarTextRight then
-                            dragonFrame.PlayerFrameManaBarTextRight:SetText(formattedText.current)
-                        end
-                    else
-                        -- Update single text element
-                        local displayText = type(formattedText) == "table" and formattedText.combined or formattedText
-                        if dragonFrame.PlayerFrameManaBarText then
-                            dragonFrame.PlayerFrameManaBarText:SetText(displayText)
-                        end
-                    end
-                end
-            end
-        end
-
-        PlayerFrameManaBarDummy:HookScript('OnEnter', function(self)
-            local dragonFrame = _G["DragonUIUnitframeFrame"]
-            if dragonFrame and addon and addon.db and addon.db.profile and addon.db.profile.unitframe then
-                local config = addon.db.profile.unitframe.player or {}
-                local showManaAlways = config.showManaTextAlways or false
-                local textFormat = config.textFormat or "numeric"
-
-                if not showManaAlways then
-                    if textFormat == "both" then
-                        -- Show dual text elements for "both" format
-                        if dragonFrame.PlayerFrameManaBarTextLeft and dragonFrame.PlayerFrameManaBarTextRight then
-                            UpdatePlayerCustomManaText()
-                            dragonFrame.PlayerFrameManaBarTextLeft:Show()
-                            dragonFrame.PlayerFrameManaBarTextRight:Show()
-                        end
-                    else
-                        -- Show single text element for other formats
-                        UpdatePlayerCustomManaText()
-                        dragonFrame.PlayerFrameManaBarText:Show()
-                    end
-                end
-            end
-        end)
-
-        PlayerFrameManaBarDummy:HookScript('OnLeave', function(self)
-            local dragonFrame = _G["DragonUIUnitframeFrame"]
-            if dragonFrame and addon and addon.db and addon.db.profile and addon.db.profile.unitframe then
-                local config = addon.db.profile.unitframe.player or {}
-                local showManaAlways = config.showManaTextAlways or false
-                local textFormat = config.textFormat or "numeric"
-
-                if not showManaAlways then
-                    if textFormat == "both" then
-                        -- Hide dual text elements for "both" format
-                        if dragonFrame.PlayerFrameManaBarTextLeft and dragonFrame.PlayerFrameManaBarTextRight then
-                            dragonFrame.PlayerFrameManaBarTextLeft:Hide()
-                            dragonFrame.PlayerFrameManaBarTextRight:Hide()
-                        end
-                    else
-                        -- Hide single text element for other formats
-                        dragonFrame.PlayerFrameManaBarText:Hide()
-                    end
-                end
-            end
-        end)
-    end
-
-    -- Update visibility based on individual showTextAlways settings for Player
-    if addon and addon.db and addon.db.profile and addon.db.profile.unitframe then
-        local config = addon.db.profile.unitframe.player or {}
-        local showHealthAlways = config.showHealthTextAlways or false
-        local showManaAlways = config.showManaTextAlways or false
-
-        -- Handle health text visibility
-        if UnitExists('player') then
-            local current = UnitHealth('player') or 0
-            local maximum = UnitHealthMax('player') or 1
-            local textFormat = config.textFormat or "numeric"
-            local formattedText = FormatStatusText(current, maximum, textFormat)
-
-            if showHealthAlways then
-                if textFormat == "both" and type(formattedText) == "table" then
-                    -- Show dual text elements for "both" format
-                    if dragonFrame.PlayerFrameHealthBarTextLeft and dragonFrame.PlayerFrameHealthBarTextRight then
-                        dragonFrame.PlayerFrameHealthBarTextLeft:SetText(formattedText.percentage)
-                        dragonFrame.PlayerFrameHealthBarTextRight:SetText(formattedText.current)
-                        dragonFrame.PlayerFrameHealthBarTextLeft:Show()
-                        dragonFrame.PlayerFrameHealthBarTextRight:Show()
-                    end
-                    -- Hide single text element
-                    if dragonFrame.PlayerFrameHealthBarText then
-                        dragonFrame.PlayerFrameHealthBarText:Hide()
-                    end
-                else
-                    -- Show single text element for other formats
-                    if dragonFrame.PlayerFrameHealthBarText then
-                        local displayText = type(formattedText) == "table" and formattedText.combined or formattedText
-                        dragonFrame.PlayerFrameHealthBarText:SetText(displayText)
-                        dragonFrame.PlayerFrameHealthBarText:Show()
-                    end
-                    -- Hide dual text elements
-                    if dragonFrame.PlayerFrameHealthBarTextLeft then
-                        dragonFrame.PlayerFrameHealthBarTextLeft:Hide()
-                    end
-                    if dragonFrame.PlayerFrameHealthBarTextRight then
-                        dragonFrame.PlayerFrameHealthBarTextRight:Hide()
-                    end
-                end
-            else
-                -- Hide all text elements when not showing always
-                if dragonFrame.PlayerFrameHealthBarText then
-                    dragonFrame.PlayerFrameHealthBarText:Hide()
-                end
-                if dragonFrame.PlayerFrameHealthBarTextLeft then
-                    dragonFrame.PlayerFrameHealthBarTextLeft:Hide()
-                end
-                if dragonFrame.PlayerFrameHealthBarTextRight then
-                    dragonFrame.PlayerFrameHealthBarTextRight:Hide()
-                end
-            end
-        end
-
-        -- Handle mana text visibility
-        if UnitExists('player') then
-            local currentMana = UnitPower('player') or 0
-            local maximumMana = UnitPowerMax('player') or 1
-            local textFormat = config.textFormat or "numeric"
-            local formattedText = FormatStatusText(currentMana, maximumMana, textFormat)
-
-            if showManaAlways then
-                if textFormat == "both" and type(formattedText) == "table" then
-                    -- Show dual text elements for "both" format
-                    if dragonFrame.PlayerFrameManaBarTextLeft and dragonFrame.PlayerFrameManaBarTextRight then
-                        dragonFrame.PlayerFrameManaBarTextLeft:SetText(formattedText.percentage)
-                        dragonFrame.PlayerFrameManaBarTextRight:SetText(formattedText.current)
-                        dragonFrame.PlayerFrameManaBarTextLeft:Show()
-                        dragonFrame.PlayerFrameManaBarTextRight:Show()
-                    end
-                    -- Hide single text element
-                    if dragonFrame.PlayerFrameManaBarText then
-                        dragonFrame.PlayerFrameManaBarText:Hide()
-                    end
-                else
-                    -- Show single text element for other formats
-                    if dragonFrame.PlayerFrameManaBarText then
-                        local displayText = type(formattedText) == "table" and formattedText.combined or formattedText
-                        dragonFrame.PlayerFrameManaBarText:SetText(displayText)
-                        dragonFrame.PlayerFrameManaBarText:Show()
-                    end
-                    -- Hide dual text elements
-                    if dragonFrame.PlayerFrameManaBarTextLeft then
-                        dragonFrame.PlayerFrameManaBarTextLeft:Hide()
-                    end
-                    if dragonFrame.PlayerFrameManaBarTextRight then
-                        dragonFrame.PlayerFrameManaBarTextRight:Hide()
-                    end
-                end
-            else
-                -- Hide all text elements when not showing always
-                if dragonFrame.PlayerFrameManaBarText then
-                    dragonFrame.PlayerFrameManaBarText:Hide()
-                end
-                if dragonFrame.PlayerFrameManaBarTextLeft then
-                    dragonFrame.PlayerFrameManaBarTextLeft:Hide()
-                end
-                if dragonFrame.PlayerFrameManaBarTextRight then
-                    dragonFrame.PlayerFrameManaBarTextRight:Hide()
-                end
-            end
-        end
-    end
-
-    -- Update custom text displays with proper settings
-    unitframe.SafeUpdatePlayerFrameText()
-end
--- ChangePlayerframe()
 -- frame:RegisterEvent('PLAYER_ENTERING_WORLD')
 
-function unitframe.HookPlayerStatus()
-
-    local UpdateStatus = function()
-        local frame = _G["DragonUIUnitframeFrame"]
-        if not (frame and frame.PlayerFrameDeco) then
-            return
-        end
-
-        -- TODO: fix statusglow
-        PlayerStatusGlow:Hide()
-
-        if UnitHasVehiclePlayerFrameUI and UnitHasVehiclePlayerFrameUI('player') then
-            -- TODO: vehicle stuff
-            -- frame.PlayerFrameDeco:Show()
-        elseif IsResting() then
-            frame.PlayerFrameDeco:Show()
-            frame.PlayerFrameBorder:SetVertexColor(1.0, 1.0, 1.0, 1.0)
-
-            if frame.RestIcon then
-                frame.RestIcon:Show()
-                frame.RestIconAnimation:Play()
-            end
-
-            -- FIXED: Show DragonUI custom resting glow texture
-            PlayerStatusTexture:Show()
-            PlayerStatusTexture:SetVertexColor(1.0, 0.88, 0.25, 1.0)
-            PlayerStatusTexture:SetAlpha(1.0)
-        elseif PlayerFrame.onHateList then
-            -- FIXED: Show DragonUI custom hate list glow texture  
-            PlayerStatusTexture:Show()
-            PlayerStatusTexture:SetVertexColor(1.0, 0, 0, 1.0)
-            frame.PlayerFrameDeco:Hide()
-
-            if frame.RestIcon then
-                frame.RestIcon:Hide()
-                frame.RestIconAnimation:Stop()
-            end
-
-            frame.PlayerFrameBorder:SetVertexColor(1.0, 0, 0, 1.0)
-            frame.PlayerFrameBackground:SetVertexColor(1.0, 0, 0, 1.0)
-        elseif PlayerFrame.inCombat then
-            frame.PlayerFrameDeco:Hide()
-
-            if frame.RestIcon then
-                frame.RestIcon:Hide()
-                frame.RestIconAnimation:Stop()
-            end
-
-            frame.PlayerFrameBackground:SetVertexColor(1.0, 0, 0, 1.0)
-
-            -- FIXED: Show DragonUI custom combat glow texture
-            PlayerStatusTexture:Show()
-            PlayerStatusTexture:SetVertexColor(1.0, 0, 0, 1.0)
-            PlayerStatusTexture:SetAlpha(1.0)
-        else
-            frame.PlayerFrameDeco:Show()
-
-            if frame.RestIcon then
-                frame.RestIcon:Hide()
-                frame.RestIconAnimation:Stop()
-            end
-
-            frame.PlayerFrameBorder:SetVertexColor(1.0, 1.0, 1.0, 1.0)
-            frame.PlayerFrameBackground:SetVertexColor(1.0, 1.0, 1.0, 1.0)
-            -- FIXED: Hide DragonUI combat glow when not in combat
-            PlayerStatusTexture:Hide()
-        end
-    end
-
-    hooksecurefunc('PlayerFrame_UpdateStatus', UpdateStatus)
-end
 -- No llamar UpdateStatus inmediatamente - dejar que los eventos lo manejen
 -- UpdateStatus()
 
-function unitframe.MovePlayerFrame(point, relativeTo, relativePoint, xOfs, yOfs)
-    PlayerFrame:ClearAllPoints()
-    -- Usamos _G[relativeTo] para asegurarnos de que funciona con "UIParent" u otros marcos
-    PlayerFrame:SetPoint(point or "TOPLEFT", _G[relativeTo or "UIParent"] or UIParent, relativePoint or "TOPLEFT",
-        xOfs or -24, yOfs or -4)
-end
+
 
 function unitframe.ChangeTargetFrame()
     local base = 'Interface\\Addons\\DragonUI\\Textures\\uiunitframe'
@@ -5546,11 +4939,7 @@ function unitframe.UpdateFocusText()
 end
 
 function unitframe.HookFunctions()
-    hooksecurefunc(PlayerFrameTexture, 'Show', function()
-
-        unitframe.ChangePlayerframe()
-    end)
-
+    
     -- Essential hooks for player frame text updates
     if PlayerFrameHealthBar and PlayerFrameHealthBar.SetValue then
         hooksecurefunc(PlayerFrameHealthBar, "SetValue", function()
@@ -5566,14 +4955,7 @@ function unitframe.HookFunctions()
         end)
     end
 
-    -- Hook to ensure player frame updates on health/mana changes
-    if PlayerFrame then
-        PlayerFrame:HookScript("OnEvent", function(self, event, unit)
-            if (event == "UNIT_HEALTH" or event == "UNIT_POWER_UPDATE") and unit == "player" then
-                unitframe.SafeUpdatePlayerFrameText()
-            end
-        end)
-    end
+    
 end
 
 -- ====================================================================
@@ -7256,66 +6638,7 @@ optionsPet.args.enableThreatGlow = {
     end
 }
 
-function unitframe.CreateRestFlipbook()
-    if not frame.RestIcon then
-        local rest = CreateFrame('Frame', 'DragonUIRestFlipbook')
-        rest:SetSize(20, 20)
-        rest:SetPoint('CENTER', PlayerPortrait, 'TOPRIGHT', 0, 0)
 
-        local restTexture = rest:CreateTexture('DragonUIRestFlipbookTexture')
-        restTexture:SetAllPoints()
-        restTexture:SetTexture(1, 1, 1, 1)
-        restTexture:SetTexture('Interface\\Addons\\DragonUI\\Textures\\uiunitframerestingflipbook')
-        restTexture:SetTexCoord(128 / 1024, 192 / 1024, 0, 64 / 128)
-
-        local animationGroup = restTexture:CreateAnimationGroup()
-        -- flipbook doesn't seem to be supported on Era :/   lua error when calling 'SetFlipBookFrameWidth' etc
-        -- @TODO: maybe other animation, better than static rest icon
-
-        frame.RestIcon = rest
-        -- 'pointless', but saves multiple 'If DF.Wrath...' to eliminate lua error in HookRestFunctions
-        frame.RestIconAnimation = animationGroup
-
-        -- Inicialmente ocultar el icono - solo se mostrará cuando IsResting() sea verdadero
-        frame.RestIcon:Hide()
-
-        PlayerFrame_UpdateStatus()
-    end
-end
-
-function unitframe.HookRestFunctions()
-    hooksecurefunc(PlayerStatusGlow, 'Show', function()
-        PlayerStatusGlow:Hide()
-    end)
-
-    hooksecurefunc(PlayerRestIcon, 'Show', function()
-        PlayerRestIcon:Hide()
-    end)
-
-    hooksecurefunc(PlayerRestGlow, 'Show', function()
-        PlayerRestGlow:Hide()
-    end)
-
-    -- FIXED: Hide Blizzard's player frame combat flash that conflicts with DragonUI custom combat glow
-    if PlayerFrameFlash then
-        hooksecurefunc(PlayerFrameFlash, 'Show', function()
-            PlayerFrameFlash:Hide()
-        end)
-        -- Also set empty texture to prevent any residual display
-        PlayerFrameFlash:SetTexture('')
-    end
-
-    hooksecurefunc('SetUIVisibility', function(visible)
-        if visible then
-            PlayerFrame_UpdateStatus()
-        else
-            if frame.RestIcon then
-                frame.RestIcon:Hide()
-                frame.RestIconAnimation:Stop()
-            end
-        end
-    end)
-end
 
 ------------------------------------------
 -- Event Handling System
@@ -7377,13 +6700,13 @@ function eventFrame:OnEvent(event, arg1)
         unitframe.ReApplyFocusFrame()
         unitframe.UpdateFocusText()
     elseif event == 'PLAYER_ENTERING_WORLD' then
-        unitframe.CreatePlayerFrameTextures()
-        unitframe.ChangePlayerframe()
+        
+        
         unitframe.ChangeTargetFrame()
         unitframe.ReApplyTargetFrame()
         unitframe.ReApplyToTFrame()
         unitframe.ChangeStatusIcons()
-        unitframe.CreateRestFlipbook()
+
         unitframe.ChangeFocusFrame()
         unitframe.ChangeFocusToT()
         unitframe.ChangePetFrame()
@@ -7398,7 +6721,7 @@ function eventFrame:OnEvent(event, arg1)
         -- unitframe.ApplySettings()
         unitframe.ReApplyTargetFrame()
         unitframe.ReApplyToTFrame() -- FIXED: Use correct function name
-        unitframe.ChangePlayerframe()
+        
 
         -- FIXED: Clear target frame texts and update immediately when target changes
         unitframe.ClearTargetFrameTexts()
@@ -7416,16 +6739,10 @@ function eventFrame:OnEvent(event, arg1)
             -- If texts shouldn't always be shown, clear them to respect the setting
             unitframe.ClearPlayerFrameTexts()
         end
-    elseif event == 'UNIT_ENTERED_VEHICLE' then
-        if arg1 == 'player' then
-            unitframe.ChangePlayerframe()
-        end
-    elseif event == 'UNIT_EXITED_VEHICLE' then
-        if arg1 == 'player' then
-            unitframe.ChangePlayerframe()
-        end
+    
+    
     elseif event == 'ZONE_CHANGED' or event == 'ZONE_CHANGED_INDOORS' or event == 'ZONE_CHANGED_NEW_AREA' then
-        unitframe.ChangePlayerframe()
+        
     elseif event == 'PLAYER_UPDATE_RESTING' then
         -- Force update of resting state
         if PlayerFrame_UpdateStatus then
@@ -7488,11 +6805,8 @@ frameInit:SetScript("OnEvent", function(self, event, ...)
             unitframe:Initialize()
             unitframe.UpdateSafeConfig()
             -- Crear el RestIcon personalizado de DragonflightUI
-            unitframe.CreateRestFlipbook()
-            -- Registrar el hook para actualizar el estado del player frame (incluye el icono de descanso)
-            unitframe.HookPlayerStatus()
-            -- Ocultar los iconos de rest de Blizzard para usar los nuestros
-            unitframe.HookRestFunctions()
+
+
 
             -- FIXED: If player is already in world (reload case), execute OnEnable logic
             if UnitExists("player") then
@@ -7776,8 +7090,7 @@ textUpdateFrame:SetScript("OnEvent", function(self, event, unit)
         end
     elseif event == "PLAYER_LEVEL_UP" then
         -- FIXED: Force player frame update on level up to maintain DragonUI colors
-        unitframe.ChangePlayerframe()
-        unitframe.ForcePlayerFrameColors()
+        
         -- FIXED: Use selective update on level up based on settings
         local config = addon.db and addon.db.profile and addon.db.profile.unitframe and
                            addon.db.profile.unitframe.player
@@ -7932,7 +7245,7 @@ end)
 -- Esta se ejecuta en cuanto el addon se carga para configurar los frames b?sicos
 if PlayerFrame and TargetFrame then
     unitframe.CreatePlayerFrameTextures()
-    unitframe.ChangePlayerframe()
+   
     unitframe.ChangeTargetFrame()
     unitframe.ReApplyTargetFrame()
     unitframe.ChangeStatusIcons()
