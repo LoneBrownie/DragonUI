@@ -32,7 +32,7 @@ local function HideBlizzardGlows()
         PlayerStatusGlow:Hide()
         PlayerStatusGlow:SetAlpha(0)
     end
-    
+
     if PlayerRestGlow then
         PlayerRestGlow:Hide()
         PlayerRestGlow:SetAlpha(0)
@@ -40,18 +40,8 @@ local function HideBlizzardGlows()
 end
 
 local function RemoveBlizzardFrames()
-    local toKill = {
-        
-           
-        "PlayerAttackIcon",
-        "PlayerFrameBackground",
-        "PlayerAttackBackground",
-        "PlayerFrameRoleIcon",
-        "PlayerGuideIcon",
-        "PlayerFrameGroupIndicatorLeft",
-        "PlayerFrameGroupIndicatorRight"
-        
-    }
+    local toKill = {"PlayerAttackIcon", "PlayerFrameBackground", "PlayerAttackBackground", "PlayerFrameRoleIcon",
+                    "PlayerGuideIcon", "PlayerFrameGroupIndicatorLeft", "PlayerFrameGroupIndicatorRight"}
     for _, name in ipairs(toKill) do
         local obj = _G[name]
         if obj then
@@ -61,7 +51,10 @@ local function RemoveBlizzardFrames()
             if not obj.__DragonUIHooked then
                 obj.__DragonUIHooked = true
                 if obj.HookScript then
-                    obj:HookScript("OnShow", function(f) f:Hide(); f:SetAlpha(0) end)
+                    obj:HookScript("OnShow", function(f)
+                        f:Hide();
+                        f:SetAlpha(0)
+                    end)
                 end
             end
             -- Si es textura verdadera, vaciarla
@@ -73,9 +66,12 @@ local function RemoveBlizzardFrames()
 end
 
 -- ✅ FUNCIÓN: AnimateTexCoords (para rest icon)
-local function AnimateTexCoords(texture, textureWidth, textureHeight, frameWidth, frameHeight, numFrames, elapsed, throttle)
-    if not texture or not texture:IsVisible() then return end
-    
+local function AnimateTexCoords(texture, textureWidth, textureHeight, frameWidth, frameHeight, numFrames, elapsed,
+    throttle)
+    if not texture or not texture:IsVisible() then
+        return
+    end
+
     texture.animationTimer = (texture.animationTimer or 0) + elapsed
     if texture.animationTimer >= throttle then
         texture.animationFrame = ((texture.animationFrame or 0) + 1) % numFrames
@@ -92,10 +88,70 @@ end
 
 -- ✅ FUNCIÓN: PlayerFrame_OnUpdate
 local function PlayerFrame_OnUpdate(self, elapsed)
-    -- Animación del rest icon
-    -- Ahora usa la variable local, que es ligeramente más rápida.
+    -- Animación del icono de descanso (zzz)
     if PlayerRestIcon and PlayerRestIcon:IsVisible() then
         AnimateTexCoords(PlayerRestIcon, 512, 512, 64, 64, 42, elapsed, 0.09)
+    end
+
+    -- [[ LÓGICA DE GLOWS MEJORADA ]]
+    local dragonFrame = _G["DragonUIUnitframeFrame"]
+    if not dragonFrame or not dragonFrame.DragonUICombatGlow or not dragonFrame.DragonUIRestGlow then
+        return
+    end
+
+    local combatGlow = dragonFrame.DragonUICombatGlow
+    local restGlow = dragonFrame.DragonUIRestGlow
+    local inCombat = UnitAffectingCombat("player")
+    local isResting = IsResting()
+
+    -- Prioridad 1: Combate
+    if inCombat then
+        -- Si estamos en combate, nos aseguramos de que el glow de descanso esté oculto
+        if restGlow:IsShown() then
+            restGlow:Hide()
+            if UIFrameIsFlashing(restGlow) then
+                UIFrameFlashStop(restGlow)
+            end
+        end
+
+        -- Mostramos y animamos el glow de combate
+        if not combatGlow:IsShown() then
+            combatGlow:Show()
+            if not UIFrameIsFlashing(combatGlow) then
+                UIFrameFlash(combatGlow, 0.75, 0.75, -1) -- Flash rápido de combate
+            end
+        end
+        -- Prioridad 2: Descanso (solo si no estamos en combate)
+    elseif isResting then
+        -- Si estamos descansando (y no en combate), ocultamos el glow de combate
+        if combatGlow:IsShown() then
+            combatGlow:Hide()
+            if UIFrameIsFlashing(combatGlow) then
+                UIFrameFlashStop(combatGlow)
+            end
+        end
+
+        -- Mostramos y animamos el glow de descanso
+        if not restGlow:IsShown() then
+            restGlow:Show()
+            if not UIFrameIsFlashing(restGlow) then
+                UIFrameFlash(restGlow, 1.5, 1.5, -1) -- Pulso lento para descanso
+            end
+        end
+        -- Sin estado: Ocultar todo
+    else
+        if combatGlow:IsShown() then
+            combatGlow:Hide()
+            if UIFrameIsFlashing(combatGlow) then
+                UIFrameFlashStop(combatGlow)
+            end
+        end
+        if restGlow:IsShown() then
+            restGlow:Hide()
+            if UIFrameIsFlashing(restGlow) then
+                UIFrameFlashStop(restGlow)
+            end
+        end
     end
 end
 
@@ -106,15 +162,17 @@ local function PlayerFrame_UpdateStatus()
         PlayerStatusGlow:Hide()
         PlayerStatusGlow:SetAlpha(0)
     end
-    
+
     -- También ocultar otros glows
     HideBlizzardGlows()
 end
 
 -- ✅ FUNCIÓN: UpdateRune (Death Knights)
 local function UpdateRune(button)
-    if not button then return end
-    
+    if not button then
+        return
+    end
+
     local rune = button:GetID()
     local runeType = GetRuneType and GetRuneType(rune)
 
@@ -122,7 +180,7 @@ local function UpdateRune(button)
         local runeTexture = _G[button:GetName() .. "Rune"]
         if runeTexture then
             runeTexture:SetTexture('Interface\\AddOns\\DragonUI\\Textures\\PlayerFrame\\ClassOverlayDeathKnightRunes')
-            if runeType == 1 then     -- Blood
+            if runeType == 1 then -- Blood
                 runeTexture:SetTexCoord(0 / 128, 34 / 128, 0 / 128, 34 / 128)
             elseif runeType == 2 then -- Unholy
                 runeTexture:SetTexCoord(0 / 128, 34 / 128, 68 / 128, 102 / 128)
@@ -137,8 +195,10 @@ end
 
 -- ✅ FUNCIÓN: SetupRuneFrame
 local function SetupRuneFrame()
-    if select(2, UnitClass("player")) ~= "DEATHKNIGHT" then return end
-    
+    if select(2, UnitClass("player")) ~= "DEATHKNIGHT" then
+        return
+    end
+
     for index = 1, 6 do
         local button = _G['RuneButtonIndividual' .. index]
         if button then
@@ -153,18 +213,20 @@ local function SetupRuneFrame()
     end
 end
 
-
-
 -- ✅ FUNCIÓN: UpdateGroupIndicator
 local function UpdateGroupIndicator()
     local groupIndicatorFrame = _G[PlayerFrame:GetName() .. 'GroupIndicator']
     local groupText = _G[PlayerFrame:GetName() .. 'GroupIndicatorText']
-    
-    if not groupIndicatorFrame or not groupText then return end
-    
+
+    if not groupIndicatorFrame or not groupText then
+        return
+    end
+
     groupIndicatorFrame:Hide()
-    
-    if GetNumRaidMembers() == 0 then return end
+
+    if GetNumRaidMembers() == 0 then
+        return
+    end
 
     local numRaidMembers = GetNumRaidMembers()
     for i = 1, MAX_RAID_MEMBERS do
@@ -179,12 +241,13 @@ local function UpdateGroupIndicator()
     end
 end
 
-
 -- ✅ FUNCIÓN: UpdatePlayerRoleIcon (Versión con Atlas Personalizado)
 local function UpdatePlayerRoleIcon()
     local dragonFrame = _G["DragonUIUnitframeFrame"]
-    if not dragonFrame or not dragonFrame.PlayerRoleIcon then return end
-    
+    if not dragonFrame or not dragonFrame.PlayerRoleIcon then
+        return
+    end
+
     local iconTexture = dragonFrame.PlayerRoleIcon
     local role = UnitGroupRolesAssigned("player")
 
@@ -213,8 +276,6 @@ local function UpdatePlayerRoleIcon()
     end
 end
 
-
-
 -- ✅ FUNCIÓN: Actualizar color de la barra de vida (LÓGICA FINAL)
 local function UpdateHealthBarColor(statusBar, unit)
     -- Si 'unit' no se pasa (como en el hook OnValueChanged), lo asignamos a "player".
@@ -223,11 +284,15 @@ local function UpdateHealthBarColor(statusBar, unit)
     end
 
     -- Solo actuar si la barra es la del jugador
-    if statusBar ~= PlayerFrameHealthBar or unit ~= "player" then return end
+    if statusBar ~= PlayerFrameHealthBar or unit ~= "player" then
+        return
+    end
 
     -- Obtener la textura de la barra para poder modificarla
     local healthBarTexture = statusBar:GetStatusBarTexture()
-    if not healthBarTexture then return end
+    if not healthBarTexture then
+        return
+    end
 
     -- Si el jugador está desconectado, la barra se queda gris (comportamiento por defecto)
     if not UnitIsConnected(unit) then
@@ -236,11 +301,12 @@ local function UpdateHealthBarColor(statusBar, unit)
     end
 
     local hasVehicleUI = UnitHasVehicleUI("player")
-    
+
     -- Si la opción de color de clase está activa y no estamos en un vehículo...
     if addon:GetConfigValue("unitframe", "player", "classcolor") and not hasVehicleUI then
         -- 1. Cambiamos la textura a una blanca y plana que se pueda colorear.
-        healthBarTexture:SetTexture("Interface\\AddOns\\DragonUI\\Textures\\Unitframe\\UI-HUD-UnitFrame-Player-PortraitOn-Bar-Health-Status")
+        healthBarTexture:SetTexture(
+            "Interface\\AddOns\\DragonUI\\Textures\\Unitframe\\UI-HUD-UnitFrame-Player-PortraitOn-Bar-Health-Status")
 
         -- 2. Aplicamos el color de la clase.
         local _, englishClass = UnitClass(unit)
@@ -254,8 +320,9 @@ local function UpdateHealthBarColor(statusBar, unit)
     else
         -- Si la opción está desactivada o estamos en un vehículo...
         -- 1. Restauramos la textura original del addon.
-        healthBarTexture:SetTexture('Interface\\AddOns\\DragonUI\\Textures\\Unitframe\\UI-HUD-UnitFrame-Player-PortraitOn-Bar-Health')
-        
+        healthBarTexture:SetTexture(
+            'Interface\\AddOns\\DragonUI\\Textures\\Unitframe\\UI-HUD-UnitFrame-Player-PortraitOn-Bar-Health')
+
         -- 2. Forzamos el color a blanco para que la textura original se vea correctamente.
         statusBar:SetStatusBarColor(1, 1, 1)
     end
@@ -264,11 +331,12 @@ end
 --  FUNCIÓN: Actualizar color de la barra de maná
 local function UpdateManaBarColor(statusBar)
     -- Nos aseguramos de que solo afectamos a la barra del jugador
-    if statusBar ~= PlayerFrameManaBar then return end
+    if statusBar ~= PlayerFrameManaBar then
+        return
+    end
     -- Forzamos siempre el color blanco para que la textura se vea pura
     statusBar:SetStatusBarColor(1, 1, 1)
 end
-
 
 --   CreatePlayerFrameTextures (MEJORADA)
 local function CreatePlayerFrameTextures()
@@ -340,22 +408,22 @@ local function CreatePlayerFrameTextures()
         local groupIndicator = CreateFrame("Frame", "DragonUIPlayerGroupIndicator", PlayerFrame)
         groupIndicator:SetSize(64, 16)
         groupIndicator:SetPoint("BOTTOMLEFT", PlayerFrame, "TOP", 20, -2)
-        
+
         local bgTexture = groupIndicator:CreateTexture(nil, "BACKGROUND")
         bgTexture:SetAllPoints()
         bgTexture:SetTexture("Interface\\TargetingFrame\\UI-StatusBar")
         bgTexture:SetTexCoord(0, 1, 0, 0.25)
-        
+
         local text = groupIndicator:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
         text:SetPoint("CENTER")
         text:SetTextColor(1, 1, 1)
-        
+
         groupIndicator.text = text
         groupIndicator:Hide()
-        
+
         _G[PlayerFrame:GetName() .. 'GroupIndicator'] = groupIndicator
         _G[PlayerFrame:GetName() .. 'GroupIndicatorText'] = text
-        
+
         dragonFrame.PlayerGroupIndicator = groupIndicator
     end
 
@@ -394,6 +462,45 @@ local function CreatePlayerFrameTextures()
         manaTextRight:SetPoint("RIGHT", PlayerFrameManaBar, "RIGHT", -6, 0)
         dragonFrame.PlayerFrameManaBarTextRight = manaTextRight
     end
+
+    -- [[ CORRECCIÓN ]] Usar UIParent:CreateTexture() en lugar de CreateFrame()
+    if not dragonFrame.DragonUICombatGlow then
+        -- Creamos la textura directamente en UIParent
+        local combatGlow = UIParent:CreateTexture('DragonUICombatGlow', 'OVERLAY')
+        combatGlow:SetDrawLayer("OVERLAY", 10)
+        combatGlow:SetTexture('Interface\\Addons\\DragonUI\\Textures\\uiunitframe')
+        combatGlow:SetTexCoord(0.1943359375, 0.3818359375, 0.169921875, 0.30859375)
+        combatGlow:SetSize(192, 71)
+        combatGlow:SetVertexColor(1.0, 0.0, 0.0, 1.0)
+        combatGlow:SetBlendMode('ADD')
+        combatGlow:Hide()
+        
+        -- Lo anclamos a la barra de vida del PlayerFrame
+        combatGlow:SetPoint('LEFT', PlayerFrameHealthBar, 'LEFT', -66, 1)
+        
+        dragonFrame.DragonUICombatGlow = combatGlow
+        print("|cFF00FF00[DragonUI]|r Created DragonUICombatGlow")
+    end
+
+    -- [[ CORRECCIÓN ]] Usar UIParent:CreateTexture() en lugar de CreateFrame()
+    if not dragonFrame.DragonUIRestGlow then
+        -- Hacemos lo mismo para el glow de descanso
+        local restGlow = UIParent:CreateTexture('DragonUIRestGlow', 'OVERLAY')
+        restGlow:SetDrawLayer("OVERLAY", 10)
+        restGlow:SetTexture('Interface\\Addons\\DragonUI\\Textures\\uiunitframe')
+        restGlow:SetTexCoord(0.1943359375, 0.3818359375, 0.169921875, 0.30859375)
+        restGlow:SetSize(192, 71)
+        restGlow:SetVertexColor(1.0, 0.84, 0.0, 1.0) -- Color dorado para descanso
+        restGlow:SetBlendMode('ADD')
+        restGlow:Hide()
+        
+        -- Lo anclamos exactamente en el mismo sitio que el de combate
+        restGlow:SetPoint('LEFT', PlayerFrameHealthBar, 'LEFT', -66, 1)
+        
+        dragonFrame.DragonUIRestGlow = restGlow
+        print("|cFF00FF00[DragonUI]|r Created DragonUIRestGlow")
+    end
+
 end
 
 -- ✅ FUNCIÓN: ChangePlayerframe (PRINCIPAL)
@@ -437,20 +544,20 @@ local function ChangePlayerframe()
     if hasVehicleUI then
         PlayerFrameHealthBar:SetSize(117, 20) -- Tamaño para vehículo
         PlayerFrameHealthBar:SetPoint('LEFT', PlayerPortrait, 'RIGHT', 1, 0) -- Ajustar si es necesario
-     else
+    else
         PlayerFrameHealthBar:SetSize(125, 20) -- Tamaño normal
         PlayerFrameHealthBar:SetPoint('LEFT', PlayerPortrait, 'RIGHT', 1, 0)
     end
 
     -- Ocultar textos originales de Blizzard
     if PlayerFrameHealthBarText and not PlayerFrameHealthBarText.DragonUINoShow then
-      --  PlayerFrameHealthBarText.Show = function() end
+        --  PlayerFrameHealthBarText.Show = function() end
         PlayerFrameHealthBarText:Hide()
         PlayerFrameHealthBarText.DragonUINoShow = true
     end
 
     if PlayerFrameManaBarText and not PlayerFrameManaBarText.DragonUINoShow then
-      --  PlayerFrameManaBarText.Show = function() end
+        --  PlayerFrameManaBarText.Show = function() end
         PlayerFrameManaBarText:Hide()
         PlayerFrameManaBarText.DragonUINoShow = true
     end
@@ -483,32 +590,18 @@ local function ChangePlayerframe()
         PlayerFrameManaBar:GetStatusBarTexture():SetTexture(
             'Interface\\Addons\\DragonUI\\Textures\\Unitframe\\UI-HUD-UnitFrame-Player-PortraitOn-Bar-RunicPower')
     end
-    
-    -- Status Texture ( glow personalizado)
-    PlayerStatusTexture:SetTexture(base)
-    PlayerStatusTexture:SetSize(192, 71)
-    PlayerStatusTexture:SetTexCoord(0.1943359375, 0.3818359375, 0.169921875, 0.30859375)
-    PlayerStatusTexture:ClearAllPoints()
 
-    local dragonFrame = _G["DragonUIUnitframeFrame"]
-    if dragonFrame and dragonFrame.PlayerFrameBorder then
-        PlayerStatusTexture:SetPoint('TOPLEFT', dragonFrame.PlayerFrameBorder, 'TOPLEFT', 1, 1)
-    end
     -- Ajustar el flash de combate (Método simplificado)
     if PlayerFrameFlash then
-        -- 1. Configurar la apariencia del flash
-        PlayerFrameFlash:SetTexture(base)
-        PlayerFrameFlash:SetTexCoord(0.1943359375, 0.3818359375, 0.169921875, 0.30859375)
-        
-        -- 2. Posicionarlo exactamente sobre nuestra textura de estado
-        PlayerFrameFlash:ClearAllPoints()
-        PlayerFrameFlash:SetAllPoints(PlayerStatusTexture)
-        
-        -- 3. Asegurarse de que esté en una capa superior y con el modo de mezcla correcto
-        PlayerFrameFlash:SetDrawLayer("OVERLAY", 9) 
-        PlayerFrameFlash:SetBlendMode("ADD")
+        PlayerFrameFlash:SetTexture('')
+        PlayerFrameFlash:Hide()
+        PlayerFrameFlash:SetAlpha(0)
+    end
 
-        -- 4. NO TOCAR PlayerFrameFlash.anim. Dejamos que la animación por defecto de Blizzard funcione.
+    if PlayerStatusTexture then
+        PlayerStatusTexture:SetTexture('')
+        PlayerStatusTexture:Hide()
+        PlayerStatusTexture:SetAlpha(0)
     end
     -- Configurar elementos específicos por clase
     RemoveBlizzardFrames()
@@ -524,81 +617,75 @@ end
 -- ✅ FUNCIÓN: MovePlayerFrame
 local function MovePlayerFrame(point, relativeTo, relativePoint, xOfs, yOfs)
     PlayerFrame:ClearAllPoints()
-    
+
     local originalClamped = PlayerFrame:IsClampedToScreen()
     PlayerFrame:SetClampedToScreen(false)
-    
+
     local finalRelativePoint = relativePoint or "TOPLEFT"
     local finalPoint = point or "TOPLEFT"
     local finalFrame = _G[relativeTo or "UIParent"] or UIParent
     local finalX = xOfs or -19
     local finalY = yOfs or -4
-    
+
     PlayerFrame:SetPoint(finalPoint, finalFrame, finalRelativePoint, finalX, finalY)
     PlayerFrame:SetClampedToScreen(originalClamped)
-    
+
     print("|cFF00FF00[DragonUI]|r PlayerFrame positioned:", finalPoint, "to", finalRelativePoint, finalX, finalY)
 end
 
 -- ✅ FUNCIÓN: ApplyPlayerConfig
 local function ApplyPlayerConfig()
     local config = addon:GetConfigValue("unitframe", "player") or {}
-    
+
     local scale = config.scale or 1.0
     local override = config.override or false
     local x = config.x or -19
     local y = config.y or -4
     local anchor = config.anchor or "TOPLEFT"
     local anchorParent = config.anchorParent or "TOPLEFT"
-    
+
     print("|cFF00FF00[DragonUI]|r PlayerFrame config - Override:", override, "Scale:", scale)
-    
+
     PlayerFrame:SetScale(scale)
-    
+
     if override then
         local screenWidth = GetScreenWidth()
         local screenHeight = GetScreenHeight()
-        
+
         local minX = -500
         local maxX = screenWidth + 500
         local minY = -500
         local maxY = screenHeight + 500
-        
+
         if x < minX or x > maxX or y < minY or y > maxY then
             print("|cFFFF0000[DragonUI]|r PlayerFrame coordinates out of bounds! Resetting...")
             x, y = -19, -4
             anchor, anchorParent = "TOPLEFT", "TOPLEFT"
             override = false
-            
+
             addon:SetConfigValue("unitframe", "player", "x", x)
             addon:SetConfigValue("unitframe", "player", "y", y)
             addon:SetConfigValue("unitframe", "player", "anchor", anchor)
             addon:SetConfigValue("unitframe", "player", "anchorParent", anchorParent)
             addon:SetConfigValue("unitframe", "player", "override", override)
         end
-        
+
         PlayerFrame:SetUserPlaced(true)
         MovePlayerFrame(anchor, "UIParent", anchorParent, x, y)
     else
         PlayerFrame:SetUserPlaced(false)
         MovePlayerFrame("TOPLEFT", "UIParent", "TOPLEFT", -19, -4)
     end
-    
+
     -- Configurar sistema de texto
     local dragonFrame = _G["DragonUIUnitframeFrame"]
     if dragonFrame and addon.TextSystem then
         if not Module.textSystem then
-            Module.textSystem = addon.TextSystem.SetupFrameTextSystem(
-                "player",
-                "player",
-                dragonFrame,
-                PlayerFrameHealthBar,
-                PlayerFrameManaBar,
-                "PlayerFrame"
-            )
+            Module.textSystem = addon.TextSystem.SetupFrameTextSystem("player", "player", dragonFrame,
+                PlayerFrameHealthBar, PlayerFrameManaBar, "PlayerFrame")
             print("|cFF00FF00[DragonUI]|r PlayerFrame TextSystem configured")
         end
-        
+
         if Module.textSystem then
             Module.textSystem.update()
         end
@@ -615,11 +702,11 @@ local function ResetPlayerFrame()
         anchor = "TOPLEFT",
         anchorParent = "TOPLEFT"
     }
-    
+
     for key, value in pairs(defaults) do
         addon:SetConfigValue("unitframe", "player", key, value)
     end
-    
+
     ApplyPlayerConfig()
     print("|cFF00FF00[DragonUI]|r PlayerFrame reset to defaults")
 end
@@ -634,27 +721,27 @@ local function RefreshPlayerFrame()
 end
 
 local function InitializePlayerFrame()
-    if Module.initialized then return end
+    if Module.initialized then
+        return
+    end
 
     -- Ocultamos los frames de Blizzard una sola vez al inicializar.
     RemoveBlizzardFrames()
-    
+
     -- Crear frame auxiliar
     Module.playerFrame = CreateUIFrame(198, 71, "PlayerFrame")
-    
+
     -- Configurar hooks SEGUROS
     if PlayerFrame and PlayerFrame.HookScript then
         PlayerFrame:HookScript('OnUpdate', PlayerFrame_OnUpdate)
         print("|cFF00FF00[DragonUI]|r PlayerFrame OnUpdate hook applied")
     end
-    
+
     -- Hook para PlayerFrame_UpdateStatus de Blizzard
     if _G.PlayerFrame_UpdateStatus then
         hooksecurefunc('PlayerFrame_UpdateStatus', PlayerFrame_UpdateStatus)
         print("|cFF00FF00[DragonUI]|r PlayerFrame_UpdateStatus hook applied")
     end
-
-
 
     -- Hooks para mantener el color persistente
     -- Este es el método definitivo y más eficiente.
@@ -671,7 +758,7 @@ local function InitializePlayerFrame()
             UpdateManaBarColor(self)
         end)
     end
-    
+
     -- Hooks para glows
     if PlayerStatusGlow and PlayerStatusGlow.HookScript then
         PlayerStatusGlow:HookScript('OnShow', function(self)
@@ -679,28 +766,40 @@ local function InitializePlayerFrame()
             self:SetAlpha(0)
         end)
     end
-    
+
     if PlayerRestGlow and PlayerRestGlow.HookScript then
         PlayerRestGlow:HookScript('OnShow', function(self)
             self:Hide()
             self:SetAlpha(0)
         end)
     end
-    
+
     -- [[ NUEVO ]] Hook para detectar cambios de arte (Vehículos)
-if PlayerFrame and PlayerFrame.HookScript then
-    hooksecurefunc("PlayerFrame_UpdateArt", function()
-        -- Cuando Blizzard actualiza el arte, nosotros también.
-        ChangePlayerframe()
-    end)
-end
-    
-    
+    if PlayerFrame and PlayerFrame.HookScript then
+        hooksecurefunc("PlayerFrame_UpdateArt", function()
+            -- Cuando Blizzard actualiza el arte, nosotros también.
+            ChangePlayerframe()
+        end)
+    end
+    if PlayerFrameFlash then
+        hooksecurefunc(PlayerFrameFlash, 'Show', function(self)
+            self:Hide()
+            self:SetAlpha(0)
+            self:SetTexture('')
+        end)
+    end
+
+    if PlayerStatusTexture then
+        hooksecurefunc(PlayerStatusTexture, 'Show', function(self)
+            self:Hide()
+            self:SetAlpha(0)
+            self:SetTexture('')
+        end)
+    end
+
     Module.initialized = true
     print("|cFF00FF00[DragonUI]|r PlayerFrame module initialized")
 end
-
-
 
 -- ✅ EVENT FRAME (SIMPLIFICADO)
 local eventFrame = CreateFrame("Frame")
@@ -710,27 +809,26 @@ eventFrame:RegisterEvent("RUNE_TYPE_UPDATE")
 eventFrame:RegisterEvent("GROUP_ROSTER_UPDATE")
 eventFrame:RegisterEvent("ROLE_CHANGED_INFORM")
 
-
 eventFrame:SetScript("OnEvent", function(self, event, addonName, ...)
     local unit = ...
 
     if event == "ADDON_LOADED" and addonName == "DragonUI" then
         InitializePlayerFrame()
-        
+
     elseif event == "PLAYER_ENTERING_WORLD" then
         ChangePlayerframe()
         ApplyPlayerConfig()
         print("|cFF00FF00[DragonUI]|r PlayerFrame fully configured")
-        
+
     elseif event == "RUNE_TYPE_UPDATE" then
         local runeIndex = ...
         if runeIndex then
             UpdateRune(_G['RuneButtonIndividual' .. runeIndex])
         end
-        
+
     elseif event == "GROUP_ROSTER_UPDATE" then
         UpdateGroupIndicator()
-        
+
     elseif event == "ROLE_CHANGED_INFORM" then
         UpdatePlayerRoleIcon()
     end
@@ -741,7 +839,9 @@ addon.PlayerFrame = {
     Refresh = RefreshPlayerFrame,
     RefreshPlayerFrame = RefreshPlayerFrame,
     Reset = ResetPlayerFrame,
-    anchor = function() return Module.playerFrame end,
+    anchor = function()
+        return Module.playerFrame
+    end,
     ChangePlayerframe = ChangePlayerframe,
     CreatePlayerFrameTextures = CreatePlayerFrameTextures
 }
