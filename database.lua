@@ -233,20 +233,18 @@ local defaults = {
         },
 
         -- UNIT FRAMES SETTINGS
-        unitframe = {
-            scale = 1,
+         unitframe = {
             player = {
-                classcolor = false,
-                breakUpLargeNumbers = true, -- Changed to false - no commas by default
-                textFormat = 'both', -- Changed to 'both' - Current Value + Percentage
-                showHealthTextAlways = false, -- true = always visible, false = only on hover
-                showManaTextAlways = false, -- true = always visible, false = only on hover
+                enabled = true,
                 scale = 1.0,
-                override = false,
-                anchor = 'TOPLEFT',
-                anchorParent = 'TOPLEFT',
-                x = -19,
-                y = -4
+                override = false,  -- ✅ CLAVE: Por defecto NO override
+                x = -19,          -- ✅ Posición por defecto
+                y = -4,           -- ✅ Posición por defecto  
+                anchor = "TOPLEFT",
+                anchorParent = "TOPLEFT",
+                classcolor = false,
+                healthFormat = "both",
+                manaFormat = "both"
             },
             target = {
                 classcolor = false,

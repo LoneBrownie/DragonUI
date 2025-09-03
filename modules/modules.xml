@@ -10,9 +10,6 @@
     <Script file="multicast.lua"/>
     <Script file="micromenu.lua"/>
 
-    
-
-
     <!-- Minimap modules -->
     <Script file="minimap_atlas.lua"/>
     <Script file="minimap_core.lua"/>
@@ -21,7 +18,11 @@
     <Script file="minimap_auras.lua"/>
     <Script file="minimap_init.lua"/>
 
-    <Script file="unitframe.lua"/>
+    
+    <!-- <Script file="unitframe.lua"/> -->
+
+    <!-- ✅ NUEVA ESTRUCTURA DE UNITFRAMES -->
+    <Include file="unitframes\unitframes.xml"/>
 
     <!-- Cast Bar module -->
     <Script file="castbar_refactored.lua"/>

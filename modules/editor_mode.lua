@@ -243,94 +243,131 @@ local function makeFrameMovable(frame, config)
 
     frame:SetMovable(true);
     frame:EnableMouse(true);
+    
+    -- ✅ DESACTIVAR SNAPPING AUTOMÁTICO
+    frame:SetClampedToScreen(false);  -- ✅ Permite que salga de pantalla
+    if frame.SetDontSavePosition then
+        frame:SetDontSavePosition(true);  -- ✅ Evita que WoW guarde posición automáticamente
+    end
 
     local overlay = createOverlay(frame, config);
     overlay:EnableMouse(true);
     overlay:RegisterForDrag("LeftButton");
 
+    -- ✅ VARIABLES PARA TRACKING PRECISO
+    local isDragging = false;
+    local startX, startY;
+
     overlay:SetScript("OnDragStart", function()
         if InCombatLockdown() then return end
+        
+        -- ✅ GUARDAR POSICIÓN INICIAL EXACTA
+        startX, startY = frame:GetLeft(), frame:GetBottom();
+        isDragging = true;
+        
+        -- ✅ CONFIGURAR FRAME PARA MOVIMIENTO PRECISO
+        frame:SetUserPlaced(false);  -- ✅ CLAVE: Evita que WoW interfiera
         frame:StartMoving();
     end);
 
     overlay:SetScript("OnDragStop", function()
         if InCombatLockdown() then return end
+        
         frame:StopMovingOrSizing();
+        isDragging = false;
+        
+        -- ✅ OBTENER POSICIÓN FINAL EXACTA INMEDIATAMENTE
+        local finalX, finalY = frame:GetLeft(), frame:GetBottom();
 
         -- ✅ =================================================================
-        -- ✅ LÓGICA DE GUARDADO DE POSICIONES
+        -- ✅ LÓGICA DE GUARDADO DE POSICIONES (CORREGIDA)
         -- ✅ =================================================================
 
         if config.actionbar then
             -- === LÓGICA ESPECÍFICA PARA BARRAS DE ACCIÓN ===
             setDbValue(config.dbPath, "override", true)
-            local x, y = getBottomLeftCoordinates(frame)
-            setDbValue(config.dbPath, config.xKey, x)
-            setDbValue(config.dbPath, config.yKey, y)
+            setDbValue(config.dbPath, config.xKey, finalX)
+            setDbValue(config.dbPath, config.yKey, finalY)
            
-
-            -- Llamamos a la función de refresco de las barras
-           if addon[config.refreshFunc] then
+            if addon[config.refreshFunc] then
                 addon[config.refreshFunc]()
             end
         
         elseif config.castbar then
             -- === LÓGICA ESPECÍFICA PARA CASTBARS ===
             setDbValue(config.dbPath, "override", true)
-            local x, y = getBottomLeftCoordinates(frame)
-            setDbValue(config.dbPath, config.xKey, x)
-            setDbValue(config.dbPath, config.yKey, y)
+            setDbValue(config.dbPath, config.xKey, finalX)
+            setDbValue(config.dbPath, config.yKey, finalY)
             
-            -- Llamamos a la función de refresco de la castbar específica
             if addon[config.refreshFunc] then
                 addon[config.refreshFunc]()
             end
 
        elseif config.partyframe then
-           -- === LÓGICA ESPECÍFICA PARA PARTY FRAMES (CORREGIDO) ===
-            -- ✅ CORRECCIÓN: Obtenemos las coordenadas directamente sin la escala
-            -- para evitar el "salto" del marco del grupo.
-            local x, y = frame:GetLeft(), frame:GetBottom()
-            
-            -- Lógica de guardado simplificada y correcta.
+           -- === LÓGICA ESPECÍFICA PARA PARTY FRAMES ===
             setDbValue(config.dbPath, "override", true)
             setDbValue(config.dbPath, "anchor", "BOTTOMLEFT")
             setDbValue(config.dbPath, "anchorParent", "UIParent")
             setDbValue(config.dbPath, "anchorPoint", "BOTTOMLEFT")
-            setDbValue(config.dbPath, config.xKey, x)
-            setDbValue(config.dbPath, config.yKey, y)
-            
-           
+            setDbValue(config.dbPath, config.xKey, finalX)
+            setDbValue(config.dbPath, config.yKey, finalY)
             
             if addon.RefreshUnitFrames then
                 addon:RefreshUnitFrames()
             end
 
-        else
-            -- === LÓGICA GENÉRICA PARA TODOS LOS DEMÁS FRAMES ===
-            local x, y
+         else
             if config.unitframe then
-                -- Para UnitFrames, usamos coordenadas absolutas y activamos override
-                -- ✅ CORRECCIÓN: Obtenemos las coordenadas directas sin la escala, igual que con el party frame.
-                x, y = frame:GetLeft(), frame:GetBottom()
-                setDbValue(config.dbPath, "override", true)
-                setDbValue(config.dbPath, "anchor", "BOTTOMLEFT")
-                setDbValue(config.dbPath, "anchorParent", "UIParent")
-                setDbValue(config.dbPath, "anchorPoint", "BOTTOMLEFT")
+                -- ✅ LÓGICA ESPECÍFICA PARA UNITFRAMES (CORREGIDA)
+                if frame == PlayerFrame then
+                    -- ✅ USAR COORDENADAS TOPLEFT PARA CONSISTENCIA
+                    local point, relativeTo, relativePoint, xOfs, yOfs = frame:GetPoint()
+                    
+                    setDbValue(config.dbPath, "override", true)
+                    setDbValue(config.dbPath, "anchor", point or "TOPLEFT")  -- ✅ Usar el punto actual
+                    setDbValue(config.dbPath, "anchorParent", relativePoint or "TOPLEFT") 
+                    setDbValue(config.dbPath, config.xKey, xOfs or finalX)  -- ✅ Usar offset o coordenada absoluta
+                    setDbValue(config.dbPath, config.yKey, yOfs or finalY)
+                    
+                    print("|cFF00FF00[DragonUI]|r PlayerFrame moved to position:", point, xOfs, yOfs)
+                    
+                    -- ✅ REFRESH INMEDIATO SIN DELAY - EVITA DOUBLE REFRESH
+                    if addon.PlayerFrame and addon.PlayerFrame.Refresh then
+                        addon.PlayerFrame.Refresh()
+                    end
+                    
+                else
+                    -- Para otros UnitFrames
+                    local point, relativeTo, relativePoint, xOfs, yOfs = frame:GetPoint()
+                    setDbValue(config.dbPath, "override", true)
+                    setDbValue(config.dbPath, "anchor", point or "TOPLEFT")
+                    setDbValue(config.dbPath, "anchorParent", relativePoint or "TOPLEFT")
+                    setDbValue(config.dbPath, config.xKey, xOfs or finalX)
+                    setDbValue(config.dbPath, config.yKey, yOfs or finalY)
+                    
+                    if addon.RefreshUnitFrames then
+                        addon.RefreshUnitFrames()
+                    end
+                end
             else
-                -- Para el resto (Stance, Pet, etc.), usamos offsets del punto de anclaje
+                -- Para el resto (Stance, Pet, etc.)
                 local _, _, _, xOfs, yOfs = frame:GetPoint()
-                x, y = xOfs, yOfs
+                setDbValue(config.dbPath, config.xKey, xOfs)
+                setDbValue(config.dbPath, config.yKey, yOfs)
             end
-
-            setDbValue(config.dbPath, config.xKey, x)
-            setDbValue(config.dbPath, config.yKey, y)
-
         end
 
-        -- Notificar a AceConfig para que los sliders se actualicen
+        -- ✅ NOTIFICAR CAMBIOS A ACECONFIG
         if LibStub and LibStub("AceConfigRegistry", true) then
             LibStub("AceConfigRegistry"):NotifyChange("DragonUI");
+        end
+    end);
+
+    -- ✅ SCRIPT ADICIONAL: Prevenir snapping durante el drag
+    overlay:SetScript("OnUpdate", function(self)
+        if isDragging and frame then
+            -- ✅ Mantener el frame "libre" durante el arrastre
+            frame:SetUserPlaced(false);
         end
     end);
 
@@ -338,7 +375,8 @@ local function makeFrameMovable(frame, config)
         overlay = overlay,
         config = config,
         originalMovable = frame:IsMovable(),
-        originalMouseEnabled = frame:IsMouseEnabled()
+        originalMouseEnabled = frame:IsMouseEnabled(),
+        originalClamped = frame:IsClampedToScreen()  -- ✅ Guardar estado original
     };
 end
 
@@ -426,17 +464,22 @@ function EditorMode:Hide()
     isEditorActive = false;
     
     if gridOverlay then gridOverlay:Hide(); end
-    if exitEditorButton then exitEditorButton:Hide(); end -- ✅ Ocultar el botón de salida
+    if exitEditorButton then exitEditorButton:Hide(); end
     
+    -- ✅ RESTAURAR CONFIGURACIONES ORIGINALES
     for frame, data in pairs(editableFrames) do
         data.overlay:Hide();
         frame:SetMovable(data.originalMovable);
         frame:EnableMouse(data.originalMouseEnabled);
+        frame:SetClampedToScreen(data.originalClamped);  -- ✅ Restaurar clamping original
+        
+        -- ✅ RESTAURAR SetDontSavePosition si existe
+        if frame.SetDontSavePosition then
+            frame:SetDontSavePosition(false);
+        end
     end
     
-    -- Refrescar todos los módulos principales al salir
-    if addon.PositionActionBars then addon.PositionActionBars(); end
-    if addon.RefreshUnitFrames then addon.RefreshUnitFrames(); end
+    -- ✅ Resto del código sin cambios...
     
     -- ✅ Restaurar visibilidad normal de TODOS los frames
     if TargetFrame and not UnitExists("target") then TargetFrame:Hide(); end
