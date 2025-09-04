@@ -126,7 +126,15 @@ local function ConfigureTargetElements()
     -- Barra de poder
     TargetFrameManaBar:ClearAllPoints()
     TargetFrameManaBar:SetSize(132,9)
-    TargetFrameManaBar:SetPoint("RIGHT", TargetFramePortrait, "LEFT", 7.5, -17.5)
+    TargetFrameManaBar:SetPoint('RIGHT', TargetFramePortrait, 'LEFT', -1 + 8 - 0.5, -18 + 1 + 0.5)
+
+    TargetFrameTextureFrameName:ClearAllPoints()
+    TargetFrameTextureFrameName:SetPoint('BOTTOM', TargetFrameHealthBar, 'TOP', 10, 3 - 2)
+
+    TargetFrameTextureFrameLevelText:ClearAllPoints()
+    TargetFrameTextureFrameLevelText:SetPoint('BOTTOMRIGHT', TargetFrameHealthBar, 'TOPLEFT', 16, 3 - 2)
+
+    
 
     print("|cFF00FF00[DragonUI]|r Target elements configured")
 end
@@ -161,7 +169,7 @@ local function UpdateHealthBarColor()
     tex:SetVertexColor(1,1,1)
 end
 
--- ✅ FUNCIÓN: Mover TargetFrame (COMO PLAYER.LUA)
+-- ✅ FUNCIÓN: Mover TargetFrame
 local function MoveTargetFrame(point, relativeTo, relativePoint, xOfs, yOfs)
     TargetFrame:ClearAllPoints()
     
@@ -180,7 +188,7 @@ local function MoveTargetFrame(point, relativeTo, relativePoint, xOfs, yOfs)
     print("|cFF00FF00[DragonUI]|r TargetFrame positioned:", finalPoint, "to", finalRelativePoint, finalX, finalY)
 end
 
--- ✅ FUNCIÓN: Configurar posición y escala (COMO PLAYER.LUA)
+-- ✅ FUNCIÓN: Configurar posición y escala 
 local function ApplyTargetConfig()
     if not built then return end
     local cfg = GetConfig()
@@ -197,7 +205,7 @@ local function ApplyTargetConfig()
     TargetFrame:SetScale(scale)
     
     if override then
-        -- Validación de coordenadas (como player.lua)
+        -- Validación de coordenadas 
         local screenWidth = GetScreenWidth()
         local screenHeight = GetScreenHeight()
         
@@ -224,6 +232,25 @@ local function ApplyTargetConfig()
         -- Posición por defecto de Blizzard para TargetFrame
         MoveTargetFrame("TOPLEFT", "UIParent", "TOPLEFT", 216, -4)
     end
+    local dragonFrame = _G["DragonUIUnitframeFrame"]
+    if dragonFrame and addon.TextSystem then
+        if not Module.textSystem then
+            Module.textSystem = addon.TextSystem.SetupFrameTextSystem(
+                "target",
+                "target",
+                dragonFrame,
+                TargetFrameHealthBar,
+                TargetFrameManaBar,
+                "TargetFrame"
+            )
+            print("|cFF00FF00[DragonUI]|r TargetFrame TextSystem configured")
+        end
+        
+        if Module.textSystem then
+            Module.textSystem.update()
+        end
+    end
+
 end
 
 -- ✅ FUNCIÓN: Cambiar frame del target (PRINCIPAL)

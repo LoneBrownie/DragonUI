@@ -284,7 +284,7 @@ local function CreatePlayerFrameTextures()
     -- Ocultar glows inmediatamente
     HideBlizzardGlows()
 
-    -- [[ NUEVO ]] Crear DragonUI Combat Glow personalizado
+    --  Crear DragonUI Combat Glow personalizado
     if not dragonFrame.DragonUICombatGlow then
         local combatGlow = PlayerFrame:CreateTexture('DragonUICombatGlow')
         combatGlow:SetDrawLayer('BACKGROUND', 1)
