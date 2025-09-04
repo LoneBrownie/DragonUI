@@ -19,7 +19,7 @@
     <Script file="minimap_init.lua"/>
 
     
-    <Script file="unitframe.lua"/> 
+    
 
     <!-- ✅ NUEVA ESTRUCTURA DE UNITFRAMES -->
     <Include file="unitframes\unitframes.xml"/>

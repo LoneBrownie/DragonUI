@@ -3,6 +3,7 @@
         
     <!-- Individual frame modules -->
     <Script file="player.lua"/>
+    <Script file="target.lua"/>
     <Script file="text_system.lua"/>
    
    
