@@ -189,7 +189,7 @@ local function UpdatePlayerRoleIcon()
     local role = UnitGroupRolesAssigned("player")
 
     -- Definimos la ruta de nuestra textura y sus dimensiones
-    local LFG_ICON_PATH = "Interface\\AddOns\\DragonUI\\Textures\\PlayerFrame\\LFGRoleIcons.blp"
+    local LFG_ICON_PATH = "Interface\\AddOns\\DragonUI\\Textures\\PlayerFrame\\LFGRoleIcons"
     local LFG_ICON_WIDTH = 256
     local LFG_ICON_HEIGHT = 256
 
@@ -215,7 +215,7 @@ end
 
 
 
--- ✅ FUNCIÓN: Actualizar color de la barra de vida (LÓGICA FINAL)
+-- ✅ FUNCIÓN: Actualizar color de la barra de vida 
 local function UpdateHealthBarColor(statusBar, unit)
     -- Si 'unit' no se pasa (como en el hook OnValueChanged), lo asignamos a "player".
     if not unit then
@@ -241,7 +241,7 @@ local function UpdateHealthBarColor(statusBar, unit)
     if addon:GetConfigValue("unitframe", "player", "classcolor") and not hasVehicleUI then
         -- 1. Cambiamos la textura a una blanca y plana que se pueda colorear.
         healthBarTexture:SetTexture("Interface\\AddOns\\DragonUI\\Textures\\Unitframe\\UI-HUD-UnitFrame-Player-PortraitOn-Bar-Health-Status")
-
+        
         -- 2. Aplicamos el color de la clase.
         local _, englishClass = UnitClass(unit)
         local color = RAID_CLASS_COLORS[englishClass]
@@ -414,6 +414,16 @@ local function CreatePlayerFrameTextures()
     end
 end
 
+local function HideBlizzardElements()
+    local elements =
+        {PlayerFrameTexture, PlayerFrameBackground, PlayerFrameVehicleTexture}
+    for _, element in ipairs(elements) do
+        if element then
+            element:SetAlpha(0)
+        end
+    end
+end
+
 -- ✅ FUNCIÓN: ChangePlayerframe (PRINCIPAL)
 local function ChangePlayerframe()
     local base = 'Interface\\Addons\\DragonUI\\Textures\\uiunitframe'
@@ -423,9 +433,7 @@ local function ChangePlayerframe()
     CreatePlayerFrameTextures()
 
     -- Ocultar elementos de Blizzard
-    PlayerFrameTexture:Hide()
-    PlayerFrameBackground:Hide()
-    PlayerFrameVehicleTexture:Hide()
+    HideBlizzardElements()
 
     -- Forzar ocultación de glows
     HideBlizzardGlows()
@@ -460,19 +468,7 @@ local function ChangePlayerframe()
         PlayerFrameHealthBar:SetPoint('LEFT', PlayerPortrait, 'RIGHT', 1, 0)
     end
 
-    -- Ocultar textos originales de Blizzard
-    if PlayerFrameHealthBarText and not PlayerFrameHealthBarText.DragonUINoShow then
-      --  PlayerFrameHealthBarText.Show = function() end
-        PlayerFrameHealthBarText:Hide()
-        PlayerFrameHealthBarText.DragonUINoShow = true
-    end
-
-    if PlayerFrameManaBarText and not PlayerFrameManaBarText.DragonUINoShow then
-      --  PlayerFrameManaBarText.Show = function() end
-        PlayerFrameManaBarText:Hide()
-        PlayerFrameManaBarText.DragonUINoShow = true
-    end
-
+   
     -- Configurar barra de mana
     PlayerFrameManaBar:ClearAllPoints()
     if hasVehicleUI then
