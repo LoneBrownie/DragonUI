@@ -62,8 +62,8 @@ function TextSystem.FormatStatusText(current, maximum, textFormat, useBreakup, f
         return percent .. "%"
     elseif textFormat == TextSystem.TEXT_FORMATS.both then
         return {
-            left = currentText,
-            right = percent .. "%"
+            left = percent .. "%",
+            right = currentText
         }
     elseif textFormat == TextSystem.TEXT_FORMATS.formatted then
         return currentText .. " / " .. maxText
