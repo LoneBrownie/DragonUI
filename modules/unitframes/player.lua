@@ -15,6 +15,12 @@ Module.playerFrame = nil
 Module.textSystem = nil
 Module.initialized = false
 Module.eventsFrame = nil
+-- Animation variables for Combat Flash pulse effect
+local combatPulseTimer = 0
+local combatPulseDirection = 1 -- 1 = fade in, -1 = fade out
+local combatPulseSpeed = 2.5 -- Speed multiplier for pulse
+local combatMinAlpha = 0.3 -- Minimum alpha for pulse
+local combatMaxAlpha = 1.0 -- Maximum alpha for pulse
 
 -- Cache frequently accessed globals for performance
 local PlayerFrame = _G.PlayerFrame
@@ -84,6 +90,14 @@ local DEFAULTS = {
     y = -4,
     anchor = "TOPLEFT",
     anchorParent = "TOPLEFT"
+}
+
+-- Combat Flash animation settings
+local COMBAT_PULSE_SETTINGS = {
+    speed = 9,        -- Velocidad del pulso
+    minAlpha = 0.3,     -- Transparencia mínima
+    maxAlpha = 1.0,     -- Transparencia máxima
+    enabled = true      -- Activar/desactivar animación
 }
 
 -- Event lookup tables for O(1) performance
@@ -228,17 +242,43 @@ local function AnimateTexCoords(texture, textureWidth, textureHeight, frameWidth
     end
 end
 
+-- Animate Combat Flash pulse effect
+local function AnimateCombatFlashPulse(elapsed)
+    if not COMBAT_PULSE_SETTINGS.enabled then return end
+    
+    local dragonFrame = _G["DragonUIUnitframeFrame"]
+    if not dragonFrame or not dragonFrame.DragonUICombatGlow or not dragonFrame.DragonUICombatGlow:IsVisible() then
+        return
+    end
+
+    combatPulseTimer = combatPulseTimer + (elapsed * COMBAT_PULSE_SETTINGS.speed)
+    
+    local pulseAlpha = COMBAT_PULSE_SETTINGS.minAlpha + 
+                      (COMBAT_PULSE_SETTINGS.maxAlpha - COMBAT_PULSE_SETTINGS.minAlpha) * 
+                      (math.sin(combatPulseTimer) * 0.5 + 0.5)
+    
+    if dragonFrame.DragonUICombatTexture then
+        dragonFrame.DragonUICombatTexture:SetAlpha(pulseAlpha)
+    end
+end
+
 -- Frame update handler for animations
 local function PlayerFrame_OnUpdate(self, elapsed)
+    -- Rest icon animation
     if PlayerRestIcon and PlayerRestIcon:IsVisible() then
         AnimateTexCoords(PlayerRestIcon, 512, 512, 64, 64, 42, elapsed, 0.09)
     end
+    
+    -- Combat Flash pulse animation
+    AnimateCombatFlashPulse(elapsed)
 end
 
 -- Override Blizzard status update to prevent glow interference
 local function PlayerFrame_UpdateStatus()
     HideBlizzardGlows()
 end
+
+
 
 -- ============================================================================
 -- CLASS-SPECIFIC FEATURES
@@ -397,80 +437,79 @@ local function UpdatePlayerDragonDecoration()
     end
 
     -- ✅ NUEVO: Cambiar background, borde Y ESTIRAR MANA BAR según decoración
-if decorationType ~= "none" then
-    -- Usar texturas del target (invertidas) cuando hay decoración
-    if dragonFrame.PlayerFrameBackground then
-        dragonFrame.PlayerFrameBackground:SetTexture(
-            "Interface\\AddOns\\DragonUI\\Textures\\UI-HUD-UnitFrame-Target-PortraitOn-BACKGROUND")
-        dragonFrame.PlayerFrameBackground:SetSize(255, 130)
-        dragonFrame.PlayerFrameBackground:SetTexCoord(1, 0, 0, 1) -- Invertir horizontalmente
-        
-        -- Reposicionar con frame de referencia específico
-        dragonFrame.PlayerFrameBackground:ClearAllPoints()
-        dragonFrame.PlayerFrameBackground:SetPoint('LEFT', PlayerFrameHealthBar, 'LEFT', -128, -29.5)
-    end
-    if dragonFrame.PlayerFrameBorder then
-        dragonFrame.PlayerFrameBorder:SetTexture(
-            "Interface\\AddOns\\DragonUI\\Textures\\UI-HUD-UnitFrame-Target-PortraitOn-BORDER")
-        dragonFrame.PlayerFrameBorder:SetTexCoord(1, 0, 0, 1) -- Invertir horizontalmente
-        
-        -- Reposicionar con frame de referencia específico
-        dragonFrame.PlayerFrameBorder:ClearAllPoints()
-        dragonFrame.PlayerFrameBorder:SetPoint('LEFT', PlayerFrameHealthBar, 'LEFT', -128, -29.5)
-    end
-    
-    -- ✅ NUEVO: Ocultar PlayerFrameDeco cuando hay decoración elite/rare
-    if dragonFrame.PlayerFrameDeco then
-        dragonFrame.PlayerFrameDeco:Hide()
-    end
-    
-    -- ✅ NUEVO: Estirar mana bar hacia la izquierda
-    if PlayerFrameManaBar then
-        local hasVehicleUI = UnitHasVehicleUI("player")
-        local normalWidth = hasVehicleUI and 117 or 125
-        local extendedWidth = hasVehicleUI and 130 or 130  -- Más ancho
-        
-        PlayerFrameManaBar:ClearAllPoints()
-        PlayerFrameManaBar:SetSize(extendedWidth, hasVehicleUI and 9 or 8)
-        -- CLAVE: Anclar por el lado DERECHO para que solo se estire hacia la izquierda
-        PlayerFrameManaBar:SetPoint('RIGHT', PlayerPortrait, 'RIGHT', 1 + normalWidth, -16.5)
-    end
-else
-    -- Usar texturas normales del player cuando no hay decoración
-    if dragonFrame.PlayerFrameBackground then
-        dragonFrame.PlayerFrameBackground:SetTexture(TEXTURES.BASE)
-        dragonFrame.PlayerFrameBackground:SetTexCoord(0.7890625, 0.982421875, 0.001953125, 0.140625)
-        dragonFrame.PlayerFrameBackground:SetSize(198, 71)
-        
-        -- Restaurar posición original
-        dragonFrame.PlayerFrameBackground:ClearAllPoints()
-        dragonFrame.PlayerFrameBackground:SetPoint('LEFT', PlayerFrameHealthBar, 'LEFT', -67, 0)
-    end
-    if dragonFrame.PlayerFrameBorder then
-        dragonFrame.PlayerFrameBorder:SetTexture(TEXTURES.BORDER)
-        dragonFrame.PlayerFrameBorder:SetTexCoord(0, 1, 0, 1)
-        
-        -- Restaurar posición original
-        dragonFrame.PlayerFrameBorder:ClearAllPoints()
-        dragonFrame.PlayerFrameBorder:SetPoint('LEFT', PlayerFrameHealthBar, 'LEFT', -67, -28.5)
-    end
-    
-    -- ✅ NUEVO: Mostrar PlayerFrameDeco cuando no hay decoración
-    if dragonFrame.PlayerFrameDeco then
-        dragonFrame.PlayerFrameDeco:Show()
-    end
-    
-    -- ✅ NUEVO: Restaurar tamaño normal de mana bar
-    if PlayerFrameManaBar then
-        local hasVehicleUI = UnitHasVehicleUI("player")
-        
-        PlayerFrameManaBar:ClearAllPoints()
-        PlayerFrameManaBar:SetSize(hasVehicleUI and 117 or 125, hasVehicleUI and 9 or 8)
-        -- Restaurar anclaje por la izquierda (posición original)
-        PlayerFrameManaBar:SetPoint('LEFT', PlayerPortrait, 'RIGHT', 1, -16.5)
-    end
-end
+    if decorationType ~= "none" then
+        -- Usar texturas del target (invertidas) cuando hay decoración
+        if dragonFrame.PlayerFrameBackground then
+            dragonFrame.PlayerFrameBackground:SetTexture(
+                "Interface\\AddOns\\DragonUI\\Textures\\UI-HUD-UnitFrame-Target-PortraitOn-BACKGROUND")
+            dragonFrame.PlayerFrameBackground:SetSize(255, 130)
+            dragonFrame.PlayerFrameBackground:SetTexCoord(1, 0, 0, 1) -- Invertir horizontalmente
 
+            -- Reposicionar con frame de referencia específico
+            dragonFrame.PlayerFrameBackground:ClearAllPoints()
+            dragonFrame.PlayerFrameBackground:SetPoint('LEFT', PlayerFrameHealthBar, 'LEFT', -128, -29.5)
+        end
+        if dragonFrame.PlayerFrameBorder then
+            dragonFrame.PlayerFrameBorder:SetTexture(
+                "Interface\\AddOns\\DragonUI\\Textures\\UI-HUD-UnitFrame-Target-PortraitOn-BORDER")
+            dragonFrame.PlayerFrameBorder:SetTexCoord(1, 0, 0, 1) -- Invertir horizontalmente
+
+            -- Reposicionar con frame de referencia específico
+            dragonFrame.PlayerFrameBorder:ClearAllPoints()
+            dragonFrame.PlayerFrameBorder:SetPoint('LEFT', PlayerFrameHealthBar, 'LEFT', -128, -29.5)
+        end
+
+        -- ✅ NUEVO: Ocultar PlayerFrameDeco cuando hay decoración elite/rare
+        if dragonFrame.PlayerFrameDeco then
+            dragonFrame.PlayerFrameDeco:Hide()
+        end
+
+        -- ✅ NUEVO: Estirar mana bar hacia la izquierda
+        if PlayerFrameManaBar then
+            local hasVehicleUI = UnitHasVehicleUI("player")
+            local normalWidth = hasVehicleUI and 117 or 125
+            local extendedWidth = hasVehicleUI and 130 or 130 -- Más ancho
+
+            PlayerFrameManaBar:ClearAllPoints()
+            PlayerFrameManaBar:SetSize(extendedWidth, hasVehicleUI and 9 or 8)
+            -- CLAVE: Anclar por el lado DERECHO para que solo se estire hacia la izquierda
+            PlayerFrameManaBar:SetPoint('RIGHT', PlayerPortrait, 'RIGHT', 1 + normalWidth, -16.5)
+        end
+    else
+        -- Usar texturas normales del player cuando no hay decoración
+        if dragonFrame.PlayerFrameBackground then
+            dragonFrame.PlayerFrameBackground:SetTexture(TEXTURES.BASE)
+            dragonFrame.PlayerFrameBackground:SetTexCoord(0.7890625, 0.982421875, 0.001953125, 0.140625)
+            dragonFrame.PlayerFrameBackground:SetSize(198, 71)
+
+            -- Restaurar posición original
+            dragonFrame.PlayerFrameBackground:ClearAllPoints()
+            dragonFrame.PlayerFrameBackground:SetPoint('LEFT', PlayerFrameHealthBar, 'LEFT', -67, 0)
+        end
+        if dragonFrame.PlayerFrameBorder then
+            dragonFrame.PlayerFrameBorder:SetTexture(TEXTURES.BORDER)
+            dragonFrame.PlayerFrameBorder:SetTexCoord(0, 1, 0, 1)
+
+            -- Restaurar posición original
+            dragonFrame.PlayerFrameBorder:ClearAllPoints()
+            dragonFrame.PlayerFrameBorder:SetPoint('LEFT', PlayerFrameHealthBar, 'LEFT', -67, -28.5)
+        end
+
+        -- ✅ NUEVO: Mostrar PlayerFrameDeco cuando no hay decoración
+        if dragonFrame.PlayerFrameDeco then
+            dragonFrame.PlayerFrameDeco:Show()
+        end
+
+        -- ✅ NUEVO: Restaurar tamaño normal de mana bar
+        if PlayerFrameManaBar then
+            local hasVehicleUI = UnitHasVehicleUI("player")
+
+            PlayerFrameManaBar:ClearAllPoints()
+            PlayerFrameManaBar:SetSize(hasVehicleUI and 117 or 125, hasVehicleUI and 9 or 8)
+            -- Restaurar anclaje por la izquierda (posición original)
+            PlayerFrameManaBar:SetPoint('LEFT', PlayerPortrait, 'RIGHT', 1, -16.5)
+        end
+    end
 
     -- Don't create dragon if decoration is disabled
     if decorationType == "none" then
@@ -514,18 +553,24 @@ local function CreatePlayerFrameTextures()
 
     HideBlizzardGlows()
 
-    -- Create combat glow effect
     if not dragonFrame.DragonUICombatGlow then
-        local combatGlow = PlayerFrame:CreateTexture('DragonUICombatGlow')
-        combatGlow:SetDrawLayer('BACKGROUND', 1)
-        combatGlow:SetTexture(TEXTURES.BASE)
-        combatGlow:SetTexCoord(0.1943359375, 0.3818359375, 0.169921875, 0.30859375)
-        combatGlow:SetSize(192, 71)
-        combatGlow:SetVertexColor(1.0, 0.0, 0.0, 1.0)
-        combatGlow:SetBlendMode('ADD')
-        combatGlow:SetPoint('TOPLEFT', PlayerFrame, 'TOPLEFT', -67, -28.5)
-        combatGlow:Hide()
-        dragonFrame.DragonUICombatGlow = combatGlow
+        local combatFlashFrame = CreateFrame("Frame", "DragonUICombatFlash", UIParent)
+        combatFlashFrame:SetFrameStrata("TOOLTIP")
+        combatFlashFrame:SetFrameLevel(999)
+        combatFlashFrame:SetSize(192, 71)
+        combatFlashFrame:Hide()
+
+        local combatTexture = combatFlashFrame:CreateTexture(nil, "OVERLAY")
+        combatTexture:SetTexture(TEXTURES.BASE)
+        combatTexture:SetTexCoord(0.1943359375, 0.3818359375, 0.169921875, 0.30859375)
+        combatTexture:SetAllPoints(combatFlashFrame)
+        combatTexture:SetBlendMode("ADD")
+        combatTexture:SetVertexColor(1.0, 0.0, 0.0, 1.0)
+
+        dragonFrame.DragonUICombatGlow = combatFlashFrame
+        dragonFrame.DragonUICombatTexture = combatTexture
+
+        print("|cFF00FF00[DragonUI]|r Created independent Combat Flash with high z-order")
     end
 
     -- Create background texture
@@ -709,16 +754,19 @@ local function ChangePlayerframe()
 
     local dragonFrame = _G["DragonUIUnitframeFrame"]
     if dragonFrame and dragonFrame.PlayerFrameBorder then
-        PlayerStatusTexture:SetPoint('TOPLEFT', PlayerPortrait, 'TOPLEFT', -10, 10)
+        PlayerStatusTexture:SetPoint('TOPLEFT', PlayerPortrait, 'TOPLEFT', -9, 9)
     end
 
     if PlayerFrameFlash then
-        PlayerFrameFlash:SetTexture(TEXTURES.BASE)
-        PlayerFrameFlash:SetTexCoord(0.1943359375, 0.3818359375, 0.169921875, 0.30859375)
-        PlayerFrameFlash:ClearAllPoints()
-        PlayerFrameFlash:SetAllPoints(PlayerStatusTexture)
-        PlayerFrameFlash:SetDrawLayer("OVERLAY", 9)
-        PlayerFrameFlash:SetBlendMode("ADD")
+        PlayerFrameFlash:Hide()
+        PlayerFrameFlash:SetAlpha(0)
+    end
+
+    -- Position our high-priority Combat Flash
+    
+    if dragonFrame and dragonFrame.DragonUICombatGlow then
+        dragonFrame.DragonUICombatGlow:ClearAllPoints()
+        dragonFrame.DragonUICombatGlow:SetPoint('TOPLEFT', PlayerPortrait, 'TOPLEFT', -9, 9)
     end
 
     -- Setup class-specific elements
@@ -729,6 +777,19 @@ local function ChangePlayerframe()
     UpdateManaBarColor(PlayerFrameManaBar)
 
     print("|cFF00FF00[DragonUI]|r PlayerFrame configured successfully")
+end
+
+local function SetCombatFlashVisible(visible)
+    local dragonFrame = _G["DragonUIUnitframeFrame"]
+    if dragonFrame and dragonFrame.DragonUICombatGlow then
+        if visible then
+            -- Reset pulse timer when starting combat
+            combatPulseTimer = 0
+            dragonFrame.DragonUICombatGlow:Show()
+        else
+            dragonFrame.DragonUICombatGlow:Hide()
+        end
+    end
 end
 
 -- Apply configuration settings
@@ -874,35 +935,43 @@ local function SetupPlayerEvents()
 
     -- Event handlers
     local handlers = {
-        ADDON_LOADED = function(addonName)
-            if addonName == "DragonUI" then
-                InitializePlayerFrame()
-            end
-        end,
+    PLAYER_REGEN_DISABLED = function()
+        UpdateBothBars()
+        SetCombatFlashVisible(true)
+    end,
 
-        PLAYER_ENTERING_WORLD = function()
-            ChangePlayerframe()
-            ApplyPlayerConfig()
-            print("|cFF00FF00[DragonUI]|r PlayerFrame fully configured")
-        end,
-
-        RUNE_TYPE_UPDATE = function(runeIndex)
-            if runeIndex then
-                UpdateRune(_G['RuneButtonIndividual' .. runeIndex])
-            end
-        end,
-
-        GROUP_ROSTER_UPDATE = UpdateGroupIndicator,
-        ROLE_CHANGED_INFORM = UpdatePlayerRoleIcon,
-        PLAYER_REGEN_DISABLED = UpdateBothBars,
-        PLAYER_REGEN_ENABLED = UpdateBothBars,
-
-        UNIT_AURA = function(unit)
-            if unit == "player" then
-                UpdateBothBars()
-            end
+    PLAYER_REGEN_ENABLED = function()
+        UpdateBothBars()
+        SetCombatFlashVisible(false)
+    end,
+    
+    ADDON_LOADED = function(addonName)
+        if addonName == "DragonUI" then
+            InitializePlayerFrame()
         end
-    }
+    end,
+
+    PLAYER_ENTERING_WORLD = function()
+        ChangePlayerframe()
+        ApplyPlayerConfig()
+        print("|cFF00FF00[DragonUI]|r PlayerFrame fully configured")
+    end,
+
+    RUNE_TYPE_UPDATE = function(runeIndex)
+        if runeIndex then
+            UpdateRune(_G['RuneButtonIndividual' .. runeIndex])
+        end
+    end,
+
+    GROUP_ROSTER_UPDATE = UpdateGroupIndicator,
+    ROLE_CHANGED_INFORM = UpdatePlayerRoleIcon,
+
+    UNIT_AURA = function(unit)
+        if unit == "player" then
+            UpdateBothBars()
+        end
+    end
+}
 
     -- Register events
     for event in pairs(handlers) do
