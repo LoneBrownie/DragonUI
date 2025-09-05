@@ -244,7 +244,8 @@ local defaults = {
                 anchorParent = "TOPLEFT",
                 classcolor = false,
                 healthFormat = "both",
-                manaFormat = "both"
+                manaFormat = "both",
+                dragon_decoration = "none"
             },
             target = {
                 classcolor = false,

@@ -2503,6 +2503,21 @@ function addon:CreateOptionsTable()
                                 disabled = function()
                                     return not addon.db.profile.unitframe.player.override
                                 end
+                            },
+                            dragon_decoration = {
+                                type = 'select',
+                                name = "Dragon Decoration",
+                                desc = "Add decorative dragon to your player frame for a premium look",
+                                values = {
+                                    none = "None",
+                                    elite = "Elite Dragon (Golden)",
+                                    rare = "Rare Dragon (Silver)"
+                                },
+                                get = function()
+                                    return addon.db.profile.unitframe.player.dragon_decoration or "none"
+                                end,
+                                set = createSetFunction("unitframe", "player", "dragon_decoration", "RefreshPlayerFrame"),
+                                order = 9
                             }
                         }
                     },

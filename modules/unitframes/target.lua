@@ -15,6 +15,7 @@ Module.targetFrame = nil
 Module.textSystem = nil
 Module.initialized = false
 Module.eventsFrame = nil
+local targetExtra = nil
 
 -- Cache frequently accessed globals for performance
 local TargetFrame = _G.TargetFrame
@@ -31,6 +32,30 @@ local TEXTURES = {
     BORDER = "Interface\\AddOns\\DragonUI\\Textures\\UI-HUD-UnitFrame-Target-PortraitOn-BORDER",
     BAR_PREFIX = "Interface\\AddOns\\DragonUI\\Textures\\Unitframe\\UI-HUD-UnitFrame-Target-PortraitOn-Bar-",
     NAME_BACKGROUND = "Interface\\AddOns\\DragonUI\\Textures\\TargetFrame\\NameBackground"
+}
+
+-- Boss frame coordinates for uiunitframeboss2x 
+local BOSS_COORDINATES = {
+    -- Elite/WorldBoss (dragón dorado) - RetailUI combines these
+    elite = {
+        texCoord = {0.001953125, 0.314453125, 0.322265625, 0.630859375},
+        size = {80, 79},
+        offset = {4, 1}
+    },
+
+    -- Rare (dragón plateado)
+    rare = {
+        texCoord = {0.00390625, 0.31640625, 0.64453125, 0.953125},
+        size = {80, 79},
+        offset = {4, 1}
+    },
+
+    -- RareElite (dragón dorado grande)
+    rareelite = {
+        texCoord = {0.001953125, 0.388671875, 0.001953125, 0.31835937},
+        size = {99, 81},
+        offset = {13, 1}
+    }
 }
 
 -- Frame positioning defaults
@@ -127,7 +152,7 @@ end
 
 -- Hide unwanted Blizzard target frame elements
 local function HideBlizzardElements()
-    local elementsToHide = {TargetFrameTextureFrameTexture, TargetFrameBackground, TargetFrameFlash,}
+    local elementsToHide = {TargetFrameTextureFrameTexture, TargetFrameBackground, TargetFrameFlash}
 
     for _, element in ipairs(elementsToHide) do
         if element then
@@ -249,27 +274,33 @@ local function CreateTargetFrameTextures()
         borderTexture:SetPoint("TOPLEFT", backgroundTexture, "TOPLEFT", 0, 0)
     end
 
+    if not targetExtra then
+        targetExtra = TargetFrame:CreateTexture("DragonUI_TargetFrameExtra", "OVERLAY", nil, 6)
+        targetExtra:SetTexture("Interface\\AddOns\\DragonUI\\Textures\\uiunitframeboss2x")
+        targetExtra:Hide() -- Hide by default
+    end
+
     -- ✅ CORREGIDO: Posicionamiento igual que RetailUI
     if TargetFrameNameBackground then
         TargetFrameNameBackground:ClearAllPoints()
-        
+
         -- ✅ CLAVE: Usar el mismo posicionamiento que unitframe.lua
         TargetFrameNameBackground:SetPoint('BOTTOMLEFT', TargetFrameHealthBar, 'TOPLEFT', -2, -5)
-        
+
         -- ✅ CLAVE: Tamaño fijo como en unitframe.lua
         TargetFrameNameBackground:SetSize(135, 18)
-        
+
         -- ✅ Tu textura personalizada (mantener)
         TargetFrameNameBackground:SetTexture(TEXTURES.NAME_BACKGROUND)
-        
+
         -- ✅ CRÍTICO: No usar SetTexCoord personalizado si causa problemas
         -- TargetFrameNameBackground:SetTexCoord(0.05, 0.95, 0.05, 0.95)
-        
+
         -- ✅ Configuración básica como unitframe.lua
         TargetFrameNameBackground:SetDrawLayer("BORDER")
         TargetFrameNameBackground:SetBlendMode("ADD")
         TargetFrameNameBackground:SetAlpha(0.9)
-        
+
         -- ✅ IMPORTANTE: Mostrar inicialmente
         TargetFrameNameBackground:Show()
     end
@@ -286,7 +317,7 @@ local function UpdateNameBackground()
 
     -- ✅ SIMPLIFICADO: Como en unitframe.lua
     local r, g, b = UnitSelectionColor("target")
-    
+
     if not r then
         r, g, b = 0.5, 0.5, 0.5
     end
@@ -302,7 +333,44 @@ local function HideNameBackground()
     end
 end
 
+local function UpdateTargetClassification()
+    if not UnitExists("target") or not targetExtra then
+        if targetExtra then
+            targetExtra:Hide()
+        end
+        return
+    end
 
+    local classification = UnitClassification("target")
+    local coords = nil
+
+    -- Follow RetailUI pattern: worldboss and elite use same texture
+    if classification == "worldboss" or classification == "elite" then
+        coords = BOSS_COORDINATES.elite
+    elseif classification == "rareelite" then
+        coords = BOSS_COORDINATES.rareelite
+    elseif classification == "rare" then
+        coords = BOSS_COORDINATES.rare
+    else
+        -- Check for famous NPCs (optional)
+        local name = UnitName("target")
+        if name and addon.unitframe and addon.unitframe.famous and addon.unitframe.famous[name] then
+            coords = BOSS_COORDINATES.elite -- Use elite texture for famous NPCs
+        else
+            targetExtra:Hide()
+            return
+        end
+    end
+
+    if coords then
+        targetExtra:Show()
+        targetExtra:SetSize(coords.size[1], coords.size[2])
+        targetExtra:SetTexCoord(coords.texCoord[1], coords.texCoord[2], coords.texCoord[3], coords.texCoord[4])
+        targetExtra:SetPoint('CENTER', TargetFramePortrait, 'CENTER', coords.offset[1], coords.offset[2])
+    else
+        targetExtra:Hide()
+    end
+end
 
 -- Configure target frame elements positioning and hooks
 local function ConfigureTargetElements()
@@ -575,11 +643,13 @@ local function UpdateBothBars()
     if UnitExists("target") then
         UpdateHealthBarColor(TargetFrameHealthBar, "target")
         UpdatePowerBarColor(TargetFrameManaBar, "target")
-        --  Actualizar fondo del nombre
         UpdateNameBackground()
+        UpdateTargetClassification()
     else
-        --  Ocultar fondo cuando no hay target
         HideNameBackground()
+        if targetExtra then
+            targetExtra:Hide()
+        end
     end
 end
 
@@ -606,12 +676,14 @@ local function SetupTargetEvents()
         end,
 
         PLAYER_TARGET_CHANGED = function()
-            UpdateBothBars()
-            -- Actualizar fondo del nombre al cambiar target
+            UpdateBothBars() -- Ya incluye UpdateTargetClassification
             if UnitExists("target") then
                 UpdateNameBackground()
             else
                 HideNameBackground()
+                if targetExtra then
+                    targetExtra:Hide()
+                end
             end
         end,
 
