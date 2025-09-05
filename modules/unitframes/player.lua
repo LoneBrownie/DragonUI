@@ -17,10 +17,16 @@ Module.initialized = false
 Module.eventsFrame = nil
 -- Animation variables for Combat Flash pulse effect
 local combatPulseTimer = 0
+local eliteStatusPulseTimer = 0
 local combatPulseDirection = 1 -- 1 = fade in, -1 = fade out
 local combatPulseSpeed = 2.5 -- Speed multiplier for pulse
 local combatMinAlpha = 0.3 -- Minimum alpha for pulse
 local combatMaxAlpha = 1.0 -- Maximum alpha for pulse
+
+-- Elite Glow System State
+local eliteGlowActive = false
+local statusGlowVisible = false
+local combatGlowVisible = false
 
 -- Cache frequently accessed globals for performance
 local PlayerFrame = _G.PlayerFrame
@@ -55,17 +61,10 @@ local TEXTURES = {
 
 -- Coordenadas para glows elite/rare (target frame invertido)
 local ELITE_GLOW_COORDINATES = {
-    -- Usar la textura base del DragonUI: TEXTURES.BASE
-    combat_glow_elite = {
-        -- TargetFrame-Flash invertido: {422/1024, 211/1024, 275/512, 365/512}
-        texCoord = {0.412109375, 0.2060546875, 0.537109375, 0.712890625},
-        size = {211, 90}
-    },
-    status_glow_elite = {
-        -- TargetFrame-Status invertido: {209/1024, 0/1024, 275/512, 365/512}  
-        texCoord = {0.2041015625, 0, 0.537109375, 0.712890625},
-        size = {209, 90}
-    }
+    -- Usando la textura correcta: 'Interface\\Addons\\DragonUI\\Textures\\UI\\UnitFrame'
+    texCoord = {0.2041015625, 0, 0.537109375, 0.712890625},
+    size = {209, 90},
+    texture = 'Interface\\Addons\\DragonUI\\Textures\\UI\\UnitFrame'
 }
 
 -- Dragon decoration coordinates for uiunitframeboss2x texture (always flipped for player frame)
@@ -94,10 +93,18 @@ local DEFAULTS = {
 
 -- Combat Flash animation settings
 local COMBAT_PULSE_SETTINGS = {
-    speed = 9,        -- Velocidad del pulso
-    minAlpha = 0.3,     -- Transparencia mínima
-    maxAlpha = 1.0,     -- Transparencia máxima
-    enabled = true      -- Activar/desactivar animación
+    speed = 9, -- Velocidad del pulso
+    minAlpha = 0.3, -- Transparencia mínima
+    maxAlpha = 1.0, -- Transparencia máxima
+    enabled = true -- Activar/desactivar animación
+}
+
+-- Elite Decoration=ON pulse animation settings 
+local ELITE_STATUS_PULSE_SETTINGS = {
+    speed = 6, 
+    minAlpha = 0.3, 
+    maxAlpha = 1, 
+    enabled = true
 }
 
 -- Event lookup tables for O(1) performance
@@ -216,6 +223,98 @@ local function RemoveBlizzardFrames()
 end
 
 -- ============================================================================
+-- ELITE GLOW SYSTEM - Switch system
+-- ============================================================================
+
+-- Check if elite mode is active based on dragon decoration
+local function IsEliteModeActive()
+    local config = GetPlayerConfig()
+    local decorationType = config.dragon_decoration or "none"
+    return decorationType == "elite" or decorationType == "rare"
+end
+
+-- Toggle glow visibility based on elite mode
+local function UpdateGlowVisibility()
+    local dragonFrame = _G["DragonUIUnitframeFrame"]
+    if not dragonFrame then
+        return
+    end
+
+    eliteGlowActive = IsEliteModeActive()
+
+    -- ✅ CORREGIDO: Control correcto del PlayerStatusTexture
+    if PlayerStatusTexture then
+        if eliteGlowActive then
+            -- En modo elite: ocultar completamente el glow original
+            PlayerStatusTexture:Hide()
+            PlayerStatusTexture:SetAlpha(0)
+        else
+            -- En modo normal: controlar según statusGlowVisible
+            PlayerStatusTexture:SetAlpha(1) -- Restaurar alpha
+            if statusGlowVisible then
+                PlayerStatusTexture:Show()
+            else
+                PlayerStatusTexture:Hide()
+            end
+        end
+    end
+
+    if dragonFrame.DragonUICombatGlow then
+        if eliteGlowActive then
+            -- En modo elite: ocultar glow original
+            dragonFrame.DragonUICombatGlow:Hide()
+            dragonFrame.DragonUICombatGlow:SetAlpha(0)
+        else
+            -- En modo normal: mostrar/ocultar glow original según combatGlowVisible
+            dragonFrame.DragonUICombatGlow:SetAlpha(1) -- Restaurar alpha
+            if combatGlowVisible then
+                dragonFrame.DragonUICombatGlow:Show()
+            else
+                dragonFrame.DragonUICombatGlow:Hide()
+            end
+        end
+    end
+
+    -- Update elite glows (solo en modo elite)
+    if eliteGlowActive then
+        if dragonFrame.EliteStatusGlow then
+            if statusGlowVisible then
+                dragonFrame.EliteStatusGlow:Show()
+            else
+                dragonFrame.EliteStatusGlow:Hide()
+            end
+        end
+        if dragonFrame.EliteCombatGlow then
+            if combatGlowVisible then
+                dragonFrame.EliteCombatGlow:Show()
+            else
+                dragonFrame.EliteCombatGlow:Hide()
+            end
+        end
+    else
+        -- Ocultar elite glows en modo normal
+        if dragonFrame.EliteStatusGlow then
+            dragonFrame.EliteStatusGlow:Hide()
+        end
+        if dragonFrame.EliteCombatGlow then
+            dragonFrame.EliteCombatGlow:Hide()
+        end
+    end
+end
+
+-- Set status glow state (replaces original logic)
+local function SetStatusGlowVisible(visible)
+    statusGlowVisible = visible
+    UpdateGlowVisibility()
+end
+
+-- Set combat glow state (replaces original logic)
+local function SetEliteCombatFlashVisible(visible)
+    combatGlowVisible = visible
+    UpdateGlowVisibility()
+end
+
+-- ============================================================================
 -- ANIMATION & VISUAL EFFECTS
 -- ============================================================================
 
@@ -244,21 +343,49 @@ end
 
 -- Animate Combat Flash pulse effect
 local function AnimateCombatFlashPulse(elapsed)
-    if not COMBAT_PULSE_SETTINGS.enabled then return end
-    
+    if not COMBAT_PULSE_SETTINGS.enabled then
+        return
+    end
+
     local dragonFrame = _G["DragonUIUnitframeFrame"]
-    if not dragonFrame or not dragonFrame.DragonUICombatGlow or not dragonFrame.DragonUICombatGlow:IsVisible() then
+    if not dragonFrame then
         return
     end
 
     combatPulseTimer = combatPulseTimer + (elapsed * COMBAT_PULSE_SETTINGS.speed)
+
+    local pulseAlpha = COMBAT_PULSE_SETTINGS.minAlpha +
+                           (COMBAT_PULSE_SETTINGS.maxAlpha - COMBAT_PULSE_SETTINGS.minAlpha) *
+                           (math.sin(combatPulseTimer) * 0.5 + 0.5)
+
+    -- Apply pulse to appropriate glow based on elite mode
+    if eliteGlowActive then
+        if dragonFrame.EliteCombatGlow and dragonFrame.EliteCombatGlow:IsVisible() then
+            dragonFrame.EliteCombatTexture:SetAlpha(pulseAlpha)
+        end
+    else
+        if dragonFrame.DragonUICombatGlow and dragonFrame.DragonUICombatGlow:IsVisible() then
+            dragonFrame.DragonUICombatTexture:SetAlpha(pulseAlpha)
+        end
+    end
+end
+
+-- Animate Elite Status/Rest pulse effect
+local function AnimateEliteStatusPulse(elapsed)
+    if not ELITE_STATUS_PULSE_SETTINGS.enabled then return end
     
-    local pulseAlpha = COMBAT_PULSE_SETTINGS.minAlpha + 
-                      (COMBAT_PULSE_SETTINGS.maxAlpha - COMBAT_PULSE_SETTINGS.minAlpha) * 
-                      (math.sin(combatPulseTimer) * 0.5 + 0.5)
+    local dragonFrame = _G["DragonUIUnitframeFrame"]
+    if not dragonFrame then return end
     
-    if dragonFrame.DragonUICombatTexture then
-        dragonFrame.DragonUICombatTexture:SetAlpha(pulseAlpha)
+    -- Solo animar si estamos en modo elite Y el status glow está visible
+    if eliteGlowActive and dragonFrame.EliteStatusGlow and dragonFrame.EliteStatusGlow:IsVisible() then
+        eliteStatusPulseTimer = eliteStatusPulseTimer + (elapsed * ELITE_STATUS_PULSE_SETTINGS.speed)
+        
+        local pulseAlpha = ELITE_STATUS_PULSE_SETTINGS.minAlpha + 
+                          (ELITE_STATUS_PULSE_SETTINGS.maxAlpha - ELITE_STATUS_PULSE_SETTINGS.minAlpha) * 
+                          (math.sin(eliteStatusPulseTimer) * 0.5 + 0.5)
+        
+        dragonFrame.EliteStatusTexture:SetAlpha(pulseAlpha)
     end
 end
 
@@ -268,14 +395,20 @@ local function PlayerFrame_OnUpdate(self, elapsed)
     if PlayerRestIcon and PlayerRestIcon:IsVisible() then
         AnimateTexCoords(PlayerRestIcon, 512, 512, 64, 64, 42, elapsed, 0.09)
     end
-    
+
     -- Combat Flash pulse animation
     AnimateCombatFlashPulse(elapsed)
+    
+    --  Elite Status pulse animation
+    AnimateEliteStatusPulse(elapsed)
 end
 
 -- Override Blizzard status update to prevent glow interference
 local function PlayerFrame_UpdateStatus()
     HideBlizzardGlows()
+    -- Trigger status glow based on player state
+    local isResting = IsResting()
+    SetStatusGlowVisible(isResting)
 end
 
 
@@ -526,7 +659,7 @@ local function UpdatePlayerDragonDecoration()
     -- Create HIGH strata frame for dragon
     local dragonParent = CreateFrame("Frame", nil, UIParent)
     dragonParent:SetFrameStrata("TOOLTIP")
-    dragonParent:SetFrameLevel(9999)
+    dragonParent:SetFrameLevel(1)
     dragonParent:SetSize(coords.size[1], coords.size[2])
     dragonParent:SetPoint("TOPLEFT", PlayerFrame, "TOPLEFT", -coords.offset[1] + 29.5, coords.offset[2] - 5)
 
@@ -556,7 +689,7 @@ local function CreatePlayerFrameTextures()
     if not dragonFrame.DragonUICombatGlow then
         local combatFlashFrame = CreateFrame("Frame", "DragonUICombatFlash", UIParent)
         combatFlashFrame:SetFrameStrata("TOOLTIP")
-        combatFlashFrame:SetFrameLevel(999)
+        combatFlashFrame:SetFrameLevel(900)
         combatFlashFrame:SetSize(192, 71)
         combatFlashFrame:Hide()
 
@@ -571,6 +704,45 @@ local function CreatePlayerFrameTextures()
         dragonFrame.DragonUICombatTexture = combatTexture
 
         print("|cFF00FF00[DragonUI]|r Created independent Combat Flash with high z-order")
+    end
+
+    -- CREATE ELITE GLOW SYSTEM - Two glows using ELITE_GLOW_COORDINATES
+    if not dragonFrame.EliteStatusGlow then
+        -- Elite Status Glow (Yellow)
+        local statusFrame = CreateFrame("Frame", "DragonUIEliteStatusGlow", UIParent)
+        statusFrame:SetFrameStrata("TOOLTIP")
+        statusFrame:SetFrameLevel(998)
+        statusFrame:SetSize(ELITE_GLOW_COORDINATES.size[1], ELITE_GLOW_COORDINATES.size[2])
+        statusFrame:Hide()
+
+        local statusTexture = statusFrame:CreateTexture(nil, "OVERLAY")
+        statusTexture:SetTexture(ELITE_GLOW_COORDINATES.texture) -- ✅ Usar desde coordenadas
+        statusTexture:SetTexCoord(unpack(ELITE_GLOW_COORDINATES.texCoord))
+        statusTexture:SetAllPoints(statusFrame)
+        statusTexture:SetBlendMode("ADD")
+        statusTexture:SetVertexColor(1.0, 1.0, 0.0, 0.8) -- Yellow
+
+        dragonFrame.EliteStatusGlow = statusFrame
+        dragonFrame.EliteStatusTexture = statusTexture
+
+        -- Elite Combat Glow (Red with pulse)
+        local combatFrame = CreateFrame("Frame", "DragonUIEliteCombatGlow", UIParent)
+        combatFrame:SetFrameStrata("TOOLTIP")
+        combatFrame:SetFrameLevel(900)
+        combatFrame:SetSize(ELITE_GLOW_COORDINATES.size[1], ELITE_GLOW_COORDINATES.size[2])
+        combatFrame:Hide()
+
+        local eliteCombatTexture = combatFrame:CreateTexture(nil, "OVERLAY")
+        eliteCombatTexture:SetTexture(ELITE_GLOW_COORDINATES.texture) -- ✅ Usar desde coordenadas
+        eliteCombatTexture:SetTexCoord(unpack(ELITE_GLOW_COORDINATES.texCoord))
+        eliteCombatTexture:SetAllPoints(combatFrame)
+        eliteCombatTexture:SetBlendMode("ADD")
+        eliteCombatTexture:SetVertexColor(1.0, 0.0, 0.0, 1.0) -- Red
+
+        dragonFrame.EliteCombatGlow = combatFrame
+        dragonFrame.EliteCombatTexture = eliteCombatTexture
+
+        print("|cFF00FF00[DragonUI]|r Created Elite Glow System with golden coordinates")
     end
 
     -- Create background texture
@@ -763,10 +935,20 @@ local function ChangePlayerframe()
     end
 
     -- Position our high-priority Combat Flash
-    
+
     if dragonFrame and dragonFrame.DragonUICombatGlow then
         dragonFrame.DragonUICombatGlow:ClearAllPoints()
         dragonFrame.DragonUICombatGlow:SetPoint('TOPLEFT', PlayerPortrait, 'TOPLEFT', -9, 9)
+    end
+
+    -- Position Elite Glows
+    if dragonFrame and dragonFrame.EliteStatusGlow then
+        dragonFrame.EliteStatusGlow:ClearAllPoints()
+        dragonFrame.EliteStatusGlow:SetPoint('TOPLEFT', PlayerPortrait, 'TOPLEFT', -24, 20)
+    end
+    if dragonFrame and dragonFrame.EliteCombatGlow then
+        dragonFrame.EliteCombatGlow:ClearAllPoints()
+        dragonFrame.EliteCombatGlow:SetPoint('TOPLEFT', PlayerPortrait, 'TOPLEFT', -24, 20)
     end
 
     -- Setup class-specific elements
@@ -780,16 +962,10 @@ local function ChangePlayerframe()
 end
 
 local function SetCombatFlashVisible(visible)
-    local dragonFrame = _G["DragonUIUnitframeFrame"]
-    if dragonFrame and dragonFrame.DragonUICombatGlow then
-        if visible then
-            -- Reset pulse timer when starting combat
-            combatPulseTimer = 0
-            dragonFrame.DragonUICombatGlow:Show()
-        else
-            dragonFrame.DragonUICombatGlow:Hide()
-        end
+    if visible then
+        combatPulseTimer = 0 -- Reset pulse timer
     end
+    SetEliteCombatFlashVisible(visible) -- Use unified system
 end
 
 -- Apply configuration settings
@@ -830,6 +1006,7 @@ local function ApplyPlayerConfig()
         end
     end
     UpdatePlayerDragonDecoration()
+    UpdateGlowVisibility()
     print("|cFF00FF00[DragonUI]|r PlayerFrame config applied - Override:", config.override, "Scale:", config.scale)
 end
 
@@ -935,43 +1112,43 @@ local function SetupPlayerEvents()
 
     -- Event handlers
     local handlers = {
-    PLAYER_REGEN_DISABLED = function()
-        UpdateBothBars()
-        SetCombatFlashVisible(true)
-    end,
-
-    PLAYER_REGEN_ENABLED = function()
-        UpdateBothBars()
-        SetCombatFlashVisible(false)
-    end,
-    
-    ADDON_LOADED = function(addonName)
-        if addonName == "DragonUI" then
-            InitializePlayerFrame()
-        end
-    end,
-
-    PLAYER_ENTERING_WORLD = function()
-        ChangePlayerframe()
-        ApplyPlayerConfig()
-        print("|cFF00FF00[DragonUI]|r PlayerFrame fully configured")
-    end,
-
-    RUNE_TYPE_UPDATE = function(runeIndex)
-        if runeIndex then
-            UpdateRune(_G['RuneButtonIndividual' .. runeIndex])
-        end
-    end,
-
-    GROUP_ROSTER_UPDATE = UpdateGroupIndicator,
-    ROLE_CHANGED_INFORM = UpdatePlayerRoleIcon,
-
-    UNIT_AURA = function(unit)
-        if unit == "player" then
+        PLAYER_REGEN_DISABLED = function()
             UpdateBothBars()
+            SetCombatFlashVisible(true)
+        end,
+
+        PLAYER_REGEN_ENABLED = function()
+            UpdateBothBars()
+            SetCombatFlashVisible(false)
+        end,
+
+        ADDON_LOADED = function(addonName)
+            if addonName == "DragonUI" then
+                InitializePlayerFrame()
+            end
+        end,
+
+        PLAYER_ENTERING_WORLD = function()
+            ChangePlayerframe()
+            ApplyPlayerConfig()
+            print("|cFF00FF00[DragonUI]|r PlayerFrame fully configured")
+        end,
+
+        RUNE_TYPE_UPDATE = function(runeIndex)
+            if runeIndex then
+                UpdateRune(_G['RuneButtonIndividual' .. runeIndex])
+            end
+        end,
+
+        GROUP_ROSTER_UPDATE = UpdateGroupIndicator,
+        ROLE_CHANGED_INFORM = UpdatePlayerRoleIcon,
+
+        UNIT_AURA = function(unit)
+            if unit == "player" then
+                UpdateBothBars()
+            end
         end
-    end
-}
+    }
 
     -- Register events
     for event in pairs(handlers) do
