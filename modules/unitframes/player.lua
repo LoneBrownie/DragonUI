@@ -62,7 +62,7 @@ local TEXTURES = {
 -- Coordenadas para glows elite/rare (target frame invertido)
 local ELITE_GLOW_COORDINATES = {
     -- Usando la textura correcta: 'Interface\\Addons\\DragonUI\\Textures\\UI\\UnitFrame'
-    texCoord = {0.2041015625, 0, 0.537109375, 0.712890625},
+    texCoord = {0.2061015625, 0, 0.537109375, 0.712890625},
     size = {209, 90},
     texture = 'Interface\\Addons\\DragonUI\\Textures\\UI\\UnitFrame'
 }
@@ -658,7 +658,7 @@ local function UpdatePlayerDragonDecoration()
 
     -- Create HIGH strata frame for dragon
     local dragonParent = CreateFrame("Frame", nil, UIParent)
-    dragonParent:SetFrameStrata("TOOLTIP")
+    dragonParent:SetFrameStrata("MEDIUM")
     dragonParent:SetFrameLevel(1)
     dragonParent:SetSize(coords.size[1], coords.size[2])
     dragonParent:SetPoint("TOPLEFT", PlayerFrame, "TOPLEFT", -coords.offset[1] + 29.5, coords.offset[2] - 5)
@@ -688,7 +688,7 @@ local function CreatePlayerFrameTextures()
 
     if not dragonFrame.DragonUICombatGlow then
         local combatFlashFrame = CreateFrame("Frame", "DragonUICombatFlash", UIParent)
-        combatFlashFrame:SetFrameStrata("TOOLTIP")
+        combatFlashFrame:SetFrameStrata("MEDIUM")
         combatFlashFrame:SetFrameLevel(900)
         combatFlashFrame:SetSize(192, 71)
         combatFlashFrame:Hide()
@@ -710,7 +710,7 @@ local function CreatePlayerFrameTextures()
     if not dragonFrame.EliteStatusGlow then
         -- Elite Status Glow (Yellow)
         local statusFrame = CreateFrame("Frame", "DragonUIEliteStatusGlow", UIParent)
-        statusFrame:SetFrameStrata("TOOLTIP")
+        statusFrame:SetFrameStrata("LOW")
         statusFrame:SetFrameLevel(998)
         statusFrame:SetSize(ELITE_GLOW_COORDINATES.size[1], ELITE_GLOW_COORDINATES.size[2])
         statusFrame:Hide()
@@ -727,7 +727,7 @@ local function CreatePlayerFrameTextures()
 
         -- Elite Combat Glow (Red with pulse)
         local combatFrame = CreateFrame("Frame", "DragonUIEliteCombatGlow", UIParent)
-        combatFrame:SetFrameStrata("TOOLTIP")
+        combatFrame:SetFrameStrata("LOW")
         combatFrame:SetFrameLevel(900)
         combatFrame:SetSize(ELITE_GLOW_COORDINATES.size[1], ELITE_GLOW_COORDINATES.size[2])
         combatFrame:Hide()
