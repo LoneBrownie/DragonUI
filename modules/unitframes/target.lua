@@ -146,13 +146,23 @@ end
 
 -- Hide unwanted Blizzard target frame elements
 local function HideBlizzardElements()
-    local elementsToHide = {TargetFrameTextureFrameTexture, TargetFrameBackground, TargetFrameFlash}
+    local elementsToHide = {
+        TargetFrameTextureFrameTexture, 
+        TargetFrameBackground, 
+        TargetFrameFlash,
+
+        _G.TargetFrameNumericalThreat,
+        TargetFrame.threatNumericIndicator,
+        TargetFrame.threatIndicator
+    }
 
     for _, element in ipairs(elementsToHide) do
         if element then
             element:SetAlpha(0)
         end
     end
+
+    print("|cFF00FF00[DragonUI]|r Blizzard elements hidden (including threat)")
 end
 
 -- ============================================================================
@@ -254,25 +264,25 @@ local THREAT_COLORS = {
     [3] = {1.0, 0.0, 0.0} -- Alto (rojo)
 }
 
--- ✅ COORDENADAS PARA THREAT GLOW (mismas que player pero sin invertir)
+-- ✅ COORDENADAS PARA THREAT GLOW (mismas que player elite decoration pero sin invertir)
 local THREAT_GLOW_COORDINATES = {
-    texCoord = {0, 0.2061015625, 0.537109375, 0.712890625}, -- SIN invertir
+    texCoord = {0, 0.2061015625, 0.537109375, 0.712890625}, 
     size = {209, 90},
     texture = 'Interface\\Addons\\DragonUI\\Textures\\UI\\UnitFrame'
 }
 
--- ✅ SISTEMA DE SWITCH COMO EN PLAYER
+--  SISTEMA DE SWITCH COMO EN PLAYER
 local threatGlowVisible = false
 local threatNumericalVisible = false
 
--- ✅ CREAR THREAT GLOWS INDEPENDIENTES (como player)
+--  CREAR THREAT GLOWS INDEPENDIENTES (como player)
 local function CreateTargetThreatSystem()
     local dragonFrame = _G["DragonUIUnitframeFrame"]
     if not dragonFrame then
         return
     end
 
-    -- ✅ CREAR THREAT GLOW (como EliteStatusGlow del player)
+    --  CREAR THREAT GLOW 
     if not dragonFrame.TargetThreatGlow then
         local threatFrame = CreateFrame("Frame", "DragonUITargetThreatGlow", UIParent) -- ✅ EN UIPARENT
         threatFrame:SetFrameStrata("LOW")
@@ -287,8 +297,8 @@ local function CreateTargetThreatSystem()
         threatTexture:SetBlendMode("ADD")
         threatTexture:SetVertexColor(1.0, 1.0, 0.47, 0.8) -- Amarillo por defecto
 
-        -- ✅ POSICIONAR RELATIVO AL TARGETFRAME (como player)
-        threatFrame:SetPoint('TOPLEFT', TargetFrame, 'TOPLEFT', -24, 20)
+        -- POSICIONAR RELATIVO AL TARGETFRAME 
+        threatFrame:SetPoint('TOPLEFT', TargetFrame, 'TOPLEFT', 0, 4)
 
         dragonFrame.TargetThreatGlow = threatFrame
         dragonFrame.TargetThreatTexture = threatTexture
@@ -296,14 +306,14 @@ local function CreateTargetThreatSystem()
         print("|cFF00FF00[DragonUI]|r Target Threat Glow created independently")
     end
 
-    -- ✅ CREAR NUMERICAL THREAT (como PlayerGroupIndicator)
+    --  CREAR NUMERICAL THREAT 
     if not dragonFrame.TargetNumericalThreat then
         local numericalFrame = CreateFrame("Frame", "DragonUITargetNumericalThreat", UIParent) -- ✅ EN UIPARENT
         numericalFrame:SetFrameStrata("MEDIUM")
         numericalFrame:SetFrameLevel(999)
         numericalFrame:SetSize(71, 13)
 
-        -- ✅ USAR MISMA TEXTURA QUE GROUPINDICATOR DEL PLAYER
+        --  USAR MISMA TEXTURA QUE GROUPINDICATOR DEL PLAYER
         local bgTexture = numericalFrame:CreateTexture(nil, "ARTWORK")
         bgTexture:SetTexture('Interface\\Addons\\DragonUI\\Textures\\uiunitframe') -- Tu textura base
         bgTexture:SetTexCoord(0.927734375, 0.9970703125, 0.3125, 0.337890625) -- Coordenadas GroupIndicator
@@ -313,12 +323,12 @@ local function CreateTargetThreatSystem()
         threatText:SetPoint("CENTER", numericalFrame, "CENTER", 0, 0)
         threatText:SetJustifyH("CENTER")
         threatText:SetTextColor(1, 1, 1, 1)
-        threatText:SetFont("Fonts\\FRIZQT__.TTF", 9)
+        threatText:SetFont("Fonts\\FRIZQT__.TTF", 10)
         threatText:SetShadowOffset(1, -1)
         threatText:SetShadowColor(0, 0, 0, 1)
 
         -- ✅ POSICIONAR ARRIBA DEL TARGET
-        numericalFrame:SetPoint("BOTTOM", TargetFrame, "TOP", -22, -2)
+        numericalFrame:SetPoint("BOTTOM", TargetFrame, "TOP", -45, -20)
         numericalFrame:Hide()
 
         numericalFrame.backgroundTexture = bgTexture
@@ -330,7 +340,7 @@ local function CreateTargetThreatSystem()
     end
 end
 
--- ✅ CALCULAR THREAT LEVEL (igual que antes)
+-- ✅ CALCULAR THREAT LEVEL 
 local function GetThreatLevel(unit)
     if not UnitExists(unit) then
         return 0
@@ -400,13 +410,12 @@ local function UpdateThreatSystem()
     local status = UnitThreatSituation("player", "target")
     local _, _, threatpct = UnitDetailedThreatSituation("player", "target")
 
-    -- ✅ DEBUG: Temporal para ver valores
-    -- print("|cFFFF0000[DEBUG]|r Threat:", threatLevel, "Status:", status, "Pct:", threatpct)
+    
 
     -- ✅ GLOW: Solo si hay threat real (status > 0)
     SetThreatGlowVisible(status and status > 0, threatLevel)
 
-    -- ✅ NUMERICAL: SIEMPRE que haya porcentaje (como RetailUI)
+    -- ✅ NUMERICAL: SIEMPRE que haya porcentaje 
     SetNumericalThreatVisible(true, threatLevel, threatpct)
 end
 
@@ -435,10 +444,16 @@ local function CreateTargetFrameTextures()
         borderTexture:SetPoint("TOPLEFT", backgroundTexture, "TOPLEFT", 0, 0)
     end
 
+    -- ✅ CREAR targetExtra CON FRAMELEVEL FIJO
     if not targetExtra then
-        targetExtra = TargetFrame:CreateTexture("DragonUI_TargetFrameExtra", "OVERLAY", nil, 6)
+        targetExtra = TargetFrame:CreateTexture("DragonUI_TargetFrameExtra", "OVERLAY", nil, 7) -- ✅ NIVEL 7 (MAYOR QUE BORDER)
         targetExtra:SetTexture("Interface\\AddOns\\DragonUI\\Textures\\uiunitframeboss2x")
         targetExtra:Hide() -- Hide by default
+        
+        -- ✅ FORZAR DRAW ORDER DESPUÉS DE CREACIÓN
+        targetExtra:SetDrawLayer("OVERLAY", 7)
+        
+        print("|cFF00FF00[DragonUI]|r Target Elite decoration created with proper layering")
     end
 
     -- ✅ CORREGIDO: Posicionamiento igual que RetailUI
@@ -454,9 +469,6 @@ local function CreateTargetFrameTextures()
         -- ✅ Tu textura personalizada (mantener)
         TargetFrameNameBackground:SetTexture(TEXTURES.NAME_BACKGROUND)
 
-        -- ✅ CRÍTICO: No usar SetTexCoord personalizado si causa problemas
-        -- TargetFrameNameBackground:SetTexCoord(0.05, 0.95, 0.05, 0.95)
-
         -- ✅ Configuración básica como unitframe.lua
         TargetFrameNameBackground:SetDrawLayer("BORDER")
         TargetFrameNameBackground:SetBlendMode("ADD")
@@ -466,6 +478,7 @@ local function CreateTargetFrameTextures()
         TargetFrameNameBackground:Show()
     end
 
+    -- ✅ CREAR THREAT SYSTEM DESPUÉS DE targetExtra
     CreateTargetThreatSystem()
 
     isBuilt = true
