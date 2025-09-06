@@ -58,17 +58,6 @@ local BOSS_COORDINATES = {
     }
 }
 
--- Frame positioning defaults
-local DEFAULTS = {
-    scale = 1.0,
-    override = false,
-    anchor = "TOPLEFT",
-    anchorParent = "TOPLEFT",
-    x = 216,
-    y = -4,
-    classcolor = false
-}
-
 -- Power type mapping for textures
 local POWER_MAP = {
     [0] = "Mana",
@@ -125,7 +114,11 @@ end
 -- Get target configuration with fallback to defaults
 local function GetTargetConfig()
     local config = addon:GetConfigValue("unitframe", "target") or {}
-    for key, value in pairs(DEFAULTS) do
+    -- Usar defaults directamente de database
+    local dbDefaults = addon.defaults and addon.defaults.profile.unitframe.target or {}
+
+    -- Aplicar defaults de database para cualquier valor faltante
+    for key, value in pairs(dbDefaults) do
         if config[key] == nil then
             config[key] = value
         end
@@ -141,7 +134,8 @@ local function ValidateCoordinates(x, y)
 
     if x < minX or x > maxX or y < minY or y > maxY then
         print("|cFFFF0000[DragonUI]|r TargetFrame coordinates out of bounds! Resetting...")
-        return DEFAULTS.x, DEFAULTS.y, false
+        local dbDefaults = addon.defaults and addon.defaults.profile.unitframe.target or {}
+        return dbDefaults.x or 20, dbDefaults.y or -4, false
     end
     return x, y, true
 end
@@ -450,8 +444,9 @@ local function MoveTargetFrame(point, relativeTo, relativePoint, xOfs, yOfs)
     local finalPoint = point or "TOPLEFT"
     local finalFrame = _G[relativeTo or "UIParent"] or UIParent
     local finalRelativePoint = relativePoint or "TOPLEFT"
-    local finalX = xOfs or DEFAULTS.x
-    local finalY = yOfs or DEFAULTS.y
+    local dbDefaults = addon.defaults and addon.defaults.profile.unitframe.target or {}
+    local finalX = xOfs or (dbDefaults.x or 20)
+    local finalY = yOfs or (dbDefaults.y or -4)
 
     TargetFrame:SetPoint(finalPoint, finalFrame, finalRelativePoint, finalX, finalY)
     TargetFrame:SetClampedToScreen(originalClamped)
@@ -469,12 +464,13 @@ local function ApplyTargetConfig()
     local x, y, valid = ValidateCoordinates(config.x, config.y)
 
     if not valid then
-        -- Reset invalid coordinates
-        for key, value in pairs(DEFAULTS) do
+        -- Reset invalid coordinates usando database defaults
+        local dbDefaults = addon.defaults and addon.defaults.profile.unitframe.target or {}
+        for key, value in pairs(dbDefaults) do
             addon:SetConfigValue("unitframe", "target", key, value)
         end
-        config = DEFAULTS
-        x, y = DEFAULTS.x, DEFAULTS.y
+        config = dbDefaults
+        x, y = dbDefaults.x or 20, dbDefaults.y or -4
     end
 
     TargetFrame:SetScale(config.scale)
@@ -482,7 +478,8 @@ local function ApplyTargetConfig()
     if config.override then
         MoveTargetFrame(config.anchor, "UIParent", config.anchorParent, x, y)
     else
-        MoveTargetFrame("TOPLEFT", "UIParent", "TOPLEFT", DEFAULTS.x, DEFAULTS.y)
+        local dbDefaults = addon.defaults and addon.defaults.profile.unitframe.target or {}
+        MoveTargetFrame("TOPLEFT", "UIParent", "TOPLEFT", dbDefaults.x or 20, dbDefaults.y or -4)
     end
 
     -- Setup text system
@@ -523,7 +520,9 @@ end
 
 -- Reset frame to default configuration
 local function ResetTargetFrame()
-    for key, value in pairs(DEFAULTS) do
+    -- Usar defaults de database en lugar de DEFAULTS locales
+    local dbDefaults = addon.defaults and addon.defaults.profile.unitframe.target or {}
+    for key, value in pairs(dbDefaults) do
         addon:SetConfigValue("unitframe", "target", key, value)
     end
     ApplyTargetConfig()
@@ -547,12 +546,10 @@ end
 local function SetupTargetHooks()
     if _G.TargetFrame_CheckClassification then
         hooksecurefunc("TargetFrame_CheckClassification", function(frame)
-            if frame == TargetFrame and UnitExists("target") and TargetFrameNameBackground then
-                -- ✅ SIMPLIFICADO: Solo actualizar color, no reposicionar
-                local r, g, b = UnitSelectionColor("target")
-                if r then
-                    TargetFrameNameBackground:SetVertexColor(r, g, b, 0.8)
-                end
+            if frame == TargetFrame and UnitExists("target") then
+                -- ✅ MEJORADO: Actualizar tanto decoración como NameBackground
+                UpdateTargetClassification()
+                UpdateNameBackground()
             end
         end)
     end
@@ -684,6 +681,14 @@ local function SetupTargetEvents()
                 if targetExtra then
                     targetExtra:Hide()
                 end
+            end
+        end,
+
+        -- ✅ NUEVO: Evento para cambios de clasificación
+        UNIT_CLASSIFICATION_CHANGED = function(unit)
+            if unit == "target" then
+                UpdateTargetClassification()
+                UpdateNameBackground()
             end
         end,
 

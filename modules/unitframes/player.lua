@@ -18,10 +18,6 @@ Module.eventsFrame = nil
 -- Animation variables for Combat Flash pulse effect
 local combatPulseTimer = 0
 local eliteStatusPulseTimer = 0
-local combatPulseDirection = 1 -- 1 = fade in, -1 = fade out
-local combatPulseSpeed = 2.5 -- Speed multiplier for pulse
-local combatMinAlpha = 0.3 -- Minimum alpha for pulse
-local combatMaxAlpha = 1.0 -- Maximum alpha for pulse
 
 -- Elite Glow System State
 local eliteGlowActive = false
@@ -81,17 +77,7 @@ local DRAGON_COORDINATES = {
     }
 }
 
--- Frame positioning defaults
-local DEFAULTS = {
-    scale = 1.0,
-    override = false,
-    x = -19,
-    y = -4,
-    anchor = "TOPLEFT",
-    anchorParent = "TOPLEFT"
-}
-
--- Combat Flash animation settings
+-- Combat Flash animation settings *NO Elite activated
 local COMBAT_PULSE_SETTINGS = {
     speed = 9, -- Velocidad del pulso
     minAlpha = 0.3, -- Transparencia mínima
@@ -99,11 +85,19 @@ local COMBAT_PULSE_SETTINGS = {
     enabled = true -- Activar/desactivar animación
 }
 
--- Elite Decoration=ON pulse animation settings 
+-- Elite Combat Flash animation settings (cuando elite decoration está ON)
+local ELITE_COMBAT_PULSE_SETTINGS = {
+    speed = 9, -- Velocidad para combat en modo elite (diferente a normal)
+    minAlpha = 0.2,
+    maxAlpha = 0.9,
+    enabled = true
+}
+
+-- Elite Status/Rest animation settings (cuando elite decoration está ON)
 local ELITE_STATUS_PULSE_SETTINGS = {
-    speed = 6, 
-    minAlpha = 0.3, 
-    maxAlpha = 1, 
+    speed = 5, -- Velocidad para resting en modo elite
+    minAlpha = 0,
+    maxAlpha = 0.7,
     enabled = true
 }
 
@@ -150,7 +144,11 @@ end
 -- Get player configuration with fallback to defaults
 local function GetPlayerConfig()
     local config = addon:GetConfigValue("unitframe", "player") or {}
-    for key, value in pairs(DEFAULTS) do
+    -- Usar defaults directamente de database
+    local dbDefaults = addon.defaults and addon.defaults.profile.unitframe.player or {}
+
+    -- Aplicar defaults de database para cualquier valor faltante
+    for key, value in pairs(dbDefaults) do
         if config[key] == nil then
             config[key] = value
         end
@@ -166,7 +164,9 @@ local function ValidateCoordinates(x, y)
 
     if x < minX or x > maxX or y < minY or y > maxY then
         print("|cFFFF0000[DragonUI]|r PlayerFrame coordinates out of bounds! Resetting...")
-        return DEFAULTS.x, DEFAULTS.y, false
+        -- Usar defaults de database en lugar de DEFAULTS locales
+        local dbDefaults = addon.defaults and addon.defaults.profile.unitframe.player or {}
+        return dbDefaults.x or -19, dbDefaults.y or -4, false
     end
     return x, y, true
 end
@@ -343,27 +343,38 @@ end
 
 -- Animate Combat Flash pulse effect
 local function AnimateCombatFlashPulse(elapsed)
-    if not COMBAT_PULSE_SETTINGS.enabled then
-        return
-    end
-
     local dragonFrame = _G["DragonUIUnitframeFrame"]
     if not dragonFrame then
         return
     end
 
-    combatPulseTimer = combatPulseTimer + (elapsed * COMBAT_PULSE_SETTINGS.speed)
-
-    local pulseAlpha = COMBAT_PULSE_SETTINGS.minAlpha +
-                           (COMBAT_PULSE_SETTINGS.maxAlpha - COMBAT_PULSE_SETTINGS.minAlpha) *
-                           (math.sin(combatPulseTimer) * 0.5 + 0.5)
-
-    -- Apply pulse to appropriate glow based on elite mode
     if eliteGlowActive then
+        -- Modo Elite: usar configuración específica para elite combat
+        if not ELITE_COMBAT_PULSE_SETTINGS.enabled then
+            return
+        end
+
+        combatPulseTimer = combatPulseTimer + (elapsed * ELITE_COMBAT_PULSE_SETTINGS.speed)
+
+        local pulseAlpha = ELITE_COMBAT_PULSE_SETTINGS.minAlpha +
+                               (ELITE_COMBAT_PULSE_SETTINGS.maxAlpha - ELITE_COMBAT_PULSE_SETTINGS.minAlpha) *
+                               (math.sin(combatPulseTimer) * 0.5 + 0.5)
+
         if dragonFrame.EliteCombatGlow and dragonFrame.EliteCombatGlow:IsVisible() then
             dragonFrame.EliteCombatTexture:SetAlpha(pulseAlpha)
         end
     else
+        -- Modo Normal: usar configuración normal
+        if not COMBAT_PULSE_SETTINGS.enabled then
+            return
+        end
+
+        combatPulseTimer = combatPulseTimer + (elapsed * COMBAT_PULSE_SETTINGS.speed)
+
+        local pulseAlpha = COMBAT_PULSE_SETTINGS.minAlpha +
+                               (COMBAT_PULSE_SETTINGS.maxAlpha - COMBAT_PULSE_SETTINGS.minAlpha) *
+                               (math.sin(combatPulseTimer) * 0.5 + 0.5)
+
         if dragonFrame.DragonUICombatGlow and dragonFrame.DragonUICombatGlow:IsVisible() then
             dragonFrame.DragonUICombatTexture:SetAlpha(pulseAlpha)
         end
@@ -372,19 +383,23 @@ end
 
 -- Animate Elite Status/Rest pulse effect
 local function AnimateEliteStatusPulse(elapsed)
-    if not ELITE_STATUS_PULSE_SETTINGS.enabled then return end
-    
+    if not ELITE_STATUS_PULSE_SETTINGS.enabled then
+        return
+    end
+
     local dragonFrame = _G["DragonUIUnitframeFrame"]
-    if not dragonFrame then return end
-    
+    if not dragonFrame then
+        return
+    end
+
     -- Solo animar si estamos en modo elite Y el status glow está visible
     if eliteGlowActive and dragonFrame.EliteStatusGlow and dragonFrame.EliteStatusGlow:IsVisible() then
         eliteStatusPulseTimer = eliteStatusPulseTimer + (elapsed * ELITE_STATUS_PULSE_SETTINGS.speed)
-        
-        local pulseAlpha = ELITE_STATUS_PULSE_SETTINGS.minAlpha + 
-                          (ELITE_STATUS_PULSE_SETTINGS.maxAlpha - ELITE_STATUS_PULSE_SETTINGS.minAlpha) * 
-                          (math.sin(eliteStatusPulseTimer) * 0.5 + 0.5)
-        
+
+        local pulseAlpha = ELITE_STATUS_PULSE_SETTINGS.minAlpha +
+                               (ELITE_STATUS_PULSE_SETTINGS.maxAlpha - ELITE_STATUS_PULSE_SETTINGS.minAlpha) *
+                               (math.sin(eliteStatusPulseTimer) * 0.5 + 0.5)
+
         dragonFrame.EliteStatusTexture:SetAlpha(pulseAlpha)
     end
 end
@@ -398,7 +413,7 @@ local function PlayerFrame_OnUpdate(self, elapsed)
 
     -- Combat Flash pulse animation
     AnimateCombatFlashPulse(elapsed)
-    
+
     --  Elite Status pulse animation
     AnimateEliteStatusPulse(elapsed)
 end
@@ -410,8 +425,6 @@ local function PlayerFrame_UpdateStatus()
     local isResting = IsResting()
     SetStatusGlowVisible(isResting)
 end
-
-
 
 -- ============================================================================
 -- CLASS-SPECIFIC FEATURES
@@ -504,6 +517,94 @@ local function UpdateGroupIndicator()
 end
 
 -- ============================================================================
+-- LEADERSHIP & PVP ICONS MANAGEMENT
+-- ============================================================================
+
+-- Cache leadership and PVP icons
+local PlayerLeaderIcon = _G.PlayerLeaderIcon
+local PlayerMasterIcon = _G.PlayerMasterIcon
+local PlayerPVPIcon = _G.PlayerPVPIcon
+
+-- Update leader icon positioning based on dragon decoration mode
+local function UpdateLeaderIconPosition()
+    if not PlayerLeaderIcon then
+        return
+    end
+    
+    local config = GetPlayerConfig()
+    local decorationType = config.dragon_decoration or "none"
+    local isEliteMode = decorationType == "elite" or decorationType == "rare"
+    
+    PlayerLeaderIcon:ClearAllPoints()
+    
+    if isEliteMode then
+        -- En modo elite: posicionar más arriba para evitar el dragon
+        PlayerLeaderIcon:SetPoint('BOTTOM', PlayerFrame, "TOP", -25, 5)
+    else
+        -- Modo normal
+        PlayerLeaderIcon:SetPoint('BOTTOM', PlayerFrame, "TOP", -70, -25)
+    end
+end
+
+-- Update master icon positioning based on dragon decoration mode
+local function UpdateMasterIconPosition()
+    if not PlayerMasterIcon then
+        return
+    end
+    
+    local config = GetPlayerConfig()
+    local decorationType = config.dragon_decoration or "none"
+    local isEliteMode = decorationType == "elite" or decorationType == "rare"
+    
+    PlayerMasterIcon:ClearAllPoints()
+    
+    if isEliteMode then
+        -- En modo elite: posicionar más arriba y ajustar para no solapar con leader
+        PlayerMasterIcon:SetPoint('BOTTOM', PlayerFrame, "TOP", -5, 5)
+    else
+        -- Modo normal
+        PlayerMasterIcon:SetPoint('BOTTOM', PlayerFrame, "TOP", 2, -1)
+    end
+end
+
+-- Update PVP icon positioning based on dragon decoration mode
+local function UpdatePVPIconPosition()
+    if not PlayerPVPIcon then
+        return
+    end
+    
+    local config = GetPlayerConfig()
+    local decorationType = config.dragon_decoration or "none"
+    local isEliteMode = decorationType == "elite" or decorationType == "rare"
+    
+    PlayerPVPIcon:ClearAllPoints()
+    
+    if isEliteMode then
+        -- En modo elite: PVP icon ARRIBA del dragon decoration
+        -- Posicionar en la esquina superior derecha del dragon
+        PlayerPVPIcon:SetPoint("TOPRIGHT", PlayerFrame, "TOPRIGHT", 25, 15)
+        -- ✅ CORREGIDO: Solo intentar SetFrameLevel si el método existe
+        if PlayerPVPIcon.SetFrameLevel then
+            PlayerPVPIcon:SetFrameLevel(1000) -- Muy alto para estar por encima del dragon
+        end
+    else
+        -- Modo normal: posición RetailUI estándar (abajo izquierda)
+        PlayerPVPIcon:SetPoint("CENTER", PlayerFrame, "BOTTOMLEFT", 22, 14)
+        -- ✅ CORREGIDO: Solo intentar SetFrameLevel si el método existe
+        if PlayerPVPIcon.SetFrameLevel then
+            PlayerPVPIcon:SetFrameLevel(5) -- Nivel normal
+        end
+    end
+end
+
+-- Master function to update all leadership icons positioning
+local function UpdateLeadershipIcons()
+    UpdateLeaderIconPosition()
+    UpdateMasterIconPosition()
+    UpdatePVPIconPosition()
+end
+
+-- ============================================================================
 -- BAR COLOR & TEXTURE MANAGEMENT
 -- ============================================================================
 
@@ -569,7 +670,20 @@ local function UpdatePlayerDragonDecoration()
         dragonFrame.PlayerDragonDecoration = nil
     end
 
-    -- ✅ NUEVO: Cambiar background, borde Y ESTIRAR MANA BAR según decoración
+    --  Reposicionar rest icon en modo elite/dragon
+    if PlayerRestIcon then
+        if decorationType ~= "none" then
+            -- Modo elite: mover arriba y a la derecha
+            PlayerRestIcon:ClearAllPoints()
+            PlayerRestIcon:SetPoint("TOPLEFT", PlayerPortrait, "TOPLEFT", 60, 20)
+        else
+            -- Modo normal: posición original
+            PlayerRestIcon:ClearAllPoints()
+            PlayerRestIcon:SetPoint("TOPLEFT", PlayerPortrait, "TOPLEFT", 40, 15) -- Posición original
+        end
+    end
+
+    --  Cambiar background, borde Y ESTIRAR MANA BAR según decoración
     if decorationType ~= "none" then
         -- Usar texturas del target (invertidas) cuando hay decoración
         if dragonFrame.PlayerFrameBackground then
@@ -673,6 +787,8 @@ local function UpdatePlayerDragonDecoration()
     dragonFrame.PlayerDragonFrame = dragonParent
     dragonFrame.PlayerDragonDecoration = dragon
 
+    UpdateLeadershipIcons() -- Reposicionar icons de liderazgo
+
     print("|cFF00FF00[DragonUI]|r Player decorative dragon applied:", decorationType, "with target textures")
 end
 
@@ -720,7 +836,7 @@ local function CreatePlayerFrameTextures()
         statusTexture:SetTexCoord(unpack(ELITE_GLOW_COORDINATES.texCoord))
         statusTexture:SetAllPoints(statusFrame)
         statusTexture:SetBlendMode("ADD")
-        statusTexture:SetVertexColor(1.0, 1.0, 0.0, 0.8) -- Yellow
+        statusTexture:SetVertexColor(1.0, 0.8, 0.2, 0.6) -- Yellow
 
         dragonFrame.EliteStatusGlow = statusFrame
         dragonFrame.EliteStatusTexture = statusTexture
@@ -871,11 +987,14 @@ local function MovePlayerFrame(point, relativeTo, relativePoint, xOfs, yOfs)
     local originalClamped = PlayerFrame:IsClampedToScreen()
     PlayerFrame:SetClampedToScreen(false)
 
+    -- Usar defaults de database
+    local dbDefaults = addon.defaults and addon.defaults.profile.unitframe.player or {}
+
     local finalPoint = point or "TOPLEFT"
     local finalFrame = _G[relativeTo or "UIParent"] or UIParent
     local finalRelativePoint = relativePoint or "TOPLEFT"
-    local finalX = xOfs or DEFAULTS.x
-    local finalY = yOfs or DEFAULTS.y
+    local finalX = xOfs or (dbDefaults.x or -19)
+    local finalY = yOfs or (dbDefaults.y or -4)
 
     PlayerFrame:SetPoint(finalPoint, finalFrame, finalRelativePoint, finalX, finalY)
     PlayerFrame:SetClampedToScreen(originalClamped)
@@ -957,6 +1076,7 @@ local function ChangePlayerframe()
     UpdateGroupIndicator()
     UpdateHealthBarColor(PlayerFrameHealthBar, "player")
     UpdateManaBarColor(PlayerFrameManaBar)
+    UpdateLeadershipIcons()
 
     print("|cFF00FF00[DragonUI]|r PlayerFrame configured successfully")
 end
@@ -974,12 +1094,13 @@ local function ApplyPlayerConfig()
     local x, y, valid = ValidateCoordinates(config.x, config.y)
 
     if not valid then
-        -- Reset invalid coordinates
-        for key, value in pairs(DEFAULTS) do
+        -- Reset invalid coordinates usando database defaults
+        local dbDefaults = addon.defaults and addon.defaults.profile.unitframe.player or {}
+        for key, value in pairs(dbDefaults) do
             addon:SetConfigValue("unitframe", "player", key, value)
         end
-        config = DEFAULTS
-        x, y = DEFAULTS.x, DEFAULTS.y
+        config = dbDefaults
+        x, y = dbDefaults.x or -19, dbDefaults.y or -4
     end
 
     PlayerFrame:SetScale(config.scale)
@@ -988,8 +1109,8 @@ local function ApplyPlayerConfig()
         PlayerFrame:SetUserPlaced(true)
         MovePlayerFrame(config.anchor, "UIParent", config.anchorParent, x, y)
     else
-        PlayerFrame:SetUserPlaced(false)
-        MovePlayerFrame("TOPLEFT", "UIParent", "TOPLEFT", DEFAULTS.x, DEFAULTS.y)
+        local dbDefaults = addon.defaults and addon.defaults.profile.unitframe.player or {}
+        MovePlayerFrame("TOPLEFT", "UIParent", "TOPLEFT", dbDefaults.x or -19, dbDefaults.y or -4)
     end
 
     -- Setup text system
@@ -1010,13 +1131,17 @@ local function ApplyPlayerConfig()
     print("|cFF00FF00[DragonUI]|r PlayerFrame config applied - Override:", config.override, "Scale:", config.scale)
 end
 
+
+
 -- ============================================================================
 -- PUBLIC API FUNCTIONS
 -- ============================================================================
 
 -- Reset frame to default configuration
 local function ResetPlayerFrame()
-    for key, value in pairs(DEFAULTS) do
+    -- Usar defaults de database en lugar de DEFAULTS locales
+    local dbDefaults = addon.defaults and addon.defaults.profile.unitframe.player or {}
+    for key, value in pairs(dbDefaults) do
         addon:SetConfigValue("unitframe", "player", key, value)
     end
     ApplyPlayerConfig()

@@ -249,10 +249,10 @@ local defaults = {
             },
             target = {
                 classcolor = false,
-                breakUpLargeNumbers = true, -- Changed to false - no commas by default
-                textFormat = 'both', -- Changed to 'both' - Current Value + Percentage
-                showHealthTextAlways = false, -- true = always visible, false = only on hover
-                showManaTextAlways = false, -- true = always visible, false = only on hover
+                breakUpLargeNumbers = true, 
+                textFormat = 'both', 
+                showHealthTextAlways = false, 
+                showManaTextAlways = false, 
                 enableNumericThreat = true,
                 enableThreatGlow = true,
                 scale = 1.0,
