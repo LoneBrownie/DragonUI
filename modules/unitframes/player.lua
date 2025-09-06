@@ -504,14 +504,12 @@ local function UpdateGroupIndicator()
         return
     end
 
-    for i = 1, MAX_RAID_MEMBERS do
-        if i <= numRaidMembers then
-            local name, rank, subgroup = GetRaidRosterInfo(i)
-            if name == UnitName("player") then
-                groupText:SetText("GROUP " .. subgroup)
-                groupIndicatorFrame:Show()
-                break
-            end
+    for i = 1, numRaidMembers do
+        local name, rank, subgroup = GetRaidRosterInfo(i)
+        if name and name == UnitName("player") then
+            groupText:SetText("GROUP " .. subgroup)
+            groupIndicatorFrame:Show()
+            break
         end
     end
 end
@@ -530,16 +528,16 @@ local function UpdateLeaderIconPosition()
     if not PlayerLeaderIcon then
         return
     end
-    
+
     local config = GetPlayerConfig()
     local decorationType = config.dragon_decoration or "none"
     local isEliteMode = decorationType == "elite" or decorationType == "rare"
-    
+
     PlayerLeaderIcon:ClearAllPoints()
-    
+
     if isEliteMode then
         -- En modo elite: posicionar más arriba para evitar el dragon
-        PlayerLeaderIcon:SetPoint('BOTTOM', PlayerFrame, "TOP", -25, 5)
+        PlayerLeaderIcon:SetPoint('BOTTOM', PlayerFrame, "TOP", -1, -33)
     else
         -- Modo normal
         PlayerLeaderIcon:SetPoint('BOTTOM', PlayerFrame, "TOP", -70, -25)
@@ -551,49 +549,43 @@ local function UpdateMasterIconPosition()
     if not PlayerMasterIcon then
         return
     end
-    
+
     local config = GetPlayerConfig()
     local decorationType = config.dragon_decoration or "none"
     local isEliteMode = decorationType == "elite" or decorationType == "rare"
-    
+
     PlayerMasterIcon:ClearAllPoints()
-    
+
     if isEliteMode then
-        -- En modo elite: posicionar más arriba y ajustar para no solapar con leader
-        PlayerMasterIcon:SetPoint('BOTTOM', PlayerFrame, "TOP", -5, 5)
+        local iconContainer = _G["DragonUIUnitframeFrame"].EliteIconContainer
+        PlayerMasterIcon:SetParent(iconContainer)
+        PlayerMasterIcon:ClearAllPoints()
+        PlayerMasterIcon:SetPoint("TOPRIGHT", PlayerFrame, "TOPRIGHT", -135, -55)
     else
         -- Modo normal
-        PlayerMasterIcon:SetPoint('BOTTOM', PlayerFrame, "TOP", 2, -1)
+        PlayerMasterIcon:SetPoint('BOTTOM', PlayerFrame, "TOP", -71, -75)
     end
 end
 
--- Update PVP icon positioning based on dragon decoration mode
 local function UpdatePVPIconPosition()
     if not PlayerPVPIcon then
         return
     end
-    
+
     local config = GetPlayerConfig()
     local decorationType = config.dragon_decoration or "none"
     local isEliteMode = decorationType == "elite" or decorationType == "rare"
-    
-    PlayerPVPIcon:ClearAllPoints()
-    
+
     if isEliteMode then
-        -- En modo elite: PVP icon ARRIBA del dragon decoration
-        -- Posicionar en la esquina superior derecha del dragon
-        PlayerPVPIcon:SetPoint("TOPRIGHT", PlayerFrame, "TOPRIGHT", 25, 15)
-        -- ✅ CORREGIDO: Solo intentar SetFrameLevel si el método existe
-        if PlayerPVPIcon.SetFrameLevel then
-            PlayerPVPIcon:SetFrameLevel(1000) -- Muy alto para estar por encima del dragon
-        end
+        local iconContainer = _G["DragonUIUnitframeFrame"].EliteIconContainer
+        PlayerPVPIcon:SetParent(iconContainer)
+        PlayerPVPIcon:ClearAllPoints()
+        PlayerPVPIcon:SetPoint("TOPRIGHT", PlayerFrame, "TOPRIGHT", -155, -22)
     else
-        -- Modo normal: posición RetailUI estándar (abajo izquierda)
-        PlayerPVPIcon:SetPoint("CENTER", PlayerFrame, "BOTTOMLEFT", 22, 14)
-        -- ✅ CORREGIDO: Solo intentar SetFrameLevel si el método existe
-        if PlayerPVPIcon.SetFrameLevel then
-            PlayerPVPIcon:SetFrameLevel(5) -- Nivel normal
-        end
+        local iconContainer = _G["DragonUIUnitframeFrame"].EliteIconContainer
+        PlayerPVPIcon:SetParent(iconContainer)
+        PlayerPVPIcon:ClearAllPoints()
+        PlayerPVPIcon:SetPoint("TOPRIGHT", PlayerFrame, "TOPRIGHT", -155, -22)
     end
 end
 
@@ -802,9 +794,18 @@ local function CreatePlayerFrameTextures()
 
     HideBlizzardGlows()
 
+    if not dragonFrame.EliteIconContainer then
+        local iconContainer = CreateFrame("Frame", "DragonUI_EliteIconContainer", UIParent)
+        iconContainer:SetFrameStrata("HIGH")
+        iconContainer:SetFrameLevel(1000)
+        iconContainer:SetSize(200, 200)
+        iconContainer:SetPoint("CENTER", PlayerFrame, "CENTER", 0, 0)
+        dragonFrame.EliteIconContainer = iconContainer
+    end
+
     if not dragonFrame.DragonUICombatGlow then
         local combatFlashFrame = CreateFrame("Frame", "DragonUICombatFlash", UIParent)
-        combatFlashFrame:SetFrameStrata("MEDIUM")
+        combatFlashFrame:SetFrameStrata("LOW")
         combatFlashFrame:SetFrameLevel(900)
         combatFlashFrame:SetSize(192, 71)
         combatFlashFrame:Hide()
@@ -905,17 +906,26 @@ local function CreatePlayerFrameTextures()
     -- Create group indicator
     if not dragonFrame.PlayerGroupIndicator then
         local groupIndicator = CreateFrame("Frame", "DragonUIPlayerGroupIndicator", PlayerFrame)
-        groupIndicator:SetSize(64, 16)
-        groupIndicator:SetPoint("BOTTOMLEFT", PlayerFrame, "TOP", 20, -2)
+        groupIndicator:SetSize(75, 16)
+        groupIndicator:SetPoint("BOTTOMLEFT", PlayerFrame, "TOP", 30, -21)
 
+        -- ✅ ESTRATEGIA NUEVA: Usar una textura existente de WoW con bordes redondeados
         local bgTexture = groupIndicator:CreateTexture(nil, "BACKGROUND")
         bgTexture:SetAllPoints()
-        bgTexture:SetTexture("Interface\\TargetingFrame\\UI-StatusBar")
-        bgTexture:SetTexCoord(0, 1, 0, 0.25)
+        bgTexture:SetTexture("Interface\\Tooltips\\UI-Tooltip-Background") -- ✅ Textura con bordes redondeados
+        bgTexture:SetVertexColor(0, 0, 0, 0.2) -- ✅ Negro transparente
 
+        -- ✅ Alternativa: Usar textura de botón redondeado
+        bgTexture:SetTexture("Interface\\Buttons\\UI-Panel-Button-Up")
+        bgTexture:SetTexCoord(0, 0.625, 0, 0.6875) -- Recortar solo la parte central redondeada
+
+        -- ✅ Texto pequeño
         local text = groupIndicator:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
         text:SetPoint("CENTER")
-        text:SetTextColor(1, 1, 1)
+        text:SetTextColor(1, 1, 1, 0.9)
+        text:SetFont("Fonts\\FRIZQT__.TTF", 9)
+        text:SetShadowOffset(1, -1)
+        text:SetShadowColor(0, 0, 0, 1)
 
         groupIndicator.text = text
         groupIndicator:Hide()
@@ -1130,8 +1140,6 @@ local function ApplyPlayerConfig()
     UpdateGlowVisibility()
     print("|cFF00FF00[DragonUI]|r PlayerFrame config applied - Override:", config.override, "Scale:", config.scale)
 end
-
-
 
 -- ============================================================================
 -- PUBLIC API FUNCTIONS
