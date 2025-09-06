@@ -476,12 +476,20 @@ local function UpdatePlayerRoleIcon()
     end
 
     local iconTexture = dragonFrame.PlayerRoleIcon
-    local role = UnitGroupRolesAssigned("player")
+    local isTank, isHealer, isDamage = UnitGroupRolesAssigned("player")
 
-    iconTexture:SetTexture(TEXTURES.LFG_ICONS)
-
-    if ROLE_COORDS[role] then
-        iconTexture:SetTexCoord(unpack(ROLE_COORDS[role]))
+    -- ✅ MEJORAR: Usar lógica de RetailUI
+    if isTank then
+        iconTexture:SetTexture(TEXTURES.LFG_ICONS)
+        iconTexture:SetTexCoord(unpack(ROLE_COORDS.TANK))
+        iconTexture:Show()
+    elseif isHealer then
+        iconTexture:SetTexture(TEXTURES.LFG_ICONS)
+        iconTexture:SetTexCoord(unpack(ROLE_COORDS.HEALER))
+        iconTexture:Show()
+    elseif isDamage then
+        iconTexture:SetTexture(TEXTURES.LFG_ICONS)
+        iconTexture:SetTexCoord(unpack(ROLE_COORDS.DAMAGER))
         iconTexture:Show()
     else
         iconTexture:Hide()
@@ -904,36 +912,37 @@ local function CreatePlayerFrameTextures()
     end
 
     -- Create group indicator
-    if not dragonFrame.PlayerGroupIndicator then
-        local groupIndicator = CreateFrame("Frame", "DragonUIPlayerGroupIndicator", PlayerFrame)
-        groupIndicator:SetSize(75, 16)
-        groupIndicator:SetPoint("BOTTOMLEFT", PlayerFrame, "TOP", 30, -21)
+   if not dragonFrame.PlayerGroupIndicator then
+    local groupIndicator = CreateFrame("Frame", "DragonUIPlayerGroupIndicator", PlayerFrame)
+    
+    -- ✅ USAR TEXTURA uiunitframe como RetailUI
+    local bgTexture = groupIndicator:CreateTexture(nil, "BACKGROUND")
+    bgTexture:SetTexture(TEXTURES.BASE) -- Tu textura uiunitframe
+    bgTexture:SetTexCoord(0.927734375, 0.9970703125, 0.3125, 0.337890625) -- ✅ Coordenadas del GroupIndicator
+    bgTexture:SetAllPoints(groupIndicator)
+    
+    -- ✅ SIZING FIJO como en las coordenadas
+    groupIndicator:SetSize(71, 13)
+    groupIndicator:SetPoint("BOTTOMLEFT", PlayerFrame, "TOP", 30, -19.5)
+    
+    -- ✅ TEXTO CENTRADO como original
+    local text = groupIndicator:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+    text:SetPoint("CENTER", groupIndicator, "CENTER", 0, 0)
+    text:SetJustifyH("CENTER")
+    text:SetTextColor(1, 1, 1, 1)
+    text:SetFont("Fonts\\FRIZQT__.TTF", 9)
+    text:SetShadowOffset(1, -1)
+    text:SetShadowColor(0, 0, 0, 1)
 
-        -- ✅ ESTRATEGIA NUEVA: Usar una textura existente de WoW con bordes redondeados
-        local bgTexture = groupIndicator:CreateTexture(nil, "BACKGROUND")
-        bgTexture:SetAllPoints()
-        bgTexture:SetTexture("Interface\\Tooltips\\UI-Tooltip-Background") -- ✅ Textura con bordes redondeados
-        bgTexture:SetVertexColor(0, 0, 0, 0.2) -- ✅ Negro transparente
+    groupIndicator.text = text
+    groupIndicator.backgroundTexture = bgTexture
+    groupIndicator:Hide()
 
-        -- ✅ Alternativa: Usar textura de botón redondeado
-        bgTexture:SetTexture("Interface\\Buttons\\UI-Panel-Button-Up")
-        bgTexture:SetTexCoord(0, 0.625, 0, 0.6875) -- Recortar solo la parte central redondeada
-
-        -- ✅ Texto pequeño
-        local text = groupIndicator:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-        text:SetPoint("CENTER")
-        text:SetTextColor(1, 1, 1, 0.9)
-        text:SetFont("Fonts\\FRIZQT__.TTF", 9)
-        text:SetShadowOffset(1, -1)
-        text:SetShadowColor(0, 0, 0, 1)
-
-        groupIndicator.text = text
-        groupIndicator:Hide()
-
-        _G[PlayerFrame:GetName() .. 'GroupIndicator'] = groupIndicator
-        _G[PlayerFrame:GetName() .. 'GroupIndicatorText'] = text
-        dragonFrame.PlayerGroupIndicator = groupIndicator
-    end
+    _G[PlayerFrame:GetName() .. 'GroupIndicator'] = groupIndicator
+    _G[PlayerFrame:GetName() .. 'GroupIndicatorText'] = text
+    _G[PlayerFrame:GetName() .. 'GroupIndicatorMiddle'] = bgTexture -- ✅ Como original
+    dragonFrame.PlayerGroupIndicator = groupIndicator
+end
 
     -- Create role icon
     if not dragonFrame.PlayerRoleIcon then
@@ -1175,6 +1184,13 @@ local function InitializePlayerFrame()
         return
     end
 
+    if _G.PlayerFrame_ToVehicleArt then
+        hooksecurefunc("PlayerFrame_ToVehicleArt", function()
+            -- Reconfigurar textures para vehículo
+            ChangePlayerframe()
+        end)
+    end
+
     -- Create auxiliary frame
     Module.playerFrame = CreateUIFrame(198, 71, "PlayerFrame")
 
@@ -1275,6 +1291,7 @@ local function SetupPlayerEvents()
 
         GROUP_ROSTER_UPDATE = UpdateGroupIndicator,
         ROLE_CHANGED_INFORM = UpdatePlayerRoleIcon,
+        LFG_ROLE_UPDATE = UpdatePlayerRoleIcon,
 
         UNIT_AURA = function(unit)
             if unit == "player" then
