@@ -15,7 +15,7 @@ Module.targetFrame = nil
 Module.textSystem = nil
 Module.initialized = false
 Module.eventsFrame = nil
-local targetExtra = nil
+
 
 -- Cache frequently accessed globals for performance
 local TargetFrame = _G.TargetFrame
@@ -244,6 +244,173 @@ local function UpdatePowerBarColor(statusBar, unit)
 end
 
 -- ============================================================================
+-- SISTEMA DE THREAT 
+-- ============================================================================
+
+-- ✅ THREAT COLORS (sin gris - como acordamos)
+local THREAT_COLORS = {
+    [1] = {1.0, 1.0, 0.47}, -- Bajo (amarillo)
+    [2] = {1.0, 0.6, 0.0}, -- Medio (naranja)  
+    [3] = {1.0, 0.0, 0.0} -- Alto (rojo)
+}
+
+-- ✅ COORDENADAS PARA THREAT GLOW (mismas que player pero sin invertir)
+local THREAT_GLOW_COORDINATES = {
+    texCoord = {0, 0.2061015625, 0.537109375, 0.712890625}, -- SIN invertir
+    size = {209, 90},
+    texture = 'Interface\\Addons\\DragonUI\\Textures\\UI\\UnitFrame'
+}
+
+-- ✅ SISTEMA DE SWITCH COMO EN PLAYER
+local threatGlowVisible = false
+local threatNumericalVisible = false
+
+-- ✅ CREAR THREAT GLOWS INDEPENDIENTES (como player)
+local function CreateTargetThreatSystem()
+    local dragonFrame = _G["DragonUIUnitframeFrame"]
+    if not dragonFrame then
+        return
+    end
+
+    -- ✅ CREAR THREAT GLOW (como EliteStatusGlow del player)
+    if not dragonFrame.TargetThreatGlow then
+        local threatFrame = CreateFrame("Frame", "DragonUITargetThreatGlow", UIParent) -- ✅ EN UIPARENT
+        threatFrame:SetFrameStrata("LOW")
+        threatFrame:SetFrameLevel(998)
+        threatFrame:SetSize(THREAT_GLOW_COORDINATES.size[1], THREAT_GLOW_COORDINATES.size[2])
+        threatFrame:Hide()
+
+        local threatTexture = threatFrame:CreateTexture(nil, "OVERLAY")
+        threatTexture:SetTexture(THREAT_GLOW_COORDINATES.texture)
+        threatTexture:SetTexCoord(unpack(THREAT_GLOW_COORDINATES.texCoord))
+        threatTexture:SetAllPoints(threatFrame)
+        threatTexture:SetBlendMode("ADD")
+        threatTexture:SetVertexColor(1.0, 1.0, 0.47, 0.8) -- Amarillo por defecto
+
+        -- ✅ POSICIONAR RELATIVO AL TARGETFRAME (como player)
+        threatFrame:SetPoint('TOPLEFT', TargetFrame, 'TOPLEFT', -24, 20)
+
+        dragonFrame.TargetThreatGlow = threatFrame
+        dragonFrame.TargetThreatTexture = threatTexture
+
+        print("|cFF00FF00[DragonUI]|r Target Threat Glow created independently")
+    end
+
+    -- ✅ CREAR NUMERICAL THREAT (como PlayerGroupIndicator)
+    if not dragonFrame.TargetNumericalThreat then
+        local numericalFrame = CreateFrame("Frame", "DragonUITargetNumericalThreat", UIParent) -- ✅ EN UIPARENT
+        numericalFrame:SetFrameStrata("MEDIUM")
+        numericalFrame:SetFrameLevel(999)
+        numericalFrame:SetSize(71, 13)
+
+        -- ✅ USAR MISMA TEXTURA QUE GROUPINDICATOR DEL PLAYER
+        local bgTexture = numericalFrame:CreateTexture(nil, "ARTWORK")
+        bgTexture:SetTexture('Interface\\Addons\\DragonUI\\Textures\\uiunitframe') -- Tu textura base
+        bgTexture:SetTexCoord(0.927734375, 0.9970703125, 0.3125, 0.337890625) -- Coordenadas GroupIndicator
+        bgTexture:SetAllPoints(numericalFrame)
+
+        local threatText = numericalFrame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+        threatText:SetPoint("CENTER", numericalFrame, "CENTER", 0, 0)
+        threatText:SetJustifyH("CENTER")
+        threatText:SetTextColor(1, 1, 1, 1)
+        threatText:SetFont("Fonts\\FRIZQT__.TTF", 9)
+        threatText:SetShadowOffset(1, -1)
+        threatText:SetShadowColor(0, 0, 0, 1)
+
+        -- ✅ POSICIONAR ARRIBA DEL TARGET
+        numericalFrame:SetPoint("BOTTOM", TargetFrame, "TOP", -22, -2)
+        numericalFrame:Hide()
+
+        numericalFrame.backgroundTexture = bgTexture
+        numericalFrame.text = threatText
+
+        dragonFrame.TargetNumericalThreat = numericalFrame
+
+        print("|cFF00FF00[DragonUI]|r Target Numerical Threat created independently")
+    end
+end
+
+-- ✅ CALCULAR THREAT LEVEL (igual que antes)
+local function GetThreatLevel(unit)
+    if not UnitExists(unit) then
+        return 0
+    end
+
+    local status = UnitThreatSituation("player", unit)
+    if not status then
+        return 0
+    end
+
+    if status == 0 then
+        return 0 -- Sin threat
+    elseif status == 1 then
+        return 1 -- Bajo  
+    elseif status == 2 then
+        return 2 -- Medio
+    else
+        return 3
+    end -- Alto
+end
+
+-- ✅ CONTROL DE THREAT GLOW (como player)
+local function SetThreatGlowVisible(visible, threatLevel)
+    threatGlowVisible = visible
+
+    local dragonFrame = _G["DragonUIUnitframeFrame"]
+    if not dragonFrame or not dragonFrame.TargetThreatGlow then
+        return
+    end
+
+    if visible and threatLevel > 0 then
+        local color = THREAT_COLORS[threatLevel]
+        dragonFrame.TargetThreatTexture:SetVertexColor(color[1], color[2], color[3], 0.8)
+        dragonFrame.TargetThreatGlow:Show()
+    else
+        dragonFrame.TargetThreatGlow:Hide()
+    end
+end
+
+-- ✅ CONTROL DE NUMERICAL THREAT (como player)
+local function SetNumericalThreatVisible(visible, threatLevel, threatPct)
+    local dragonFrame = _G["DragonUIUnitframeFrame"]
+    if not dragonFrame or not dragonFrame.TargetNumericalThreat then
+        return
+    end
+
+    -- ✅ LÓGICA SIMPLE: Mostrar si hay porcentaje válido
+    if threatPct and threatPct > 0 then
+        local color = THREAT_COLORS[threatLevel] or {1, 1, 1} -- Blanco por defecto
+        dragonFrame.TargetNumericalThreat.text:SetText(math.floor(threatPct) .. "%")
+        dragonFrame.TargetNumericalThreat.text:SetTextColor(color[1], color[2], color[3], 1)
+        dragonFrame.TargetNumericalThreat:Show()
+    else
+        dragonFrame.TargetNumericalThreat:Hide()
+    end
+end
+
+-- ✅ FUNCIÓN PRINCIPAL DE UPDATE (simplificada)
+local function UpdateThreatSystem()
+    if not UnitExists("target") then
+        SetThreatGlowVisible(false, 0)
+        SetNumericalThreatVisible(false, 0, 0)
+        return
+    end
+
+    local threatLevel = GetThreatLevel("target")
+    local status = UnitThreatSituation("player", "target")
+    local _, _, threatpct = UnitDetailedThreatSituation("player", "target")
+
+    -- ✅ DEBUG: Temporal para ver valores
+    -- print("|cFFFF0000[DEBUG]|r Threat:", threatLevel, "Status:", status, "Pct:", threatpct)
+
+    -- ✅ GLOW: Solo si hay threat real (status > 0)
+    SetThreatGlowVisible(status and status > 0, threatLevel)
+
+    -- ✅ NUMERICAL: SIEMPRE que haya porcentaje (como RetailUI)
+    SetNumericalThreatVisible(true, threatLevel, threatpct)
+end
+
+-- ============================================================================
 -- FRAME CREATION & CONFIGURATION
 -- ============================================================================
 
@@ -299,6 +466,8 @@ local function CreateTargetFrameTextures()
         TargetFrameNameBackground:Show()
     end
 
+    CreateTargetThreatSystem()
+
     isBuilt = true
     print("|cFF00FF00[DragonUI]|r Target textures created")
 end
@@ -336,9 +505,44 @@ local function UpdateTargetClassification()
     end
 
     local classification = UnitClassification("target")
+    local isVehicle = UnitVehicleSeatCount and UnitVehicleSeatCount("target") > 0
     local coords = nil
 
-    -- Follow RetailUI pattern: worldboss and elite use same texture
+    -- ✅ DETECCIÓN DE VEHÍCULOS IGUAL QUE RETAILUI
+    if isVehicle then
+        -- Ajustar tamaños para vehículo (igual que RetailUI)
+        TargetFrameHealthBar:SetSize(116, 20)
+        TargetFrameManaBar:SetSize(123, 10)
+
+        -- Ajustar posiciones de texto
+        if TargetFrameTextureFrameName then
+            TargetFrameTextureFrameName:ClearAllPoints()
+            TargetFrameTextureFrameName:SetPoint("CENTER", -20, 26)
+        end
+        if TargetFrameTextureFrameLevelText then
+            TargetFrameTextureFrameLevelText:ClearAllPoints()
+            TargetFrameTextureFrameLevelText:SetPoint("CENTER", -80, 26)
+        end
+
+        targetExtra:Hide() -- Ocultar decoración de boss en vehículos
+        return
+    else
+        -- ✅ RESTAURAR TAMAÑOS NORMALES
+        TargetFrameHealthBar:SetSize(125, 20)
+        TargetFrameManaBar:SetSize(132, 9)
+
+        -- Restaurar posiciones normales
+        if TargetFrameTextureFrameName then
+            TargetFrameTextureFrameName:ClearAllPoints()
+            TargetFrameTextureFrameName:SetPoint('BOTTOM', TargetFrameHealthBar, 'TOP', 10, 1)
+        end
+        if TargetFrameTextureFrameLevelText then
+            TargetFrameTextureFrameLevelText:ClearAllPoints()
+            TargetFrameTextureFrameLevelText:SetPoint('BOTTOMRIGHT', TargetFrameHealthBar, 'TOPLEFT', 16, 1)
+        end
+    end
+
+    -- ✅ RESTO DE CLASIFICACIONES (como ya tienes)
     if classification == "worldboss" or classification == "elite" then
         coords = BOSS_COORDINATES.elite
     elseif classification == "rareelite" then
@@ -346,10 +550,9 @@ local function UpdateTargetClassification()
     elseif classification == "rare" then
         coords = BOSS_COORDINATES.rare
     else
-        -- Check for famous NPCs (optional)
         local name = UnitName("target")
         if name and addon.unitframe and addon.unitframe.famous and addon.unitframe.famous[name] then
-            coords = BOSS_COORDINATES.elite -- Use elite texture for famous NPCs
+            coords = BOSS_COORDINATES.elite
         else
             targetExtra:Hide()
             return
@@ -542,19 +745,6 @@ end
 -- HOOKS & HARDENING
 -- ============================================================================
 
--- Setup hooks to maintain frame state
-local function SetupTargetHooks()
-    if _G.TargetFrame_CheckClassification then
-        hooksecurefunc("TargetFrame_CheckClassification", function(frame)
-            if frame == TargetFrame and UnitExists("target") then
-                -- ✅ MEJORADO: Actualizar tanto decoración como NameBackground
-                UpdateTargetClassification()
-                UpdateNameBackground()
-            end
-        end)
-    end
-end
-
 -- Harden power bar against Blizzard overrides
 local function HardenPowerBar()
     if not TargetFrameManaBar or TargetFrameManaBar.DragonUI_Hardened then
@@ -601,6 +791,10 @@ local function HardenPowerBar()
 end
 
 -- ============================================================================
+-- SISTEMA DE AURAS COMPLETO 
+-- ============================================================================
+
+-- ============================================================================
 -- INITIALIZATION
 -- ============================================================================
 
@@ -614,8 +808,9 @@ local function InitializeTargetFrame()
     Module.targetFrame = CreateUIFrame(192, 67, "TargetFrame")
 
     -- Setup hooks and hardening
-    SetupTargetHooks()
+
     HardenPowerBar()
+    
 
     -- Setup persistent color hooks for health bar
     if TargetFrameHealthBar and TargetFrameHealthBar.HookScript then
@@ -673,7 +868,11 @@ local function SetupTargetEvents()
         end,
 
         PLAYER_TARGET_CHANGED = function()
-            UpdateBothBars() -- Ya incluye UpdateTargetClassification
+            UpdateBothBars()
+            UpdateThreatSystem()
+            UpdateTargetClassification()
+            UpdateNameBackground()
+
             if UnitExists("target") then
                 UpdateNameBackground()
             else
@@ -684,11 +883,22 @@ local function SetupTargetEvents()
             end
         end,
 
-        -- ✅ NUEVO: Evento para cambios de clasificación
         UNIT_CLASSIFICATION_CHANGED = function(unit)
             if unit == "target" then
                 UpdateTargetClassification()
                 UpdateNameBackground()
+            end
+        end,
+
+        UNIT_THREAT_SITUATION_UPDATE = function(unit)
+            if unit == "target" then
+                UpdateThreatSystem()
+            end
+        end,
+
+        UNIT_THREAT_LIST_UPDATE = function(unit)
+            if unit == "target" then
+                UpdateThreatSystem()
             end
         end,
 
@@ -727,6 +937,14 @@ local function SetupTargetEvents()
     for event in pairs(BOTH_EVENTS) do
         f:RegisterEvent(event)
     end
+
+    for event in pairs(handlers) do
+        f:RegisterEvent(event)
+    end
+
+    f:RegisterEvent("UNIT_THREAT_SITUATION_UPDATE")
+    f:RegisterEvent("UNIT_THREAT_LIST_UPDATE")
+    f:RegisterEvent("UNIT_CLASSIFICATION_CHANGED")
 
     -- Event dispatcher
     f:SetScript("OnEvent", function(_, event, ...)
