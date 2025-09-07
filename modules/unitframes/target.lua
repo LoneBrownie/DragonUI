@@ -1,22 +1,22 @@
 local addon = select(2, ...)
 
-print("|cFF00FF00[DragonUI]|r Target.lua LOADING")
-
--- ====================================================================
+-- ============================================================================
 -- DRAGONUI TARGET FRAME MODULE - Optimized for WoW 3.3.5a
--- ====================================================================
-
--- ============================================================================
--- MODULE VARIABLES & CONFIGURATION
 -- ============================================================================
 
-local Module = {}
-Module.targetFrame = nil
-Module.textSystem = nil
-Module.initialized = false
-Module.eventsFrame = nil
+-- Module namespace
+local Module = {
+    targetFrame = nil,
+    textSystem = nil,
+    initialized = false,
+    eventsFrame = nil
+}
 
--- Cache frequently accessed globals for performance
+-- ============================================================================
+-- CONFIGURATION & CONSTANTS
+-- ============================================================================
+
+-- Cache frequently accessed globals
 local TargetFrame = _G.TargetFrame
 local TargetFrameHealthBar = _G.TargetFrameHealthBar
 local TargetFrameManaBar = _G.TargetFrameManaBar
@@ -25,981 +25,531 @@ local TargetFrameTextureFrameName = _G.TargetFrameTextureFrameName
 local TargetFrameTextureFrameLevelText = _G.TargetFrameTextureFrameLevelText
 local TargetFrameNameBackground = _G.TargetFrameNameBackground
 
--- Texture paths configuration
+-- Texture paths
 local TEXTURES = {
     BACKGROUND = "Interface\\AddOns\\DragonUI\\Textures\\UI-HUD-UnitFrame-Target-PortraitOn-BACKGROUND",
     BORDER = "Interface\\AddOns\\DragonUI\\Textures\\UI-HUD-UnitFrame-Target-PortraitOn-BORDER",
     BAR_PREFIX = "Interface\\AddOns\\DragonUI\\Textures\\Unitframe\\UI-HUD-UnitFrame-Target-PortraitOn-Bar-",
-    NAME_BACKGROUND = "Interface\\AddOns\\DragonUI\\Textures\\TargetFrame\\NameBackground"
+    NAME_BACKGROUND = "Interface\\AddOns\\DragonUI\\Textures\\TargetFrame\\NameBackground",
+    BOSS = "Interface\\AddOns\\DragonUI\\Textures\\uiunitframeboss2x",
+    THREAT = "Interface\\Addons\\DragonUI\\Textures\\UI\\UnitFrame",
+    THREAT_NUMERIC = "Interface\\Addons\\DragonUI\\Textures\\uiunitframe"
 }
 
--- Boss frame coordinates for uiunitframeboss2x 
-local BOSS_COORDINATES = {
-    -- Elite/WorldBoss (dragón dorado) - RetailUI combines these
-    elite = {
-        texCoord = {0.001953125, 0.314453125, 0.322265625, 0.630859375},
-        size = {80, 79},
-        offset = {4, 1}
-    },
-
-    -- Rare (dragón plateado)
-    rare = {
-        texCoord = {0.00390625, 0.31640625, 0.64453125, 0.953125},
-        size = {80, 79},
-        offset = {4, 1}
-    },
-
-    -- RareElite (dragón dorado grande)
-    rareelite = {
-        texCoord = {0.001953125, 0.388671875, 0.001953125, 0.31835937},
-        size = {99, 81},
-        offset = {13, 1}
-    }
+-- Boss classifications
+local BOSS_COORDS = {
+    elite = {0.001953125, 0.314453125, 0.322265625, 0.630859375, 80, 79, 4, 1},
+    rare = {0.00390625, 0.31640625, 0.64453125, 0.953125, 80, 79, 4, 1},
+    rareelite = {0.001953125, 0.388671875, 0.001953125, 0.31835937, 99, 81, 13, 1}
 }
 
--- Power type mapping for textures
+-- Power types
 local POWER_MAP = {
-    [0] = "Mana",
-    [1] = "Rage",
-    [2] = "Focus",
-    [3] = "Energy",
-    [6] = "RunicPower"
+    [0] = "Mana", [1] = "Rage", [2] = "Focus", [3] = "Energy", [6] = "RunicPower"
 }
 
--- Event lookup tables for O(1) performance
-local HEALTH_EVENTS = {
-    UNIT_HEALTH = true,
-    UNIT_MAXHEALTH = true,
-    UNIT_HEALTH_FREQUENT = true
+-- Threat colors
+local THREAT_COLORS = {
+    {1.0, 1.0, 0.47}, -- Low
+    {1.0, 0.6, 0.0},  -- Medium
+    {1.0, 0.0, 0.0}   -- High
 }
 
-local POWER_EVENTS = {
-    UNIT_MANA = true,
-    UNIT_MAXMANA = true,
-    UNIT_RAGE = true,
-    UNIT_MAXRAGE = true,
-    UNIT_ENERGY = true,
-    UNIT_MAXENERGY = true,
-    UNIT_FOCUS = true,
-    UNIT_MAXFOCUS = true,
-    UNIT_RUNIC_POWER = true,
-    UNIT_MAXRUNIC_POWER = true,
-    UNIT_DISPLAYPOWER = true
+-- Event categories
+local EVENT_CATEGORIES = {
+    health = {"UNIT_HEALTH", "UNIT_MAXHEALTH", "UNIT_HEALTH_FREQUENT"},
+    power = {"UNIT_MANA", "UNIT_MAXMANA", "UNIT_RAGE", "UNIT_MAXRAGE", 
+             "UNIT_ENERGY", "UNIT_MAXENERGY", "UNIT_FOCUS", "UNIT_MAXFOCUS",
+             "UNIT_RUNIC_POWER", "UNIT_MAXRUNIC_POWER", "UNIT_DISPLAYPOWER"},
+    both = {"UNIT_PORTRAIT_UPDATE", "UNIT_AURA", "UNIT_FACTION"}
 }
 
-local BOTH_EVENTS = {
-    UNIT_PORTRAIT_UPDATE = true,
-    UNIT_AURA = true,
-    UNIT_FACTION = true
+-- Frame elements storage
+local frameElements = {
+    background = nil,
+    border = nil,
+    elite = nil,
+    threatGlow = nil,
+    threatNumeric = nil
 }
-
--- Build state tracking
-local isBuilt = false
-local backgroundTexture, borderTexture
 
 -- ============================================================================
 -- UTILITY FUNCTIONS
 -- ============================================================================
 
--- Create auxiliary frame for anchoring
-local function CreateUIFrame(width, height, name)
-    local frame = CreateFrame("Frame", "DragonUI_" .. name .. "_Anchor", UIParent)
-    frame:SetSize(width, height)
-    frame:SetPoint("TOPLEFT", UIParent, "TOPLEFT", 250, -50)
-    frame:SetFrameStrata("LOW")
-    return frame
-end
-
--- Get target configuration with fallback to defaults
-local function GetTargetConfig()
+local function GetConfig()
     local config = addon:GetConfigValue("unitframe", "target") or {}
-    -- Usar defaults directamente de database
-    local dbDefaults = addon.defaults and addon.defaults.profile.unitframe.target or {}
-
-    -- Aplicar defaults de database para cualquier valor faltante
-    for key, value in pairs(dbDefaults) do
-        if config[key] == nil then
-            config[key] = value
-        end
-    end
-    return config
+    local defaults = addon.defaults and addon.defaults.profile.unitframe.target or {}
+    return setmetatable(config, {__index = defaults})
 end
 
--- Validate and clamp coordinates to screen bounds
-local function ValidateCoordinates(x, y)
-    local screenWidth, screenHeight = GetScreenWidth(), GetScreenHeight()
-    local minX, maxX = -500, screenWidth + 500
-    local minY, maxY = -500, screenHeight + 500
-
-    if x < minX or x > maxX or y < minY or y > maxY then
-        print("|cFFFF0000[DragonUI]|r TargetFrame coordinates out of bounds! Resetting...")
-        local dbDefaults = addon.defaults and addon.defaults.profile.unitframe.target or {}
-        return dbDefaults.x or 20, dbDefaults.y or -4, false
-    end
-    return x, y, true
-end
-
--- ============================================================================
--- BLIZZARD FRAME MANAGEMENT
--- ============================================================================
-
--- Hide unwanted Blizzard target frame elements
-local function HideBlizzardElements()
-    local elementsToHide = {TargetFrameTextureFrameTexture, TargetFrameBackground, TargetFrameFlash,
-
-                            _G.TargetFrameNumericalThreat, TargetFrame.threatNumericIndicator,
-                            TargetFrame.threatIndicator}
-
-    for _, element in ipairs(elementsToHide) do
-        if element then
-            element:SetAlpha(0)
-        end
-    end
-
-    print("|cFF00FF00[DragonUI]|r Blizzard elements hidden (including threat)")
-end
-
--- ============================================================================
--- BAR COLOR & TEXTURE MANAGEMENT
--- ============================================================================
-
--- Update health bar color and texture with dynamic clipping
-local function UpdateHealthBarColor(statusBar, unit)
-    if not unit then
-        unit = "target"
-    end
-    if statusBar ~= TargetFrameHealthBar or unit ~= "target" then
-        return
-    end
-    if not UnitExists("target") then
-        return
-    end
-
-    local texture = statusBar:GetStatusBarTexture()
-    if not texture then
-        return
-    end
-
-    local config = GetTargetConfig()
-
-    -- Set texture and layer
-    texture:SetTexture(TEXTURES.BAR_PREFIX .. "Health")
-    texture:SetDrawLayer("BORDER", 1)
-
-    -- Dynamic texture clipping based on current value
-    local _, maxValue = statusBar:GetMinMaxValues()
-    local currentValue = statusBar:GetValue()
-    if maxValue > 0 and currentValue then
-        local percentage = currentValue / maxValue
-        texture:SetTexCoord(0, percentage, 0, 1)
-    else
-        texture:SetTexCoord(0, 1, 0, 1)
-    end
-
-    -- Apply color based on configuration
-    if config.classcolor and UnitIsPlayer("target") then
-        local _, class = UnitClass("target")
-        local color = RAID_CLASS_COLORS[class]
-        if color then
-            texture:SetVertexColor(color.r, color.g, color.b)
-            return
-        end
-    end
-    texture:SetVertexColor(1, 1, 1)
-end
-
--- Update power bar color and texture with dynamic clipping
-local function UpdatePowerBarColor(statusBar, unit)
-    if not unit then
-        unit = "target"
-    end
-    if statusBar ~= TargetFrameManaBar or unit ~= "target" then
-        return
-    end
-    if not UnitExists("target") then
-        return
-    end
-
-    local texture = statusBar:GetStatusBarTexture()
-    if not texture then
-        return
-    end
-
-    local powerType = UnitPowerType("target")
-    local suffix = POWER_MAP[powerType] or "Mana"
-
-    -- Set texture and layer
-    texture:SetTexture(TEXTURES.BAR_PREFIX .. suffix)
-    texture:SetDrawLayer("BORDER", 1)
-
-    -- Dynamic texture clipping
-    local _, maxValue = statusBar:GetMinMaxValues()
-    local currentValue = statusBar:GetValue()
-    if maxValue > 0 and currentValue then
-        local percentage = currentValue / maxValue
-        texture:SetTexCoord(0, percentage, 0, 1)
-    else
-        texture:SetTexCoord(0, 1, 0, 1)
-    end
-
-    -- Force white color for texture purity (prevents tinting)
-    statusBar:SetStatusBarColor(1, 1, 1, 1)
-    texture:SetVertexColor(1, 1, 1)
-end
-
--- ============================================================================
--- SISTEMA DE THREAT 
--- ============================================================================
-
--- ✅ THREAT COLORS (sin gris - como acordamos)
-local THREAT_COLORS = {
-    [1] = {1.0, 1.0, 0.47}, -- Bajo (amarillo)
-    [2] = {1.0, 0.6, 0.0}, -- Medio (naranja)  
-    [3] = {1.0, 0.0, 0.0} -- Alto (rojo)
-}
-
--- ✅ COORDENADAS PARA THREAT GLOW (mismas que player elite decoration pero sin invertir)
-local THREAT_GLOW_COORDINATES = {
-    texCoord = {0, 0.2061015625, 0.537109375, 0.712890625},
-    size = {209, 90},
-    texture = 'Interface\\Addons\\DragonUI\\Textures\\UI\\UnitFrame'
-}
-
---  SISTEMA DE SWITCH COMO EN PLAYER
-local threatGlowVisible = false
-local threatNumericalVisible = false
-
---  CREAR THREAT GLOWS INDEPENDIENTES (como player)
-local function CreateTargetThreatSystem()
-    local dragonFrame = _G["DragonUIUnitframeFrame"]
-    if not dragonFrame then
-        return
-    end
-
-    -- ✅ VERIFICAR SI YA EXISTEN ANTES DE CREAR
-    if dragonFrame.TargetThreatGlow and dragonFrame.TargetNumericalThreat then
-        return -- Ya creados, salir
-    end
-
-    --  CREAR THREAT GLOW 
-    if not dragonFrame.TargetThreatGlow then
-        local threatFrame = CreateFrame("Frame", "DragonUITargetThreatGlow", UIParent) -- ✅ EN UIPARENT
-        threatFrame:SetFrameStrata("MEDIUM")
-        threatFrame:SetFrameLevel(0)
-        threatFrame:SetSize(THREAT_GLOW_COORDINATES.size[1], THREAT_GLOW_COORDINATES.size[2])
-        threatFrame:Hide()
-
-        local threatTexture = threatFrame:CreateTexture(nil, "OVERLAY")
-        threatTexture:SetTexture(THREAT_GLOW_COORDINATES.texture)
-        threatTexture:SetTexCoord(unpack(THREAT_GLOW_COORDINATES.texCoord))
-        threatTexture:SetAllPoints(threatFrame)
-        threatTexture:SetBlendMode("ADD")
-        threatTexture:SetVertexColor(1.0, 1.0, 0.47, 0.8)
-
-        -- POSICIONAR RELATIVO AL TARGETFRAME 
-        threatFrame:SetPoint('TOPLEFT', TargetFrame, 'TOPLEFT', 0, 5)
-
-        dragonFrame.TargetThreatGlow = threatFrame
-        dragonFrame.TargetThreatTexture = threatTexture
-
-        print("|cFF00FF00[DragonUI]|r Target Threat Glow created independently")
-    end
-
-    --  CREAR NUMERICAL THREAT 
-    if not dragonFrame.TargetNumericalThreat then
-        local numericalFrame = CreateFrame("Frame", "DragonUITargetNumericalThreat", UIParent) -- ✅ EN UIPARENT
-        numericalFrame:SetFrameStrata("MEDIUM")
-        numericalFrame:SetFrameLevel(999)
-        numericalFrame:SetSize(71, 13)
-
-        --  USAR MISMA TEXTURA QUE GROUPINDICATOR DEL PLAYER
-        local bgTexture = numericalFrame:CreateTexture(nil, "ARTWORK")
-        bgTexture:SetTexture('Interface\\Addons\\DragonUI\\Textures\\uiunitframe') -- Tu textura base
-        bgTexture:SetTexCoord(0.927734375, 0.9970703125, 0.3125, 0.337890625) -- Coordenadas GroupIndicator
-        bgTexture:SetAllPoints(numericalFrame)
-
-        local threatText = numericalFrame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-        threatText:SetPoint("CENTER", numericalFrame, "CENTER", 0, 0)
-        threatText:SetJustifyH("CENTER")
-        threatText:SetTextColor(1, 1, 1, 1)
-        threatText:SetFont("Fonts\\FRIZQT__.TTF", 10)
-        threatText:SetShadowOffset(1, -1)
-        threatText:SetShadowColor(0, 0, 0, 1)
-
-        -- ✅ POSICIONAR ARRIBA DEL TARGET
-        numericalFrame:SetPoint("BOTTOM", TargetFrame, "TOP", -45, -20)
-        numericalFrame:Hide()
-
-        numericalFrame.backgroundTexture = bgTexture
-        numericalFrame.text = threatText
-
-        dragonFrame.TargetNumericalThreat = numericalFrame
-
-        print("|cFF00FF00[DragonUI]|r Target Numerical Threat created independently")
-    end
-end
-
--- ✅ CALCULAR THREAT LEVEL 
-local function GetThreatLevel(unit)
-    if not UnitExists(unit) then
-        return 0
-    end
-
-    local status = UnitThreatSituation("player", unit)
-    if not status then
-        return 0
-    end
-
-    if status == 0 then
-        return 0 -- Sin threat
-    elseif status == 1 then
-        return 1 -- Bajo  
-    elseif status == 2 then
-        return 2 -- Medio
-    else
-        return 3
-    end -- Alto
-end
-
--- ✅ CONTROL DE THREAT GLOW (como player)
-local function SetThreatGlowVisible(visible, threatLevel)
-    threatGlowVisible = visible
-
-    local dragonFrame = _G["DragonUIUnitframeFrame"]
-    if not dragonFrame or not dragonFrame.TargetThreatGlow then
-        return
-    end
-
-    if visible and threatLevel > 0 then
-        local color = THREAT_COLORS[threatLevel]
-        dragonFrame.TargetThreatTexture:SetVertexColor(color[1], color[2], color[3], 0.8)
-        dragonFrame.TargetThreatGlow:Show()
-    else
-        dragonFrame.TargetThreatGlow:Hide()
-    end
-end
-
--- ✅ CONTROL DE NUMERICAL THREAT (como player)
-local function SetNumericalThreatVisible(visible, threatLevel, threatPct)
-    local dragonFrame = _G["DragonUIUnitframeFrame"]
-    if not dragonFrame or not dragonFrame.TargetNumericalThreat then
-        return
-    end
-
-    -- ✅ LÓGICA SIMPLE: Mostrar si hay porcentaje válido
-    if threatPct and threatPct > 0 then
-        local color = THREAT_COLORS[threatLevel] or {1, 1, 1} -- Blanco por defecto
-        dragonFrame.TargetNumericalThreat.text:SetText(math.floor(threatPct) .. "%")
-        dragonFrame.TargetNumericalThreat.text:SetTextColor(color[1], color[2], color[3], 1)
-        dragonFrame.TargetNumericalThreat:Show()
-    else
-        dragonFrame.TargetNumericalThreat:Hide()
-    end
-end
-
--- ✅ FUNCIÓN PRINCIPAL DE UPDATE (simplificada)
-local function UpdateThreatSystem()
-    if not UnitExists("target") then
-        SetThreatGlowVisible(false, 0)
-        SetNumericalThreatVisible(false, 0, 0)
-        return
-    end
-
-    local success, threatLevel = pcall(GetThreatLevel, "target")
+local function SafeCall(func, ...)
+    if not func then return end
+    local success, result = pcall(func, ...)
     if not success then
-        print("|cFFFF0000[DragonUI]|r Error getting threat level")
-        return
+        print("|cFFFF0000[DragonUI]|r Error:", result)
     end
+    return success, result
+end
 
-    local status, threatpct
-    success, status = pcall(UnitThreatSituation, "player", "target")
-    if success and status then
-        success, _, _, threatpct = pcall(UnitDetailedThreatSituation, "player", "target") -- ✅ PROTEGIDO
-        if not success then
-            threatpct = nil
-        end
-    end
-
-    SetThreatGlowVisible(status and status > 0, threatLevel)
-    SetNumericalThreatVisible(true, threatLevel, threatpct)
+local function IsInTransition()
+    return not UnitExists or not UnitExists("player")
 end
 
 -- ============================================================================
--- FRAME CREATION & CONFIGURATION
+-- BAR MANAGEMENT
 -- ============================================================================
 
-local function CreateTargetFrameTextures()
-    if isBuilt or not TargetFrame then
-        return
+local function UpdateBar(bar, barType, unit)
+    if not bar or not UnitExists(unit) then return end
+    
+    local texture = bar:GetStatusBarTexture()
+    if not texture then return end
+    
+    -- Set appropriate texture
+    local texturePath = TEXTURES.BAR_PREFIX .. (barType == "health" and "Health" or 
+                        (POWER_MAP[UnitPowerType(unit)] or "Mana"))
+    texture:SetTexture(texturePath)
+    texture:SetDrawLayer("BORDER", 1)
+    
+    -- Dynamic texture clipping
+    local min, max = bar:GetMinMaxValues()
+    local current = bar:GetValue()
+    if max > 0 and current then
+        texture:SetTexCoord(0, current/max, 0, 1)
+    else
+        texture:SetTexCoord(0, 1, 0, 1)
     end
-
-    HideBlizzardElements()
-
-    -- Create background texture
-    if not backgroundTexture then
-        backgroundTexture = TargetFrame:CreateTexture("DragonUI_TargetFrameBackground", "BACKGROUND", nil, 0)
-        backgroundTexture:SetTexture(TEXTURES.BACKGROUND)
-        backgroundTexture:SetPoint("TOPLEFT", TargetFrame, "TOPLEFT", 0, -8)
-    end
-
-    -- Create border texture
-    if not borderTexture then
-        borderTexture = TargetFrame:CreateTexture("DragonUI_TargetFrameBorder", "OVERLAY", nil, 5)
-        borderTexture:SetTexture(TEXTURES.BORDER)
-        borderTexture:SetPoint("TOPLEFT", backgroundTexture, "TOPLEFT", 0, 0)
-    end
-
-    -- ✅ CREAR targetExtra CON FRAMELEVEL FIJO
-    if not targetExtra then
-        targetExtra = TargetFrame:CreateTexture("DragonUI_TargetFrameExtra", "OVERLAY", nil, 7) -- ✅ NIVEL 7 (MAYOR QUE BORDER)
-        targetExtra:SetTexture("Interface\\AddOns\\DragonUI\\Textures\\uiunitframeboss2x")
-        targetExtra:Hide() -- Hide by default
-
-        -- ✅ FORZAR DRAW ORDER DESPUÉS DE CREACIÓN
-        targetExtra:SetDrawLayer("OVERLAY", 7)
-
-        print("|cFF00FF00[DragonUI]|r Target Elite decoration created with proper layering")
-    end
-
-    -- ✅ CORREGIDO: Posicionamiento igual que RetailUI
-    if TargetFrameNameBackground then
-        TargetFrameNameBackground:ClearAllPoints()
-
-        -- ✅ CLAVE: Usar el mismo posicionamiento que unitframe.lua
-        TargetFrameNameBackground:SetPoint('BOTTOMLEFT', TargetFrameHealthBar, 'TOPLEFT', -2, -5)
-
-        -- ✅ CLAVE: Tamaño fijo como en unitframe.lua
-        TargetFrameNameBackground:SetSize(135, 18)
-
-        -- ✅ Tu textura personalizada (mantener)
-        TargetFrameNameBackground:SetTexture(TEXTURES.NAME_BACKGROUND)
-
-        -- ✅ Configuración básica como unitframe.lua
-        TargetFrameNameBackground:SetDrawLayer("BORDER")
-        TargetFrameNameBackground:SetBlendMode("ADD")
-        TargetFrameNameBackground:SetAlpha(0.9)
-
-        -- ✅ IMPORTANTE: Mostrar inicialmente
-        TargetFrameNameBackground:Show()
-    end
-
-    -- ✅ CREAR THREAT SYSTEM DESPUÉS DE targetExtra
-    CreateTargetThreatSystem()
-
-    isBuilt = true
-    print("|cFF00FF00[DragonUI]|r Target textures created")
-end
-
--- ✅ MEJORADO: Update name background con color de selección de unidad
-local function UpdateNameBackground()
-    if not UnitExists("target") or not TargetFrameNameBackground then
-        return
-    end
-
-    -- ✅ SIMPLIFICADO: Como en unitframe.lua
-    local r, g, b = UnitSelectionColor("target")
-
-    if not r then
-        r, g, b = 0.5, 0.5, 0.5
-    end
-
-    TargetFrameNameBackground:SetVertexColor(r, g, b, 0.8)
-    TargetFrameNameBackground:Show()
-end
-
--- Hide name background when no target
-local function HideNameBackground()
-    if TargetFrameNameBackground then
-        TargetFrameNameBackground:Hide()
-    end
-end
-
-local function UpdateTargetClassification()
-    if not UnitExists("target") or not targetExtra then
-        if targetExtra then
-            targetExtra:Hide()
+    
+    -- Color handling
+    if barType == "health" then
+        local config = GetConfig()
+        if config.classcolor and UnitIsPlayer(unit) then
+            local _, class = UnitClass(unit)
+            local color = RAID_CLASS_COLORS[class]
+            if color then
+                texture:SetVertexColor(color.r, color.g, color.b)
+                return
+            end
         end
+    else
+        bar:SetStatusBarColor(1, 1, 1, 1)
+    end
+    texture:SetVertexColor(1, 1, 1)
+end
+
+-- ============================================================================
+-- THREAT SYSTEM
+-- ============================================================================
+
+local function GetThreatLevel(unit)
+    if not UnitExists(unit) then return 0 end
+    local status = UnitThreatSituation("player", unit)
+    return status and math.min(status, 3) or 0
+end
+
+local function UpdateThreat()
+    if not UnitExists("target") then
+        if frameElements.threatGlow then frameElements.threatGlow:Hide() end
+        if frameElements.threatNumeric then frameElements.threatNumeric:Hide() end
         return
     end
+    
+    local success, level = SafeCall(GetThreatLevel, "target")
+    if not success then return end
+    
+    local _, _, _, pct = UnitDetailedThreatSituation("player", "target")
+    
+    -- Update glow
+    if frameElements.threatGlow and level > 0 then
+        local color = THREAT_COLORS[level]
+        frameElements.threatGlow.texture:SetVertexColor(color[1], color[2], color[3], 0.8)
+        frameElements.threatGlow:Show()
+    elseif frameElements.threatGlow then
+        frameElements.threatGlow:Hide()
+    end
+    
+    -- Update numeric with proper bounds checking
+    if frameElements.threatNumeric and pct and pct > 0 then
+        local color = THREAT_COLORS[level] or {1, 1, 1}
+        -- ✅ Asegurar que el valor esté en rango 0-100
+        local displayPct = math.max(0, math.min(100, math.floor(pct)))
+        frameElements.threatNumeric.text:SetText(displayPct .. "%")
+        frameElements.threatNumeric.text:SetTextColor(color[1], color[2], color[3])
+        frameElements.threatNumeric:Show()
+    elseif frameElements.threatNumeric then
+        frameElements.threatNumeric:Hide()
+    end
+end
 
-    local classification = UnitClassification("target")
-    local isVehicle = UnitVehicleSeatCount and UnitVehicleSeatCount("target") > 0
-    local coords = nil
+-- ============================================================================
+-- CLASSIFICATION SYSTEM
+-- ============================================================================
 
-    -- ✅ DETECCIÓN DE VEHÍCULOS IGUAL QUE RETAILUI
-    if isVehicle then
-        -- Ajustar tamaños para vehículo (igual que RetailUI)
+local function UpdateClassification()
+    if not UnitExists("target") or not frameElements.elite then
+        if frameElements.elite then frameElements.elite:Hide() end
+        return
+    end
+    
+    -- Handle vehicles
+    if UnitVehicleSeatCount and UnitVehicleSeatCount("target") > 0 then
         TargetFrameHealthBar:SetSize(116, 20)
         TargetFrameManaBar:SetSize(123, 10)
-
-        -- Ajustar posiciones de texto
         if TargetFrameTextureFrameName then
-            TargetFrameTextureFrameName:ClearAllPoints()
             TargetFrameTextureFrameName:SetPoint("CENTER", -20, 26)
         end
         if TargetFrameTextureFrameLevelText then
-            TargetFrameTextureFrameLevelText:ClearAllPoints()
             TargetFrameTextureFrameLevelText:SetPoint("CENTER", -80, 26)
         end
-
-        targetExtra:Hide() -- Ocultar decoración de boss en vehículos
+        frameElements.elite:Hide()
         return
-    else
-        -- ✅ RESTAURAR TAMAÑOS NORMALES
-        TargetFrameHealthBar:SetSize(125, 20)
-        TargetFrameManaBar:SetSize(132, 9)
-
-        -- Restaurar posiciones normales
-        if TargetFrameTextureFrameName then
-            TargetFrameTextureFrameName:ClearAllPoints()
-            TargetFrameTextureFrameName:SetPoint('BOTTOM', TargetFrameHealthBar, 'TOP', 10, 1)
-        end
-        if TargetFrameTextureFrameLevelText then
-            TargetFrameTextureFrameLevelText:ClearAllPoints()
-            TargetFrameTextureFrameLevelText:SetPoint('BOTTOMRIGHT', TargetFrameHealthBar, 'TOPLEFT', 16, 1)
-        end
     end
-
-    -- ✅ RESTO DE CLASIFICACIONES (como ya tienes)
+    
+    -- Restore normal sizes
+    TargetFrameHealthBar:SetSize(125, 20)
+    TargetFrameManaBar:SetSize(132, 9)
+    if TargetFrameTextureFrameName then
+        TargetFrameTextureFrameName:SetPoint("BOTTOM", TargetFrameHealthBar, "TOP", 10, 1)
+    end
+    if TargetFrameTextureFrameLevelText then
+        TargetFrameTextureFrameLevelText:SetPoint("BOTTOMRIGHT", TargetFrameHealthBar, "TOPLEFT", 16, 1)
+    end
+    
+    -- Determine classification
+    local classification = UnitClassification("target")
+    local coords = nil
+    
     if classification == "worldboss" or classification == "elite" then
-        coords = BOSS_COORDINATES.elite
+        coords = BOSS_COORDS.elite
     elseif classification == "rareelite" then
-        coords = BOSS_COORDINATES.rareelite
+        coords = BOSS_COORDS.rareelite
     elseif classification == "rare" then
-        coords = BOSS_COORDINATES.rare
+        coords = BOSS_COORDS.rare
     else
         local name = UnitName("target")
         if name and addon.unitframe and addon.unitframe.famous and addon.unitframe.famous[name] then
-            coords = BOSS_COORDINATES.elite
-        else
-            targetExtra:Hide()
-            return
+            coords = BOSS_COORDS.elite
         end
     end
-
+    
     if coords then
-        -- ✅ FORZAR LAYERING AL MOSTRAR
-        targetExtra:SetDrawLayer("OVERLAY", 7)
-        targetExtra:Show()
-        targetExtra:SetSize(coords.size[1], coords.size[2])
-        targetExtra:SetTexCoord(coords.texCoord[1], coords.texCoord[2], coords.texCoord[3], coords.texCoord[4])
-        targetExtra:SetPoint('CENTER', TargetFramePortrait, 'CENTER', coords.offset[1], coords.offset[2])
+        frameElements.elite:SetTexCoord(coords[1], coords[2], coords[3], coords[4])
+        frameElements.elite:SetSize(coords[5], coords[6])
+        frameElements.elite:SetPoint("CENTER", TargetFramePortrait, "CENTER", coords[7], coords[8])
+        frameElements.elite:Show()
     else
-        targetExtra:Hide()
+        frameElements.elite:Hide()
     end
 end
 
--- Configure target frame elements positioning and hooks
-local function ConfigureTargetElements()
-    if not TargetFrame then
+-- ============================================================================
+-- NAME BACKGROUND
+-- ============================================================================
+
+local function UpdateNameBackground()
+    if not UnitExists("target") or not TargetFrameNameBackground then
+        if TargetFrameNameBackground then TargetFrameNameBackground:Hide() end
         return
     end
+    
+    local r, g, b = UnitSelectionColor("target")
+    TargetFrameNameBackground:SetVertexColor(r or 0.5, g or 0.5, b or 0.5, 0.8)
+    TargetFrameNameBackground:Show()
+end
 
-    -- Configure portrait
+-- ============================================================================
+-- FRAME CREATION
+-- ============================================================================
+
+local function CreateFrameElements()
+    if frameElements.background then return end
+    
+    -- Hide Blizzard elements
+    local toHide = {TargetFrameTextureFrameTexture, TargetFrameBackground, TargetFrameFlash,
+                    _G.TargetFrameNumericalThreat, TargetFrame.threatNumericIndicator,
+                    TargetFrame.threatIndicator}
+    for _, element in ipairs(toHide) do
+        if element then element:SetAlpha(0) end
+    end
+    
+    -- Background
+    frameElements.background = TargetFrame:CreateTexture("DragonUI_TargetBG", "BACKGROUND", nil, 0)
+    frameElements.background:SetTexture(TEXTURES.BACKGROUND)
+    frameElements.background:SetPoint("TOPLEFT", TargetFrame, "TOPLEFT", 0, -8)
+    
+    -- Border
+    frameElements.border = TargetFrame:CreateTexture("DragonUI_TargetBorder", "OVERLAY", nil, 5)
+    frameElements.border:SetTexture(TEXTURES.BORDER)
+    frameElements.border:SetPoint("TOPLEFT", frameElements.background, "TOPLEFT", 0, 0)
+    
+    -- Elite decoration
+    frameElements.elite = TargetFrame:CreateTexture("DragonUI_TargetElite", "OVERLAY", nil, 7)
+    frameElements.elite:SetTexture(TEXTURES.BOSS)
+    frameElements.elite:SetDrawLayer("OVERLAY", 7)
+    frameElements.elite:Hide()
+    
+    -- Name background setup
+    if TargetFrameNameBackground then
+        TargetFrameNameBackground:ClearAllPoints()
+        TargetFrameNameBackground:SetPoint("BOTTOMLEFT", TargetFrameHealthBar, "TOPLEFT", -2, -5)
+        TargetFrameNameBackground:SetSize(135, 18)
+        TargetFrameNameBackground:SetTexture(TEXTURES.NAME_BACKGROUND)
+        TargetFrameNameBackground:SetDrawLayer("BORDER")
+        TargetFrameNameBackground:SetBlendMode("ADD")
+        TargetFrameNameBackground:SetAlpha(0.9)
+    end
+    
+    -- Create threat system
+    local dragonFrame = _G["DragonUIUnitframeFrame"]
+    if dragonFrame and not dragonFrame.TargetThreatGlow then
+        -- Threat glow
+        local glow = CreateFrame("Frame", "DragonUITargetThreatGlow", UIParent)
+        glow:SetFrameStrata("MEDIUM")
+        glow:SetSize(209, 90)
+        glow:SetPoint("TOPLEFT", TargetFrame, "TOPLEFT", 0, 5)
+        glow:Hide()
+        
+        glow.texture = glow:CreateTexture(nil, "OVERLAY")
+        glow.texture:SetTexture(TEXTURES.THREAT)
+        glow.texture:SetTexCoord(0, 0.2061015625, 0.537109375, 0.712890625)
+        glow.texture:SetAllPoints()
+        glow.texture:SetBlendMode("ADD")
+        
+        frameElements.threatGlow = glow
+        dragonFrame.TargetThreatGlow = glow
+        
+        -- Threat numeric
+        local numeric = CreateFrame("Frame", "DragonUITargetNumericalThreat", UIParent)
+        numeric:SetFrameStrata("MEDIUM")
+        numeric:SetFrameLevel(999)
+        numeric:SetSize(71, 13)
+        numeric:SetPoint("BOTTOM", TargetFrame, "TOP", -45, -20)
+        numeric:Hide()
+        
+        local bg = numeric:CreateTexture(nil, "ARTWORK")
+        bg:SetTexture(TEXTURES.THREAT_NUMERIC)
+        bg:SetTexCoord(0.927734375, 0.9970703125, 0.3125, 0.337890625)
+        bg:SetAllPoints()
+        
+        numeric.text = numeric:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+        numeric.text:SetPoint("CENTER")
+        numeric.text:SetFont("Fonts\\FRIZQT__.TTF", 10)
+        numeric.text:SetShadowOffset(1, -1)
+        
+        frameElements.threatNumeric = numeric
+        dragonFrame.TargetNumericalThreat = numeric
+    end
+end
+
+local function ConfigureFrame()
+    if not TargetFrame then return end
+    
+    -- Portrait
     TargetFramePortrait:ClearAllPoints()
     TargetFramePortrait:SetSize(56, 56)
     TargetFramePortrait:SetPoint("TOPRIGHT", TargetFrame, "TOPRIGHT", -47, -15)
     TargetFramePortrait:SetDrawLayer("ARTWORK", 1)
-
-    -- Configure health bar
+    
+    -- Health bar
     TargetFrameHealthBar:ClearAllPoints()
     TargetFrameHealthBar:SetSize(125, 20)
     TargetFrameHealthBar:SetPoint("RIGHT", TargetFramePortrait, "LEFT", -1, 0)
-
-    local healthTexture = TargetFrameHealthBar:GetStatusBarTexture()
-    healthTexture:SetTexture(TEXTURES.BAR_PREFIX .. "Health")
-    healthTexture:SetDrawLayer("BORDER", 1)
-
-    -- Setup health bar hooks for persistent color and clipping
-    if not TargetFrameHealthBar.DragonUI_HealthBarHooked then
+    
+    if not TargetFrameHealthBar.DragonUI_Hooked then
         TargetFrameHealthBar:HookScript("OnValueChanged", function(self)
             if UnitExists("target") then
-                UpdateHealthBarColor(self, "target")
+                UpdateBar(self, "health", "target")
             end
         end)
-        TargetFrameHealthBar.DragonUI_HealthBarHooked = true
+        TargetFrameHealthBar:HookScript("OnShow", function(self)
+            UpdateBar(self, "health", "target")
+        end)
+        TargetFrameHealthBar:HookScript("OnUpdate", function(self)
+            UpdateBar(self, "health", "target")
+        end)
+        TargetFrameHealthBar.DragonUI_Hooked = true
     end
-
-    -- Configure power bar
+    
+    -- Power bar
     TargetFrameManaBar:ClearAllPoints()
     TargetFrameManaBar:SetSize(132, 9)
-    TargetFrameManaBar:SetPoint('RIGHT', TargetFramePortrait, 'LEFT', 6.5, -16.5)
-
-    -- Setup power bar hooks for persistent color and clipping
-    if not TargetFrameManaBar.DragonUI_PowerBarHooked then
+    TargetFrameManaBar:SetPoint("RIGHT", TargetFramePortrait, "LEFT", 6.5, -16.5)
+    
+    if not TargetFrameManaBar.DragonUI_Hooked then
         TargetFrameManaBar:HookScript("OnValueChanged", function(self)
             if UnitExists("target") then
-                UpdatePowerBarColor(self, "target")
+                UpdateBar(self, "power", "target")
             end
         end)
-        TargetFrameManaBar.DragonUI_PowerBarHooked = true
+        TargetFrameManaBar:HookScript("OnShow", function(self)
+            UpdateBar(self, "power", "target")
+        end)
+        
+        -- Harden power bar
+        local origSetTexture = TargetFrameManaBar.SetStatusBarTexture
+        if origSetTexture then
+            TargetFrameManaBar.SetStatusBarTexture = function(self, tex)
+                origSetTexture(self, tex)
+                UpdateBar(self, "power", "target")
+            end
+        end
+        
+        local origSetColor = TargetFrameManaBar.SetStatusBarColor
+        if origSetColor then
+            TargetFrameManaBar.SetStatusBarColor = function(self, r, g, b, a)
+                origSetColor(self, 1, 1, 1, a or 1)
+                local texture = self:GetStatusBarTexture()
+                if texture then texture:SetVertexColor(1, 1, 1) end
+            end
+        end
+        
+        TargetFrameManaBar.DragonUI_Hooked = true
     end
-
-    -- Configure name and level text positioning
+    
+    -- Text positioning
     if TargetFrameTextureFrameName then
         TargetFrameTextureFrameName:ClearAllPoints()
-        TargetFrameTextureFrameName:SetPoint('BOTTOM', TargetFrameHealthBar, 'TOP', 10, 1)
+        TargetFrameTextureFrameName:SetPoint("BOTTOM", TargetFrameHealthBar, "TOP", 10, 1)
     end
-
+    
     if TargetFrameTextureFrameLevelText then
         TargetFrameTextureFrameLevelText:ClearAllPoints()
-        TargetFrameTextureFrameLevelText:SetPoint('BOTTOMRIGHT', TargetFrameHealthBar, 'TOPLEFT', 16, 1)
+        TargetFrameTextureFrameLevelText:SetPoint("BOTTOMRIGHT", TargetFrameHealthBar, "TOPLEFT", 16, 1)
     end
-
-    -- Initialize bars with current target values
-    if UnitExists("target") then
-        TargetFrameHealthBar:SetMinMaxValues(0, UnitHealthMax("target"))
-        TargetFrameHealthBar:SetValue(UnitHealth("target"))
-        TargetFrameManaBar:SetMinMaxValues(0, UnitPowerMax("target"))
-        TargetFrameManaBar:SetValue(UnitPower("target"))
-    end
-
-    print("|cFF00FF00[DragonUI]|r Target elements configured with dynamic texture clipping")
 end
 
--- Position TargetFrame
-local function MoveTargetFrame(point, relativeTo, relativePoint, xOfs, yOfs)
+local function ApplyConfig()
+    local config = GetConfig()
+    
     TargetFrame:ClearAllPoints()
-
-    local originalClamped = TargetFrame:IsClampedToScreen()
     TargetFrame:SetClampedToScreen(false)
-
-    local finalPoint = point or "TOPLEFT"
-    local finalFrame = _G[relativeTo or "UIParent"] or UIParent
-    local finalRelativePoint = relativePoint or "TOPLEFT"
-    local dbDefaults = addon.defaults and addon.defaults.profile.unitframe.target or {}
-    local finalX = xOfs or (dbDefaults.x or 20)
-    local finalY = yOfs or (dbDefaults.y or -4)
-
-    TargetFrame:SetPoint(finalPoint, finalFrame, finalRelativePoint, finalX, finalY)
-    TargetFrame:SetClampedToScreen(originalClamped)
-
-    print("|cFF00FF00[DragonUI]|r TargetFrame positioned:", finalPoint, "to", finalRelativePoint, finalX, finalY)
-end
-
--- Apply configuration settings
-local function ApplyTargetConfig()
-    if not isBuilt then
-        return
-    end
-
-    local config = GetTargetConfig()
-    local x, y, valid = ValidateCoordinates(config.x, config.y)
-
-    if not valid then
-        -- Reset invalid coordinates usando database defaults
-        local dbDefaults = addon.defaults and addon.defaults.profile.unitframe.target or {}
-        for key, value in pairs(dbDefaults) do
-            addon:SetConfigValue("unitframe", "target", key, value)
-        end
-        config = dbDefaults
-        x, y = dbDefaults.x or 20, dbDefaults.y or -4
-    end
-
-    TargetFrame:SetScale(config.scale)
-
+    TargetFrame:SetScale(config.scale or 1)
+    
     if config.override then
-        MoveTargetFrame(config.anchor, "UIParent", config.anchorParent, x, y)
+        TargetFrame:SetPoint(config.anchor or "TOPLEFT", UIParent, 
+                            config.anchorParent or "TOPLEFT", config.x or 20, config.y or -4)
     else
-        local dbDefaults = addon.defaults and addon.defaults.profile.unitframe.target or {}
-        MoveTargetFrame("TOPLEFT", "UIParent", "TOPLEFT", dbDefaults.x or 20, dbDefaults.y or -4)
+        local defaults = addon.defaults and addon.defaults.profile.unitframe.target or {}
+        TargetFrame:SetPoint("TOPLEFT", UIParent, "TOPLEFT", 
+                            defaults.x or 20, defaults.y or -4)
     end
-
+    
     -- Setup text system
     local dragonFrame = _G["DragonUIUnitframeFrame"]
-    if dragonFrame and addon.TextSystem then
-        if not Module.textSystem then
-            Module.textSystem = addon.TextSystem.SetupFrameTextSystem("target", "target", dragonFrame,
-                TargetFrameHealthBar, TargetFrameManaBar, "TargetFrame")
-            print("|cFF00FF00[DragonUI]|r TargetFrame TextSystem configured")
-        end
-
-        if Module.textSystem then
-            Module.textSystem.update()
-        end
+    if dragonFrame and addon.TextSystem and not Module.textSystem then
+        Module.textSystem = addon.TextSystem.SetupFrameTextSystem(
+            "target", "target", dragonFrame,
+            TargetFrameHealthBar, TargetFrameManaBar, "TargetFrame"
+        )
     end
-
-    print("|cFF00FF00[DragonUI]|r Target config applied - Override:", config.override, "Scale:", config.scale)
-end
-
--- Main frame configuration function
-local function ChangeTargetFrame()
-    CreateTargetFrameTextures()
-    ConfigureTargetElements()
-    ApplyTargetConfig()
-
-    -- Initial color updates
-    if UnitExists("target") then
-        UpdateHealthBarColor(TargetFrameHealthBar, "target")
-        UpdatePowerBarColor(TargetFrameManaBar, "target")
-    end
-
-    print("|cFF00FF00[DragonUI]|r TargetFrame configured successfully")
-end
-
--- ============================================================================
--- PUBLIC API FUNCTIONS
--- ============================================================================
-
--- Reset frame to default configuration
-local function ResetTargetFrame()
-    -- Usar defaults de database en lugar de DEFAULTS locales
-    local dbDefaults = addon.defaults and addon.defaults.profile.unitframe.target or {}
-    for key, value in pairs(dbDefaults) do
-        addon:SetConfigValue("unitframe", "target", key, value)
-    end
-    ApplyTargetConfig()
-    print("|cFF00FF00[DragonUI]|r TargetFrame reset to defaults")
-end
-
--- Refresh frame configuration
-local function RefreshTargetFrame()
-    ChangeTargetFrame()
+    
     if Module.textSystem then
         Module.textSystem.update()
     end
-    print("|cFF00FF00[DragonUI]|r TargetFrame refreshed")
 end
 
 -- ============================================================================
--- HOOKS & HARDENING
+-- UPDATE FUNCTIONS
 -- ============================================================================
 
--- Harden power bar against Blizzard overrides
-local function HardenPowerBar()
-    if not TargetFrameManaBar or TargetFrameManaBar.DragonUI_Hardened then
-        return
-    end
-
-    -- Hook OnShow to reapply colors
-    TargetFrameManaBar:HookScript('OnShow', function(self)
-        UpdatePowerBarColor(self, "target")
-    end)
-
-    -- Override SetStatusBarTexture to maintain our texture
-    local originalSetTexture = TargetFrameManaBar.SetStatusBarTexture
-    if originalSetTexture then
-        TargetFrameManaBar.SetStatusBarTexture = function(self, texture)
-            local result = originalSetTexture(self, texture)
-            UpdatePowerBarColor(self, "target")
-            return result
-        end
-    end
-
-    -- Override SetMinMaxValues to maintain clipping
-    local originalSetMinMax = TargetFrameManaBar.SetMinMaxValues
-    if originalSetMinMax then
-        TargetFrameManaBar.SetMinMaxValues = function(self, min, max)
-            originalSetMinMax(self, min, max)
-            UpdatePowerBarColor(self, "target")
-        end
-    end
-
-    -- Override SetStatusBarColor to force white
-    local originalSetColor = TargetFrameManaBar.SetStatusBarColor
-    if originalSetColor then
-        TargetFrameManaBar.SetStatusBarColor = function(self, r, g, b, a)
-            originalSetColor(self, 1, 1, 1, a or 1)
-            local texture = self:GetStatusBarTexture()
-            if texture then
-                texture:SetVertexColor(1, 1, 1)
-            end
-        end
-    end
-
-    TargetFrameManaBar.DragonUI_Hardened = true
-end
-
--- ============================================================================
--- INITIALIZATION
--- ============================================================================
-
--- Initialize the TargetFrame module
-local function InitializeTargetFrame()
-    if Module.initialized then
-        return
-    end
-
-    -- Create auxiliary frame
-    Module.targetFrame = CreateUIFrame(192, 67, "TargetFrame")
-
-    -- Setup hooks and hardening
-
-    HardenPowerBar()
-
-    -- Setup persistent color hooks for health bar
-    if TargetFrameHealthBar and TargetFrameHealthBar.HookScript then
-        TargetFrameHealthBar:HookScript('OnShow', function(self)
-            UpdateHealthBarColor(self, "target")
-        end)
-        TargetFrameHealthBar:HookScript('OnUpdate', function(self)
-            UpdateHealthBarColor(self, "target")
-        end)
-    end
-
-    Module.initialized = true
-    print("|cFF00FF00[DragonUI]|r TargetFrame module initialized")
-end
-
--- ============================================================================
--- EVENT SYSTEM
--- ============================================================================
-
--- Combined update function for efficiency
-local function UpdateBothBars()
-    if UnitExists("target") then
-        UpdateHealthBarColor(TargetFrameHealthBar, "target")
-        UpdatePowerBarColor(TargetFrameManaBar, "target")
+local function UpdateAll()
+    if not UnitExists("target") then
         UpdateNameBackground()
-        UpdateTargetClassification()
-    else
-        HideNameBackground()
-        if targetExtra then
-            targetExtra:Hide()
-        end
-    end
-end
-
--- Setup event handling system
-local function SetupTargetEvents()
-    if Module.eventsFrame then
+        if frameElements.elite then frameElements.elite:Hide() end
         return
     end
+    
+    UpdateBar(TargetFrameHealthBar, "health", "target")
+    UpdateBar(TargetFrameManaBar, "power", "target")
+    UpdateNameBackground()
+    UpdateClassification()
+end
 
+-- ============================================================================
+-- EVENT HANDLING
+-- ============================================================================
+
+local function InitializeEvents()
+    if Module.eventsFrame then return end
+    
     local f = CreateFrame("Frame")
     Module.eventsFrame = f
-
-    -- Event handlers
+    
     local handlers = {
-        ADDON_LOADED = function(addonName)
-            if addonName == "DragonUI" then
-                InitializeTargetFrame()
+        ADDON_LOADED = function(name)
+            if name == "DragonUI" and not Module.initialized then
+                Module.targetFrame = CreateFrame("Frame", "DragonUI_TargetFrame_Anchor", UIParent)
+                Module.targetFrame:SetSize(192, 67)
+                Module.targetFrame:SetPoint("TOPLEFT", UIParent, "TOPLEFT", 250, -50)
+                Module.initialized = true
             end
         end,
-
+        
         PLAYER_ENTERING_WORLD = function()
-            ChangeTargetFrame()
-            print("|cFF00FF00[DragonUI]|r TargetFrame fully configured")
+            CreateFrameElements()
+            ConfigureFrame()
+            ApplyConfig()
+            if UnitExists("target") then UpdateAll() end
         end,
-
+        
         PLAYER_TARGET_CHANGED = function()
-            -- ✅ PROTECCIÓN CRÍTICA
-            if not UnitExists or not UnitExists("player") then
-                return
-            end
-
-            local success, error = pcall(function()
-                UpdateBothBars()
-                UpdateThreatSystem()
-                UpdateTargetClassification()
-                UpdateNameBackground()
-
-                if UnitExists("target") then
-                    UpdateNameBackground()
-                else
-                    HideNameBackground()
-                    if targetExtra then
-                        targetExtra:Hide()
-                    end
-                end
+            if IsInTransition() then return end
+            SafeCall(function()
+                UpdateAll()
+                UpdateThreat()
             end)
-            if not success then
-                print("|cFFFF0000[DragonUI]|r Error in target changed:", error)
-            end
         end,
-
+        
         UNIT_CLASSIFICATION_CHANGED = function(unit)
             if unit == "target" then
-                UpdateTargetClassification()
+                UpdateClassification()
                 UpdateNameBackground()
             end
         end,
-
+        
         UNIT_THREAT_SITUATION_UPDATE = function(unit)
-            if unit == "target" then
-                -- ✅ PROTECCIÓN PARA THREAT
-                if not UnitExists or not UnitExists("player") then
-                    return
-                end
-
-                local success, error = pcall(UpdateThreatSystem)
-                if not success then
-                    print("|cFFFF0000[DragonUI]|r Error in threat update:", error)
-                end
+            if unit == "target" and not IsInTransition() then
+                SafeCall(UpdateThreat)
             end
         end,
-
+        
         UNIT_THREAT_LIST_UPDATE = function(unit)
-            if unit == "target" then
-                -- ✅ PROTECCIÓN PARA THREAT
-                if not UnitExists or not UnitExists("player") then
-                    return
-                end
-
-                local success, error = pcall(UpdateThreatSystem)
-                if not success then
-                    print("|cFFFF0000[DragonUI]|r Error in threat list update:", error)
-                end
+            if unit == "target" and not IsInTransition() then
+                SafeCall(UpdateThreat)
             end
         end,
-
+        
         PLAYER_REGEN_DISABLED = function()
-            -- ✅ PROTECCIÓN: Verificar que las APIs estén disponibles
-            if not UnitExists or not UnitExists("player") then
-                return -- APIs no disponibles durante transición
-            end
-
-            if UnitExists("target") then
-                local success, error = pcall(UpdateBothBars)
-                if not success then
-                    print("|cFFFF0000[DragonUI]|r Error in combat enter:", error)
-                end
+            if not IsInTransition() and UnitExists("target") then
+                SafeCall(UpdateAll)
             end
         end,
-
+        
         PLAYER_REGEN_ENABLED = function()
-            -- ✅ PROTECCIÓN: Verificar que las APIs estén disponibles  
-            if not UnitExists or not UnitExists("player") then
-                return -- APIs no disponibles durante transición
-            end
-
-            if UnitExists("target") then
-                local success, error = pcall(UpdateBothBars)
-                if not success then
-                    print("|cFFFF0000[DragonUI]|r Error in combat exit:", error)
-                end
+            if not IsInTransition() and UnitExists("target") then
+                SafeCall(UpdateAll)
             end
         end,
-
-        -- Eventos para actualizar el fondo del nombre
+        
         UNIT_FACTION = function(unit)
-            if unit == "target" then
-                UpdateNameBackground()
-            end
+            if unit == "target" then UpdateNameBackground() end
         end
     }
-
-    -- Register all events
+    
+    -- Register events
     for event in pairs(handlers) do
         f:RegisterEvent(event)
     end
-
-    for event in pairs(HEALTH_EVENTS) do
-        f:RegisterEvent(event)
+    
+    for _, category in pairs(EVENT_CATEGORIES) do
+        for _, event in ipairs(category) do
+            f:RegisterEvent(event)
+        end
     end
-
-    for event in pairs(POWER_EVENTS) do
-        f:RegisterEvent(event)
-    end
-
-    for event in pairs(BOTH_EVENTS) do
-        f:RegisterEvent(event)
-    end
-
-    f:RegisterEvent("UNIT_THREAT_SITUATION_UPDATE")
-    f:RegisterEvent("UNIT_THREAT_LIST_UPDATE")
+    
     f:RegisterEvent("UNIT_CLASSIFICATION_CHANGED")
-
+    
     -- Event dispatcher
     f:SetScript("OnEvent", function(_, event, ...)
         local handler = handlers[event]
@@ -1007,51 +557,73 @@ local function SetupTargetEvents()
             handler(...)
             return
         end
-
+        
         local unit = ...
-        if unit ~= "target" then
-            return
+        if unit ~= "target" then return end
+        
+        -- Check event categories
+        for _, evt in ipairs(EVENT_CATEGORIES.health) do
+            if event == evt then
+                UpdateBar(TargetFrameHealthBar, "health", "target")
+                return
+            end
         end
-
-        if BOTH_EVENTS[event] then
-            UpdateBothBars()
-        elseif HEALTH_EVENTS[event] then
-            UpdateHealthBarColor(TargetFrameHealthBar, "target")
-        elseif POWER_EVENTS[event] then
-            UpdatePowerBarColor(TargetFrameManaBar, "target")
+        
+        for _, evt in ipairs(EVENT_CATEGORIES.power) do
+            if event == evt then
+                UpdateBar(TargetFrameManaBar, "power", "target")
+                return
+            end
+        end
+        
+        for _, evt in ipairs(EVENT_CATEGORIES.both) do
+            if event == evt then
+                UpdateAll()
+                return
+            end
         end
     end)
-
-    print("|cFF00FF00[DragonUI Target]|r Optimized event system configured")
 end
 
 -- ============================================================================
--- MODULE STARTUP
+-- PUBLIC API
 -- ============================================================================
 
--- Initialize event system
-SetupTargetEvents()
+local function RefreshFrame()
+    CreateFrameElements()
+    ConfigureFrame()
+    ApplyConfig()
+    if Module.textSystem then Module.textSystem.update() end
+end
 
--- Expose public API
+local function ResetFrame()
+    local defaults = addon.defaults and addon.defaults.profile.unitframe.target or {}
+    for key, value in pairs(defaults) do
+        addon:SetConfigValue("unitframe", "target", key, value)
+    end
+    ApplyConfig()
+end
+
+-- Initialize
+InitializeEvents()
+
+-- Export API
 addon.TargetFrame = {
-    Refresh = RefreshTargetFrame,
-    RefreshTargetFrame = RefreshTargetFrame,
-    Reset = ResetTargetFrame,
-    anchor = function()
-        return Module.targetFrame
-    end,
-    ChangeTargetFrame = ChangeTargetFrame,
-    CreateTargetFrameTextures = CreateTargetFrameTextures
+    Refresh = RefreshFrame,
+    RefreshTargetFrame = RefreshFrame,
+    Reset = ResetFrame,
+    anchor = function() return Module.targetFrame end,
+    ChangeTargetFrame = RefreshFrame,
+    CreateTargetFrameTextures = CreateFrameElements
 }
 
 -- Legacy compatibility
 addon.unitframe = addon.unitframe or {}
-addon.unitframe.ChangeTargetFrame = ChangeTargetFrame
-addon.unitframe.ReApplyTargetFrame = RefreshTargetFrame
+addon.unitframe.ChangeTargetFrame = RefreshFrame
+addon.unitframe.ReApplyTargetFrame = RefreshFrame
 
--- Direct API access
 function addon:RefreshTargetFrame()
-    RefreshTargetFrame()
+    RefreshFrame()
 end
 
-print("|cFF00FF00[DragonUI]|r Target.lua LOADED")
+print("|cFF00FF00[DragonUI]|r Target module loaded and optimized")
