@@ -172,7 +172,7 @@ local function UpdateThreat()
     -- Update numeric with proper bounds checking
     if frameElements.threatNumeric and pct and pct > 0 then
         local color = THREAT_COLORS[level] or {1, 1, 1}
-        -- ✅ Asegurar que el valor esté en rango 0-100
+        -- Asegurar que el valor esté en rango 0-100
         local displayPct = math.max(0, math.min(100, math.floor(pct)))
         frameElements.threatNumeric.text:SetText(displayPct .. "%")
         frameElements.threatNumeric.text:SetTextColor(color[1], color[2], color[3])
