@@ -343,6 +343,9 @@ end
 
 -- Animate Combat Flash pulse effect
 local function AnimateCombatFlashPulse(elapsed)
+    if not COMBAT_PULSE_SETTINGS.enabled then
+        return
+    end
     local dragonFrame = _G["DragonUIUnitframeFrame"]
     if not dragonFrame then
         return
@@ -406,16 +409,23 @@ end
 
 -- Frame update handler for animations
 local function PlayerFrame_OnUpdate(self, elapsed)
-    -- Rest icon animation
-    if PlayerRestIcon and PlayerRestIcon:IsVisible() then
-        AnimateTexCoords(PlayerRestIcon, 512, 512, 64, 64, 42, elapsed, 0.09)
+    -- ✅ PROTEGER CON pcall PARA EVITAR CRASHES
+    local success, err = pcall(function()
+        -- Rest icon animation
+        if PlayerRestIcon and PlayerRestIcon:IsVisible() then
+            AnimateTexCoords(PlayerRestIcon, 512, 512, 64, 64, 42, elapsed, 0.09)
+        end
+
+        -- Combat Flash pulse animation
+        AnimateCombatFlashPulse(elapsed)
+
+        -- Elite Status pulse animation
+        AnimateEliteStatusPulse(elapsed)
+    end)
+    
+    if not success then
+        print("|cFFFF0000[DragonUI]|r Error in PlayerFrame_OnUpdate:", err)
     end
-
-    -- Combat Flash pulse animation
-    AnimateCombatFlashPulse(elapsed)
-
-    --  Elite Status pulse animation
-    AnimateEliteStatusPulse(elapsed)
 end
 
 -- Override Blizzard status update to prevent glow interference

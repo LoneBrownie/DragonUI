@@ -98,6 +98,7 @@ local BOTH_EVENTS = {
 local isBuilt = false
 local backgroundTexture, borderTexture
 
+
 -- ============================================================================
 -- UTILITY FUNCTIONS
 -- ============================================================================
@@ -282,11 +283,16 @@ local function CreateTargetThreatSystem()
         return
     end
 
+    -- ✅ VERIFICAR SI YA EXISTEN ANTES DE CREAR
+    if dragonFrame.TargetThreatGlow and dragonFrame.TargetNumericalThreat then
+        return  -- Ya creados, salir
+    end
+
     --  CREAR THREAT GLOW 
     if not dragonFrame.TargetThreatGlow then
         local threatFrame = CreateFrame("Frame", "DragonUITargetThreatGlow", UIParent) -- ✅ EN UIPARENT
-        threatFrame:SetFrameStrata("LOW")
-        threatFrame:SetFrameLevel(998)
+        threatFrame:SetFrameStrata("MEDIUM")
+        threatFrame:SetFrameLevel(0)
         threatFrame:SetSize(THREAT_GLOW_COORDINATES.size[1], THREAT_GLOW_COORDINATES.size[2])
         threatFrame:Hide()
 
@@ -295,10 +301,10 @@ local function CreateTargetThreatSystem()
         threatTexture:SetTexCoord(unpack(THREAT_GLOW_COORDINATES.texCoord))
         threatTexture:SetAllPoints(threatFrame)
         threatTexture:SetBlendMode("ADD")
-        threatTexture:SetVertexColor(1.0, 1.0, 0.47, 0.8) -- Amarillo por defecto
+        threatTexture:SetVertexColor(1.0, 1.0, 0.47, 0.8) 
 
         -- POSICIONAR RELATIVO AL TARGETFRAME 
-        threatFrame:SetPoint('TOPLEFT', TargetFrame, 'TOPLEFT', 0, 4)
+        threatFrame:SetPoint('TOPLEFT', TargetFrame, 'TOPLEFT', 0, 5)
 
         dragonFrame.TargetThreatGlow = threatFrame
         dragonFrame.TargetThreatTexture = threatTexture
@@ -406,22 +412,30 @@ local function UpdateThreatSystem()
         return
     end
 
-    local threatLevel = GetThreatLevel("target")
-    local status = UnitThreatSituation("player", "target")
-    local _, _, threatpct = UnitDetailedThreatSituation("player", "target")
-
+    local success, threatLevel = pcall(GetThreatLevel, "target")
+    if not success then
+        print("|cFFFF0000[DragonUI]|r Error getting threat level")
+        return
+    end
     
-
-    -- ✅ GLOW: Solo si hay threat real (status > 0)
+    local status, threatpct
+    success, status = pcall(UnitThreatSituation, "player", "target")
+    if success and status then
+        success, _, _, threatpct = pcall(UnitDetailedThreatSituation, "player", "target")  -- ✅ PROTEGIDO
+        if not success then
+            threatpct = nil
+        end
+    end
+    
     SetThreatGlowVisible(status and status > 0, threatLevel)
-
-    -- ✅ NUMERICAL: SIEMPRE que haya porcentaje 
     SetNumericalThreatVisible(true, threatLevel, threatpct)
 end
 
 -- ============================================================================
 -- FRAME CREATION & CONFIGURATION
 -- ============================================================================
+
+
 
 local function CreateTargetFrameTextures()
     if isBuilt or not TargetFrame then
@@ -573,6 +587,8 @@ local function UpdateTargetClassification()
     end
 
     if coords then
+        -- ✅ FORZAR LAYERING AL MOSTRAR
+        targetExtra:SetDrawLayer("OVERLAY", 7)
         targetExtra:Show()
         targetExtra:SetSize(coords.size[1], coords.size[2])
         targetExtra:SetTexCoord(coords.texCoord[1], coords.texCoord[2], coords.texCoord[3], coords.texCoord[4])
@@ -804,10 +820,6 @@ local function HardenPowerBar()
 end
 
 -- ============================================================================
--- SISTEMA DE AURAS COMPLETO 
--- ============================================================================
-
--- ============================================================================
 -- INITIALIZATION
 -- ============================================================================
 
@@ -951,9 +963,6 @@ local function SetupTargetEvents()
         f:RegisterEvent(event)
     end
 
-    for event in pairs(handlers) do
-        f:RegisterEvent(event)
-    end
 
     f:RegisterEvent("UNIT_THREAT_SITUATION_UPDATE")
     f:RegisterEvent("UNIT_THREAT_LIST_UPDATE")
