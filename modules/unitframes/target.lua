@@ -16,7 +16,6 @@ Module.textSystem = nil
 Module.initialized = false
 Module.eventsFrame = nil
 
-
 -- Cache frequently accessed globals for performance
 local TargetFrame = _G.TargetFrame
 local TargetFrameHealthBar = _G.TargetFrameHealthBar
@@ -98,7 +97,6 @@ local BOTH_EVENTS = {
 local isBuilt = false
 local backgroundTexture, borderTexture
 
-
 -- ============================================================================
 -- UTILITY FUNCTIONS
 -- ============================================================================
@@ -147,15 +145,10 @@ end
 
 -- Hide unwanted Blizzard target frame elements
 local function HideBlizzardElements()
-    local elementsToHide = {
-        TargetFrameTextureFrameTexture, 
-        TargetFrameBackground, 
-        TargetFrameFlash,
+    local elementsToHide = {TargetFrameTextureFrameTexture, TargetFrameBackground, TargetFrameFlash,
 
-        _G.TargetFrameNumericalThreat,
-        TargetFrame.threatNumericIndicator,
-        TargetFrame.threatIndicator
-    }
+                            _G.TargetFrameNumericalThreat, TargetFrame.threatNumericIndicator,
+                            TargetFrame.threatIndicator}
 
     for _, element in ipairs(elementsToHide) do
         if element then
@@ -267,7 +260,7 @@ local THREAT_COLORS = {
 
 -- ✅ COORDENADAS PARA THREAT GLOW (mismas que player elite decoration pero sin invertir)
 local THREAT_GLOW_COORDINATES = {
-    texCoord = {0, 0.2061015625, 0.537109375, 0.712890625}, 
+    texCoord = {0, 0.2061015625, 0.537109375, 0.712890625},
     size = {209, 90},
     texture = 'Interface\\Addons\\DragonUI\\Textures\\UI\\UnitFrame'
 }
@@ -285,7 +278,7 @@ local function CreateTargetThreatSystem()
 
     -- ✅ VERIFICAR SI YA EXISTEN ANTES DE CREAR
     if dragonFrame.TargetThreatGlow and dragonFrame.TargetNumericalThreat then
-        return  -- Ya creados, salir
+        return -- Ya creados, salir
     end
 
     --  CREAR THREAT GLOW 
@@ -301,7 +294,7 @@ local function CreateTargetThreatSystem()
         threatTexture:SetTexCoord(unpack(THREAT_GLOW_COORDINATES.texCoord))
         threatTexture:SetAllPoints(threatFrame)
         threatTexture:SetBlendMode("ADD")
-        threatTexture:SetVertexColor(1.0, 1.0, 0.47, 0.8) 
+        threatTexture:SetVertexColor(1.0, 1.0, 0.47, 0.8)
 
         -- POSICIONAR RELATIVO AL TARGETFRAME 
         threatFrame:SetPoint('TOPLEFT', TargetFrame, 'TOPLEFT', 0, 5)
@@ -417,16 +410,16 @@ local function UpdateThreatSystem()
         print("|cFFFF0000[DragonUI]|r Error getting threat level")
         return
     end
-    
+
     local status, threatpct
     success, status = pcall(UnitThreatSituation, "player", "target")
     if success and status then
-        success, _, _, threatpct = pcall(UnitDetailedThreatSituation, "player", "target")  -- ✅ PROTEGIDO
+        success, _, _, threatpct = pcall(UnitDetailedThreatSituation, "player", "target") -- ✅ PROTEGIDO
         if not success then
             threatpct = nil
         end
     end
-    
+
     SetThreatGlowVisible(status and status > 0, threatLevel)
     SetNumericalThreatVisible(true, threatLevel, threatpct)
 end
@@ -434,8 +427,6 @@ end
 -- ============================================================================
 -- FRAME CREATION & CONFIGURATION
 -- ============================================================================
-
-
 
 local function CreateTargetFrameTextures()
     if isBuilt or not TargetFrame then
@@ -463,10 +454,10 @@ local function CreateTargetFrameTextures()
         targetExtra = TargetFrame:CreateTexture("DragonUI_TargetFrameExtra", "OVERLAY", nil, 7) -- ✅ NIVEL 7 (MAYOR QUE BORDER)
         targetExtra:SetTexture("Interface\\AddOns\\DragonUI\\Textures\\uiunitframeboss2x")
         targetExtra:Hide() -- Hide by default
-        
+
         -- ✅ FORZAR DRAW ORDER DESPUÉS DE CREACIÓN
         targetExtra:SetDrawLayer("OVERLAY", 7)
-        
+
         print("|cFF00FF00[DragonUI]|r Target Elite decoration created with proper layering")
     end
 
@@ -835,7 +826,6 @@ local function InitializeTargetFrame()
     -- Setup hooks and hardening
 
     HardenPowerBar()
-    
 
     -- Setup persistent color hooks for health bar
     if TargetFrameHealthBar and TargetFrameHealthBar.HookScript then
@@ -893,18 +883,28 @@ local function SetupTargetEvents()
         end,
 
         PLAYER_TARGET_CHANGED = function()
-            UpdateBothBars()
-            UpdateThreatSystem()
-            UpdateTargetClassification()
-            UpdateNameBackground()
+            -- ✅ PROTECCIÓN CRÍTICA
+            if not UnitExists or not UnitExists("player") then
+                return
+            end
 
-            if UnitExists("target") then
+            local success, error = pcall(function()
+                UpdateBothBars()
+                UpdateThreatSystem()
+                UpdateTargetClassification()
                 UpdateNameBackground()
-            else
-                HideNameBackground()
-                if targetExtra then
-                    targetExtra:Hide()
+
+                if UnitExists("target") then
+                    UpdateNameBackground()
+                else
+                    HideNameBackground()
+                    if targetExtra then
+                        targetExtra:Hide()
+                    end
                 end
+            end)
+            if not success then
+                print("|cFFFF0000[DragonUI]|r Error in target changed:", error)
             end
         end,
 
@@ -917,43 +917,59 @@ local function SetupTargetEvents()
 
         UNIT_THREAT_SITUATION_UPDATE = function(unit)
             if unit == "target" then
-                UpdateThreatSystem()
+                -- ✅ PROTECCIÓN PARA THREAT
+                if not UnitExists or not UnitExists("player") then
+                    return
+                end
+
+                local success, error = pcall(UpdateThreatSystem)
+                if not success then
+                    print("|cFFFF0000[DragonUI]|r Error in threat update:", error)
+                end
             end
         end,
 
         UNIT_THREAT_LIST_UPDATE = function(unit)
             if unit == "target" then
-                UpdateThreatSystem()
+                -- ✅ PROTECCIÓN PARA THREAT
+                if not UnitExists or not UnitExists("player") then
+                    return
+                end
+
+                local success, error = pcall(UpdateThreatSystem)
+                if not success then
+                    print("|cFFFF0000[DragonUI]|r Error in threat list update:", error)
+                end
             end
         end,
 
         PLAYER_REGEN_DISABLED = function()
-    -- ✅ PROTECCIÓN: Verificar que las APIs estén disponibles
-    if not UnitExists or not UnitExists("player") then
-        return -- APIs no disponibles durante transición
-    end
-    
-    if UnitExists("target") then
-        local success, error = pcall(UpdateBothBars)
-        if not success then
-            print("|cFFFF0000[DragonUI]|r Error in combat enter:", error)
-        end
-    end
-end,
+            -- ✅ PROTECCIÓN: Verificar que las APIs estén disponibles
+            if not UnitExists or not UnitExists("player") then
+                return -- APIs no disponibles durante transición
+            end
 
-PLAYER_REGEN_ENABLED = function()
-    -- ✅ PROTECCIÓN: Verificar que las APIs estén disponibles  
-    if not UnitExists or not UnitExists("player") then
-        return -- APIs no disponibles durante transición
-    end
-    
-    if UnitExists("target") then
-        local success, error = pcall(UpdateBothBars)
-        if not success then
-            print("|cFFFF0000[DragonUI]|r Error in combat exit:", error)
-        end
-    end
-end,
+            if UnitExists("target") then
+                local success, error = pcall(UpdateBothBars)
+                if not success then
+                    print("|cFFFF0000[DragonUI]|r Error in combat enter:", error)
+                end
+            end
+        end,
+
+        PLAYER_REGEN_ENABLED = function()
+            -- ✅ PROTECCIÓN: Verificar que las APIs estén disponibles  
+            if not UnitExists or not UnitExists("player") then
+                return -- APIs no disponibles durante transición
+            end
+
+            if UnitExists("target") then
+                local success, error = pcall(UpdateBothBars)
+                if not success then
+                    print("|cFFFF0000[DragonUI]|r Error in combat exit:", error)
+                end
+            end
+        end,
 
         -- Eventos para actualizar el fondo del nombre
         UNIT_FACTION = function(unit)
@@ -979,7 +995,6 @@ end,
     for event in pairs(BOTH_EVENTS) do
         f:RegisterEvent(event)
     end
-
 
     f:RegisterEvent("UNIT_THREAT_SITUATION_UPDATE")
     f:RegisterEvent("UNIT_THREAT_LIST_UPDATE")
