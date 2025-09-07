@@ -928,15 +928,32 @@ local function SetupTargetEvents()
         end,
 
         PLAYER_REGEN_DISABLED = function()
-            if UnitExists("target") then
-                UpdateBothBars()
-            end
-        end,
-        PLAYER_REGEN_ENABLED = function()
-            if UnitExists("target") then
-                UpdateBothBars()
-            end
-        end,
+    -- ✅ PROTECCIÓN: Verificar que las APIs estén disponibles
+    if not UnitExists or not UnitExists("player") then
+        return -- APIs no disponibles durante transición
+    end
+    
+    if UnitExists("target") then
+        local success, error = pcall(UpdateBothBars)
+        if not success then
+            print("|cFFFF0000[DragonUI]|r Error in combat enter:", error)
+        end
+    end
+end,
+
+PLAYER_REGEN_ENABLED = function()
+    -- ✅ PROTECCIÓN: Verificar que las APIs estén disponibles  
+    if not UnitExists or not UnitExists("player") then
+        return -- APIs no disponibles durante transición
+    end
+    
+    if UnitExists("target") then
+        local success, error = pcall(UpdateBothBars)
+        if not success then
+            print("|cFFFF0000[DragonUI]|r Error in combat exit:", error)
+        end
+    end
+end,
 
         -- Eventos para actualizar el fondo del nombre
         UNIT_FACTION = function(unit)
