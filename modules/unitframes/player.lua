@@ -906,8 +906,8 @@ local function CreatePlayerFrameTextures()
         deco:SetDrawLayer('OVERLAY', 5)
         deco:SetTexture(TEXTURES.BASE)
         deco:SetTexCoord(0.953125, 0.9755859375, 0.259765625, 0.3046875)
-        deco:SetPoint('CENTER', PlayerPortrait, 'CENTER', 15, -17)
-        deco:SetSize(23, 23)
+        deco:SetPoint('CENTER', PlayerPortrait, 'CENTER', 16, -16)
+        deco:SetSize(22, 22)
         dragonFrame.PlayerFrameDeco = deco
     end
 
