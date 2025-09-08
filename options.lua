@@ -2511,7 +2511,7 @@ function addon:CreateOptionsTable()
                                 values = {
                                     none = "None",
                                     elite = "Elite Dragon (Golden)",
-                                    -- rare = "Rare Dragon (Silver)" Disabled, it have visual glitch.
+                                    rareelite = "RareElite Dragon (Winged)"
                                 },
                                 get = function()
                                     return addon.db.profile.unitframe.player.dragon_decoration or "none"

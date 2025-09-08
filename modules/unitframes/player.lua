@@ -70,11 +70,11 @@ local DRAGON_COORDINATES = {
         size = {80, 79},
         offset = {4, 1}
     },
-    rare = {
-        texCoord = {0.31640625, 0.00390625, 0.64453125, 0.953125},
-        size = {80, 79},
-        offset = {4, 1}
-    }
+    rareelite = {
+    texCoord = {0.388671875, 0.001953125, 0.001953125, 0.31835937},
+    size = {99, 81},  -- 97*1.02 ≈ 99, 79*1.02 ≈ 81
+    offset = {23, 2}
+}
 }
 
 -- Combat Flash animation settings *NO Elite activated
@@ -230,7 +230,7 @@ end
 local function IsEliteModeActive()
     local config = GetPlayerConfig()
     local decorationType = config.dragon_decoration or "none"
-    return decorationType == "elite" or decorationType == "rare"
+    return decorationType == "elite" or decorationType == "rareelite"
 end
 
 -- Toggle glow visibility based on elite mode
@@ -549,7 +549,7 @@ local function UpdateLeaderIconPosition()
 
     local config = GetPlayerConfig()
     local decorationType = config.dragon_decoration or "none"
-    local isEliteMode = decorationType == "elite" or decorationType == "rare"
+    local isEliteMode = decorationType == "elite" or decorationType == "rareelite"
 
     PlayerLeaderIcon:ClearAllPoints()
 
@@ -570,7 +570,7 @@ local function UpdateMasterIconPosition()
 
     local config = GetPlayerConfig()
     local decorationType = config.dragon_decoration or "none"
-    local isEliteMode = decorationType == "elite" or decorationType == "rare"
+    local isEliteMode = decorationType == "elite" or decorationType == "rareelite"
 
     PlayerMasterIcon:ClearAllPoints()
 
@@ -592,7 +592,7 @@ local function UpdatePVPIconPosition()
 
     local config = GetPlayerConfig()
     local decorationType = config.dragon_decoration or "none"
-    local isEliteMode = decorationType == "elite" or decorationType == "rare"
+    local isEliteMode = decorationType == "elite" or decorationType == "rareelite"
 
     if isEliteMode then
         local iconContainer = _G["DragonUIUnitframeFrame"].EliteIconContainer
