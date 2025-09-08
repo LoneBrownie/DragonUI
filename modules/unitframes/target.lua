@@ -9,6 +9,7 @@ local Module = {
     targetFrame = nil,
     textSystem = nil,
     initialized = false,
+    configured = false,
     eventsFrame = nil
 }
 
@@ -55,15 +56,6 @@ local THREAT_COLORS = {
     {1.0, 0.0, 0.0}   -- High
 }
 
--- Event categories
-local EVENT_CATEGORIES = {
-    health = {"UNIT_HEALTH", "UNIT_MAXHEALTH", "UNIT_HEALTH_FREQUENT"},
-    power = {"UNIT_MANA", "UNIT_MAXMANA", "UNIT_RAGE", "UNIT_MAXRAGE", 
-             "UNIT_ENERGY", "UNIT_MAXENERGY", "UNIT_FOCUS", "UNIT_MAXFOCUS",
-             "UNIT_RUNIC_POWER", "UNIT_MAXRUNIC_POWER", "UNIT_DISPLAYPOWER"},
-    both = {"UNIT_PORTRAIT_UPDATE", "UNIT_AURA", "UNIT_FACTION"}
-}
-
 -- Frame elements storage
 local frameElements = {
     background = nil,
@@ -71,6 +63,13 @@ local frameElements = {
     elite = nil,
     threatGlow = nil,
     threatNumeric = nil
+}
+
+-- Cache for update throttling
+local updateCache = {
+    lastHealthUpdate = 0,
+    lastPowerUpdate = 0,
+    lastThreatUpdate = 0
 }
 
 -- ============================================================================
@@ -92,61 +91,111 @@ local function SafeCall(func, ...)
     return success, result
 end
 
-local function IsInTransition()
-    return not UnitExists or not UnitExists("player")
-end
-
 -- ============================================================================
--- BAR MANAGEMENT
+-- BAR MANAGEMENT (Optimized)
 -- ============================================================================
 
-local function UpdateBar(bar, barType, unit)
-    if not bar or not UnitExists(unit) then return end
-    
-    local texture = bar:GetStatusBarTexture()
-    if not texture then return end
-    
-    -- Set appropriate texture
-    local texturePath = TEXTURES.BAR_PREFIX .. (barType == "health" and "Health" or 
-                        (POWER_MAP[UnitPowerType(unit)] or "Mana"))
-    texture:SetTexture(texturePath)
-    texture:SetDrawLayer("BORDER", 1)
-    
-    -- Dynamic texture clipping
-    local min, max = bar:GetMinMaxValues()
-    local current = bar:GetValue()
-    if max > 0 and current then
-        texture:SetTexCoord(0, current/max, 0, 1)
-    else
-        texture:SetTexCoord(0, 1, 0, 1)
-    end
-    
-    -- Color handling
-    if barType == "health" then
-        local config = GetConfig()
-        if config.classcolor and UnitIsPlayer(unit) then
-            local _, class = UnitClass(unit)
-            local color = RAID_CLASS_COLORS[class]
-            if color then
-                texture:SetVertexColor(color.r, color.g, color.b)
-                return
-            end
+local function SetupBarHooks()
+    -- Setup health bar hooks ONCE
+    if not TargetFrameHealthBar.DragonUI_Setup then
+        local healthTexture = TargetFrameHealthBar:GetStatusBarTexture()
+        if healthTexture then
+            healthTexture:SetDrawLayer("ARTWORK", 1) -- Cambiado de "BORDER", 1
         end
-    else
-        bar:SetStatusBarColor(1, 1, 1, 1)
+        
+        hooksecurefunc(TargetFrameHealthBar, "SetValue", function(self)
+            if not UnitExists("target") then return end
+            
+            local now = GetTime()
+            if now - updateCache.lastHealthUpdate < 0.05 then return end
+            updateCache.lastHealthUpdate = now
+            
+            local texture = self:GetStatusBarTexture()
+            if not texture then return end
+            
+            -- Update texture path if needed
+            local texturePath = TEXTURES.BAR_PREFIX .. "Health"
+            if texture:GetTexture() ~= texturePath then
+                texture:SetTexture(texturePath)
+                texture:SetDrawLayer("ARTWORK", 1) -- Asegurar layer correcto
+            end
+            
+            -- Update texture coords
+            local min, max = self:GetMinMaxValues()
+            local current = self:GetValue()
+            if max > 0 and current then
+                texture:SetTexCoord(0, current/max, 0, 1)
+            end
+            
+            -- Update color
+            local config = GetConfig()
+            if config.classcolor and UnitIsPlayer("target") then
+                local _, class = UnitClass("target")
+                local color = RAID_CLASS_COLORS[class]
+                if color then
+                    texture:SetVertexColor(color.r, color.g, color.b)
+                else
+                    texture:SetVertexColor(1, 1, 1)
+                end
+            else
+                texture:SetVertexColor(1, 1, 1)
+            end
+        end)
+        
+        TargetFrameHealthBar.DragonUI_Setup = true
     end
-    texture:SetVertexColor(1, 1, 1)
+    
+    -- Setup power bar hooks ONCE
+   if not TargetFrameManaBar.DragonUI_Setup then
+        local powerTexture = TargetFrameManaBar:GetStatusBarTexture()
+        if powerTexture then
+            powerTexture:SetDrawLayer("ARTWORK", 1) -- Cambiado de "BORDER", 1
+        end
+        
+        hooksecurefunc(TargetFrameManaBar, "SetValue", function(self)
+            if not UnitExists("target") then return end
+            
+            local now = GetTime()
+            if now - updateCache.lastPowerUpdate < 0.05 then return end
+            updateCache.lastPowerUpdate = now
+            
+            local texture = self:GetStatusBarTexture()
+            if not texture then return end
+            
+            -- Update texture path based on power type
+            local powerType = UnitPowerType("target")
+            local powerName = POWER_MAP[powerType] or "Mana"
+            local texturePath = TEXTURES.BAR_PREFIX .. powerName
+            
+            if texture:GetTexture() ~= texturePath then
+                texture:SetTexture(texturePath)
+                texture:SetDrawLayer("ARTWORK", 1) -- Asegurar layer correcto
+            end
+            
+            -- Update texture coords
+            local min, max = self:GetMinMaxValues()
+            local current = self:GetValue()
+            if max > 0 and current then
+                texture:SetTexCoord(0, current/max, 0, 1)
+            end
+            
+            -- Force white color
+            texture:SetVertexColor(1, 1, 1)
+        end)
+        
+        -- Override SetStatusBarColor to prevent color changes
+        local origSetColor = TargetFrameManaBar.SetStatusBarColor
+        TargetFrameManaBar.SetStatusBarColor = function(self, r, g, b, a)
+            origSetColor(self, 1, 1, 1, 1)
+        end
+        
+        TargetFrameManaBar.DragonUI_Setup = true
+    end
 end
 
 -- ============================================================================
--- THREAT SYSTEM
+-- THREAT SYSTEM (Optimized)
 -- ============================================================================
-
-local function GetThreatLevel(unit)
-    if not UnitExists(unit) then return 0 end
-    local status = UnitThreatSituation("player", unit)
-    return status and math.min(status, 3) or 0
-end
 
 local function UpdateThreat()
     if not UnitExists("target") then
@@ -155,35 +204,38 @@ local function UpdateThreat()
         return
     end
     
-    local success, level = SafeCall(GetThreatLevel, "target")
-    if not success then return end
+    local now = GetTime()
+    if now - updateCache.lastThreatUpdate < 0.1 then return end
+    updateCache.lastThreatUpdate = now
     
-    local _, _, _, pct = UnitDetailedThreatSituation("player", "target")
+    local status = UnitThreatSituation("player", "target")
+    local level = status and math.min(status, 3) or 0
     
-    -- Update glow
-    if frameElements.threatGlow and level > 0 then
+    if level > 0 then
+        local _, _, _, pct = UnitDetailedThreatSituation("player", "target")
         local color = THREAT_COLORS[level]
-        frameElements.threatGlow.texture:SetVertexColor(color[1], color[2], color[3], 0.8)
-        frameElements.threatGlow:Show()
-    elseif frameElements.threatGlow then
-        frameElements.threatGlow:Hide()
-    end
-    
-    -- Update numeric with proper bounds checking
-    if frameElements.threatNumeric and pct and pct > 0 then
-        local color = THREAT_COLORS[level] or {1, 1, 1}
-        -- Asegurar que el valor esté en rango 0-100
-        local displayPct = math.max(0, math.min(100, math.floor(pct)))
-        frameElements.threatNumeric.text:SetText(displayPct .. "%")
-        frameElements.threatNumeric.text:SetTextColor(color[1], color[2], color[3])
-        frameElements.threatNumeric:Show()
-    elseif frameElements.threatNumeric then
-        frameElements.threatNumeric:Hide()
+        
+        if frameElements.threatGlow then
+            frameElements.threatGlow.texture:SetVertexColor(color[1], color[2], color[3], 0.8)
+            frameElements.threatGlow:Show()
+        end
+        
+        if frameElements.threatNumeric and pct and pct > 0 then
+            local displayPct = math.floor(math.min(100, math.max(0, pct)))
+            frameElements.threatNumeric.text:SetText(displayPct .. "%")
+            frameElements.threatNumeric.text:SetTextColor(color[1], color[2], color[3])
+            frameElements.threatNumeric:Show()
+        else
+            if frameElements.threatNumeric then frameElements.threatNumeric:Hide() end
+        end
+    else
+        if frameElements.threatGlow then frameElements.threatGlow:Hide() end
+        if frameElements.threatNumeric then frameElements.threatNumeric:Hide() end
     end
 end
 
 -- ============================================================================
--- CLASSIFICATION SYSTEM
+-- CLASSIFICATION SYSTEM (Optimized)
 -- ============================================================================
 
 local function UpdateClassification()
@@ -192,34 +244,16 @@ local function UpdateClassification()
         return
     end
     
-    -- Handle vehicles
+    local classification = UnitClassification("target")
+    local coords = nil
+    
+    -- Check vehicle first
     if UnitVehicleSeatCount and UnitVehicleSeatCount("target") > 0 then
-        TargetFrameHealthBar:SetSize(116, 20)
-        TargetFrameManaBar:SetSize(123, 10)
-        if TargetFrameTextureFrameName then
-            TargetFrameTextureFrameName:SetPoint("CENTER", -20, 26)
-        end
-        if TargetFrameTextureFrameLevelText then
-            TargetFrameTextureFrameLevelText:SetPoint("CENTER", -80, 26)
-        end
         frameElements.elite:Hide()
         return
     end
     
-    -- Restore normal sizes
-    TargetFrameHealthBar:SetSize(125, 20)
-    TargetFrameManaBar:SetSize(132, 9)
-    if TargetFrameTextureFrameName then
-        TargetFrameTextureFrameName:SetPoint("BOTTOM", TargetFrameHealthBar, "TOP", 10, 1)
-    end
-    if TargetFrameTextureFrameLevelText then
-        TargetFrameTextureFrameLevelText:SetPoint("BOTTOMRIGHT", TargetFrameHealthBar, "TOPLEFT", 16, 1)
-    end
-    
     -- Determine classification
-    local classification = UnitClassification("target")
-    local coords = nil
-    
     if classification == "worldboss" or classification == "elite" then
         coords = BOSS_COORDS.elite
     elseif classification == "rareelite" then
@@ -244,12 +278,14 @@ local function UpdateClassification()
 end
 
 -- ============================================================================
--- NAME BACKGROUND
+-- NAME BACKGROUND (Optimized)
 -- ============================================================================
 
 local function UpdateNameBackground()
-    if not UnitExists("target") or not TargetFrameNameBackground then
-        if TargetFrameNameBackground then TargetFrameNameBackground:Hide() end
+    if not TargetFrameNameBackground then return end
+    
+    if not UnitExists("target") then
+        TargetFrameNameBackground:Hide()
         return
     end
     
@@ -259,70 +295,118 @@ local function UpdateNameBackground()
 end
 
 -- ============================================================================
--- FRAME CREATION
+-- ONE-TIME INITIALIZATION
 -- ============================================================================
 
-local function CreateFrameElements()
-    if frameElements.background then return end
+local function InitializeFrame()
+    if Module.configured then return end
     
-    -- Hide Blizzard elements
-    local toHide = {TargetFrameTextureFrameTexture, TargetFrameBackground, TargetFrameFlash,
-                    _G.TargetFrameNumericalThreat, TargetFrame.threatNumericIndicator,
-                    TargetFrame.threatIndicator}
+    -- Hide Blizzard elements ONCE
+    local toHide = {
+        TargetFrameTextureFrameTexture,
+        TargetFrameBackground,
+        TargetFrameFlash,
+        _G.TargetFrameNumericalThreat,
+        TargetFrame.threatNumericIndicator,
+        TargetFrame.threatIndicator
+    }
+    
     for _, element in ipairs(toHide) do
-        if element then element:SetAlpha(0) end
+        if element then 
+            element:SetAlpha(0)
+            element:Hide()
+        end
     end
     
-    -- Background
-    frameElements.background = TargetFrame:CreateTexture("DragonUI_TargetBG", "BACKGROUND", nil, 0)
-    frameElements.background:SetTexture(TEXTURES.BACKGROUND)
-    frameElements.background:SetPoint("TOPLEFT", TargetFrame, "TOPLEFT", 0, -8)
+    -- Create background texture ONCE
+    if not frameElements.background then
+        frameElements.background = TargetFrame:CreateTexture("DragonUI_TargetBG", "BACKGROUND", nil, -7)
+        frameElements.background:SetTexture(TEXTURES.BACKGROUND)
+        frameElements.background:SetPoint("TOPLEFT", TargetFrame, "TOPLEFT", 0, -8)
+        
+    end
     
-    -- Border
-    frameElements.border = TargetFrame:CreateTexture("DragonUI_TargetBorder", "OVERLAY", nil, 5)
-    frameElements.border:SetTexture(TEXTURES.BORDER)
-    frameElements.border:SetPoint("TOPLEFT", frameElements.background, "TOPLEFT", 0, 0)
+    -- Create border texture ONCE
+    if not frameElements.border then
+        frameElements.border = TargetFrame:CreateTexture("DragonUI_TargetBorder", "OVERLAY", nil, 5)
+        frameElements.border:SetTexture(TEXTURES.BORDER)
+        frameElements.border:SetPoint("TOPLEFT", frameElements.background, "TOPLEFT", 0, 0)
+    end
     
-    -- Elite decoration
-    frameElements.elite = TargetFrame:CreateTexture("DragonUI_TargetElite", "OVERLAY", nil, 7)
-    frameElements.elite:SetTexture(TEXTURES.BOSS)
-    frameElements.elite:SetDrawLayer("OVERLAY", 7)
-    frameElements.elite:Hide()
+    -- Create elite decoration ONCE
+    if not frameElements.elite then
+        frameElements.elite = TargetFrame:CreateTexture("DragonUI_TargetElite", "OVERLAY", nil, 7)
+        frameElements.elite:SetTexture(TEXTURES.BOSS)
+        frameElements.elite:Hide()
+    end
     
-    -- Name background setup
+    -- Configure name background ONCE
     if TargetFrameNameBackground then
         TargetFrameNameBackground:ClearAllPoints()
         TargetFrameNameBackground:SetPoint("BOTTOMLEFT", TargetFrameHealthBar, "TOPLEFT", -2, -5)
         TargetFrameNameBackground:SetSize(135, 18)
         TargetFrameNameBackground:SetTexture(TEXTURES.NAME_BACKGROUND)
-        TargetFrameNameBackground:SetDrawLayer("BORDER")
+        TargetFrameNameBackground:SetDrawLayer("BORDER", 1)
         TargetFrameNameBackground:SetBlendMode("ADD")
         TargetFrameNameBackground:SetAlpha(0.9)
     end
     
-    -- Create threat system
-    local dragonFrame = _G["DragonUIUnitframeFrame"]
-    if dragonFrame and not dragonFrame.TargetThreatGlow then
-        -- Threat glow
-        local glow = CreateFrame("Frame", "DragonUITargetThreatGlow", UIParent)
+    -- Configure portrait ONCE
+    TargetFramePortrait:ClearAllPoints()
+    TargetFramePortrait:SetSize(56, 56)
+    TargetFramePortrait:SetPoint("TOPRIGHT", TargetFrame, "TOPRIGHT", -47, -15)
+    TargetFramePortrait:SetDrawLayer("ARTWORK", 1)
+    
+    -- Configure health bar ONCE
+    TargetFrameHealthBar:ClearAllPoints()
+    TargetFrameHealthBar:SetSize(125, 20)
+    TargetFrameHealthBar:SetPoint("RIGHT", TargetFramePortrait, "LEFT", -1, 0)
+    TargetFrameHealthBar:SetFrameLevel(TargetFrame:GetFrameLevel())
+    
+    -- Configure power bar ONCE
+    TargetFrameManaBar:ClearAllPoints()
+    TargetFrameManaBar:SetSize(132, 9)
+    TargetFrameManaBar:SetPoint("RIGHT", TargetFramePortrait, "LEFT", 6.5, -16.5)
+    TargetFrameManaBar:SetFrameLevel(TargetFrame:GetFrameLevel() )
+    
+    -- Configure text elements ONCE
+    if TargetFrameTextureFrameName then
+        TargetFrameTextureFrameName:ClearAllPoints()
+        TargetFrameTextureFrameName:SetPoint("BOTTOM", TargetFrameHealthBar, "TOP", 10, 1)
+        TargetFrameTextureFrameName:SetDrawLayer("OVERLAY", 2)
+    end
+    
+    if TargetFrameTextureFrameLevelText then
+        TargetFrameTextureFrameLevelText:ClearAllPoints()
+        TargetFrameTextureFrameLevelText:SetPoint("BOTTOMRIGHT", TargetFrameHealthBar, "TOPLEFT", 16, 1)
+        TargetFrameTextureFrameLevelText:SetDrawLayer("OVERLAY", 2)
+    end
+    
+    -- Setup bar hooks ONCE
+    SetupBarHooks()
+    
+    -- Create threat system ONCE
+    if not frameElements.threatGlow then
+        local glow = CreateFrame("Frame", "DragonUITargetThreatGlow", TargetFrame)
         glow:SetFrameStrata("MEDIUM")
+        glow:SetFrameLevel(TargetFrame:GetFrameLevel() + 2)
         glow:SetSize(209, 90)
         glow:SetPoint("TOPLEFT", TargetFrame, "TOPLEFT", 0, 5)
         glow:Hide()
         
-        glow.texture = glow:CreateTexture(nil, "OVERLAY")
+        glow.texture = glow:CreateTexture(nil, "OVERLAY", nil, 6)
         glow.texture:SetTexture(TEXTURES.THREAT)
         glow.texture:SetTexCoord(0, 0.2061015625, 0.537109375, 0.712890625)
         glow.texture:SetAllPoints()
         glow.texture:SetBlendMode("ADD")
         
         frameElements.threatGlow = glow
-        dragonFrame.TargetThreatGlow = glow
-        
-        -- Threat numeric
-        local numeric = CreateFrame("Frame", "DragonUITargetNumericalThreat", UIParent)
-        numeric:SetFrameStrata("MEDIUM")
-        numeric:SetFrameLevel(999)
+    end
+    
+    if not frameElements.threatNumeric then
+        local numeric = CreateFrame("Frame", "DragonUITargetNumericalThreat", TargetFrame)
+        numeric:SetFrameStrata("HIGH")
+        numeric:SetFrameLevel(TargetFrame:GetFrameLevel() + 10)
         numeric:SetSize(71, 13)
         numeric:SetPoint("BOTTOM", TargetFrame, "TOP", -45, -20)
         numeric:Hide()
@@ -338,88 +422,9 @@ local function CreateFrameElements()
         numeric.text:SetShadowOffset(1, -1)
         
         frameElements.threatNumeric = numeric
-        dragonFrame.TargetNumericalThreat = numeric
-    end
-end
-
-local function ConfigureFrame()
-    if not TargetFrame then return end
-    
-    -- Portrait
-    TargetFramePortrait:ClearAllPoints()
-    TargetFramePortrait:SetSize(56, 56)
-    TargetFramePortrait:SetPoint("TOPRIGHT", TargetFrame, "TOPRIGHT", -47, -15)
-    TargetFramePortrait:SetDrawLayer("ARTWORK", 1)
-    
-    -- Health bar
-    TargetFrameHealthBar:ClearAllPoints()
-    TargetFrameHealthBar:SetSize(125, 20)
-    TargetFrameHealthBar:SetPoint("RIGHT", TargetFramePortrait, "LEFT", -1, 0)
-    
-    if not TargetFrameHealthBar.DragonUI_Hooked then
-        TargetFrameHealthBar:HookScript("OnValueChanged", function(self)
-            if UnitExists("target") then
-                UpdateBar(self, "health", "target")
-            end
-        end)
-        TargetFrameHealthBar:HookScript("OnShow", function(self)
-            UpdateBar(self, "health", "target")
-        end)
-        TargetFrameHealthBar:HookScript("OnUpdate", function(self)
-            UpdateBar(self, "health", "target")
-        end)
-        TargetFrameHealthBar.DragonUI_Hooked = true
     end
     
-    -- Power bar
-    TargetFrameManaBar:ClearAllPoints()
-    TargetFrameManaBar:SetSize(132, 9)
-    TargetFrameManaBar:SetPoint("RIGHT", TargetFramePortrait, "LEFT", 6.5, -16.5)
-    
-    if not TargetFrameManaBar.DragonUI_Hooked then
-        TargetFrameManaBar:HookScript("OnValueChanged", function(self)
-            if UnitExists("target") then
-                UpdateBar(self, "power", "target")
-            end
-        end)
-        TargetFrameManaBar:HookScript("OnShow", function(self)
-            UpdateBar(self, "power", "target")
-        end)
-        
-        -- Harden power bar
-        local origSetTexture = TargetFrameManaBar.SetStatusBarTexture
-        if origSetTexture then
-            TargetFrameManaBar.SetStatusBarTexture = function(self, tex)
-                origSetTexture(self, tex)
-                UpdateBar(self, "power", "target")
-            end
-        end
-        
-        local origSetColor = TargetFrameManaBar.SetStatusBarColor
-        if origSetColor then
-            TargetFrameManaBar.SetStatusBarColor = function(self, r, g, b, a)
-                origSetColor(self, 1, 1, 1, a or 1)
-                local texture = self:GetStatusBarTexture()
-                if texture then texture:SetVertexColor(1, 1, 1) end
-            end
-        end
-        
-        TargetFrameManaBar.DragonUI_Hooked = true
-    end
-    
-    -- Text positioning
-    if TargetFrameTextureFrameName then
-        TargetFrameTextureFrameName:ClearAllPoints()
-        TargetFrameTextureFrameName:SetPoint("BOTTOM", TargetFrameHealthBar, "TOP", 10, 1)
-    end
-    
-    if TargetFrameTextureFrameLevelText then
-        TargetFrameTextureFrameLevelText:ClearAllPoints()
-        TargetFrameTextureFrameLevelText:SetPoint("BOTTOMRIGHT", TargetFrameHealthBar, "TOPLEFT", 16, 1)
-    end
-end
-
-local function ApplyConfig()
+    -- Apply configuration
     local config = GetConfig()
     
     TargetFrame:ClearAllPoints()
@@ -435,7 +440,7 @@ local function ApplyConfig()
                             defaults.x or 20, defaults.y or -4)
     end
     
-    -- Setup text system
+    -- Setup text system ONCE
     local dragonFrame = _G["DragonUIUnitframeFrame"]
     if dragonFrame and addon.TextSystem and not Module.textSystem then
         Module.textSystem = addon.TextSystem.SetupFrameTextSystem(
@@ -444,156 +449,87 @@ local function ApplyConfig()
         )
     end
     
-    if Module.textSystem then
-        Module.textSystem.update()
-    end
+    Module.configured = true
 end
 
 -- ============================================================================
--- UPDATE FUNCTIONS
+-- EVENT HANDLING (Simplified)
 -- ============================================================================
 
-local function UpdateAll()
-    if not UnitExists("target") then
+local function OnEvent(self, event, ...)
+    if event == "ADDON_LOADED" then
+        local name = ...
+        if name == "DragonUI" and not Module.initialized then
+            Module.targetFrame = CreateFrame("Frame", "DragonUI_TargetFrame_Anchor", UIParent)
+            Module.targetFrame:SetSize(192, 67)
+            Module.targetFrame:SetPoint("TOPLEFT", UIParent, "TOPLEFT", 250, -50)
+            Module.initialized = true
+        end
+        
+    elseif event == "PLAYER_ENTERING_WORLD" then
+        InitializeFrame()
+        if UnitExists("target") then
+            UpdateNameBackground()
+            UpdateClassification()
+            UpdateThreat()
+        end
+        
+    elseif event == "PLAYER_TARGET_CHANGED" then
         UpdateNameBackground()
-        if frameElements.elite then frameElements.elite:Hide() end
-        return
-    end
-    
-    UpdateBar(TargetFrameHealthBar, "health", "target")
-    UpdateBar(TargetFrameManaBar, "power", "target")
-    UpdateNameBackground()
-    UpdateClassification()
-end
-
--- ============================================================================
--- EVENT HANDLING
--- ============================================================================
-
-local function InitializeEvents()
-    if Module.eventsFrame then return end
-    
-    local f = CreateFrame("Frame")
-    Module.eventsFrame = f
-    
-    local handlers = {
-        ADDON_LOADED = function(name)
-            if name == "DragonUI" and not Module.initialized then
-                Module.targetFrame = CreateFrame("Frame", "DragonUI_TargetFrame_Anchor", UIParent)
-                Module.targetFrame:SetSize(192, 67)
-                Module.targetFrame:SetPoint("TOPLEFT", UIParent, "TOPLEFT", 250, -50)
-                Module.initialized = true
-            end
-        end,
-        
-        PLAYER_ENTERING_WORLD = function()
-            CreateFrameElements()
-            ConfigureFrame()
-            ApplyConfig()
-            if UnitExists("target") then UpdateAll() end
-        end,
-        
-        PLAYER_TARGET_CHANGED = function()
-            if IsInTransition() then return end
-            SafeCall(function()
-                UpdateAll()
-                UpdateThreat()
-            end)
-        end,
-        
-        UNIT_CLASSIFICATION_CHANGED = function(unit)
-            if unit == "target" then
-                UpdateClassification()
-                UpdateNameBackground()
-            end
-        end,
-        
-        UNIT_THREAT_SITUATION_UPDATE = function(unit)
-            if unit == "target" and not IsInTransition() then
-                SafeCall(UpdateThreat)
-            end
-        end,
-        
-        UNIT_THREAT_LIST_UPDATE = function(unit)
-            if unit == "target" and not IsInTransition() then
-                SafeCall(UpdateThreat)
-            end
-        end,
-        
-        PLAYER_REGEN_DISABLED = function()
-            if not IsInTransition() and UnitExists("target") then
-                SafeCall(UpdateAll)
-            end
-        end,
-        
-        PLAYER_REGEN_ENABLED = function()
-            if not IsInTransition() and UnitExists("target") then
-                SafeCall(UpdateAll)
-            end
-        end,
-        
-        UNIT_FACTION = function(unit)
-            if unit == "target" then UpdateNameBackground() end
-        end
-    }
-    
-    -- Register events
-    for event in pairs(handlers) do
-        f:RegisterEvent(event)
-    end
-    
-    for _, category in pairs(EVENT_CATEGORIES) do
-        for _, event in ipairs(category) do
-            f:RegisterEvent(event)
-        end
-    end
-    
-    f:RegisterEvent("UNIT_CLASSIFICATION_CHANGED")
-    
-    -- Event dispatcher
-    f:SetScript("OnEvent", function(_, event, ...)
-        local handler = handlers[event]
-        if handler then
-            handler(...)
-            return
+        UpdateClassification()
+        UpdateThreat()
+        if Module.textSystem then
+            Module.textSystem.update()
         end
         
+    elseif event == "UNIT_CLASSIFICATION_CHANGED" then
         local unit = ...
-        if unit ~= "target" then return end
-        
-        -- Check event categories
-        for _, evt in ipairs(EVENT_CATEGORIES.health) do
-            if event == evt then
-                UpdateBar(TargetFrameHealthBar, "health", "target")
-                return
-            end
+        if unit == "target" then
+            UpdateClassification()
         end
         
-        for _, evt in ipairs(EVENT_CATEGORIES.power) do
-            if event == evt then
-                UpdateBar(TargetFrameManaBar, "power", "target")
-                return
-            end
-        end
+    elseif event == "UNIT_THREAT_SITUATION_UPDATE" or event == "UNIT_THREAT_LIST_UPDATE" then
+        UpdateThreat()
         
-        for _, evt in ipairs(EVENT_CATEGORIES.both) do
-            if event == evt then
-                UpdateAll()
-                return
-            end
+    elseif event == "UNIT_FACTION" then
+        local unit = ...
+        if unit == "target" then
+            UpdateNameBackground()
         end
-    end)
+    end
+end
+
+-- Initialize events
+if not Module.eventsFrame then
+    Module.eventsFrame = CreateFrame("Frame")
+    Module.eventsFrame:RegisterEvent("ADDON_LOADED")
+    Module.eventsFrame:RegisterEvent("PLAYER_ENTERING_WORLD")
+    Module.eventsFrame:RegisterEvent("PLAYER_TARGET_CHANGED")
+    Module.eventsFrame:RegisterEvent("UNIT_CLASSIFICATION_CHANGED")
+    Module.eventsFrame:RegisterEvent("UNIT_THREAT_SITUATION_UPDATE")
+    Module.eventsFrame:RegisterEvent("UNIT_THREAT_LIST_UPDATE")
+    Module.eventsFrame:RegisterEvent("UNIT_FACTION")
+    Module.eventsFrame:SetScript("OnEvent", OnEvent)
 end
 
 -- ============================================================================
--- PUBLIC API
+-- PUBLIC API (Simplified)
 -- ============================================================================
 
 local function RefreshFrame()
-    CreateFrameElements()
-    ConfigureFrame()
-    ApplyConfig()
-    if Module.textSystem then Module.textSystem.update() end
+    if not Module.configured then
+        InitializeFrame()
+    end
+    
+    -- Only update dynamic content
+    if UnitExists("target") then
+        UpdateNameBackground()
+        UpdateClassification()
+        UpdateThreat()
+        if Module.textSystem then
+            Module.textSystem.update()
+        end
+    end
 end
 
 local function ResetFrame()
@@ -601,11 +537,14 @@ local function ResetFrame()
     for key, value in pairs(defaults) do
         addon:SetConfigValue("unitframe", "target", key, value)
     end
-    ApplyConfig()
+    
+    -- Re-apply position only
+    local config = GetConfig()
+    TargetFrame:ClearAllPoints()
+    TargetFrame:SetScale(config.scale or 1)
+    TargetFrame:SetPoint("TOPLEFT", UIParent, "TOPLEFT", 
+                        defaults.x or 20, defaults.y or -4)
 end
-
--- Initialize
-InitializeEvents()
 
 -- Export API
 addon.TargetFrame = {
@@ -613,8 +552,7 @@ addon.TargetFrame = {
     RefreshTargetFrame = RefreshFrame,
     Reset = ResetFrame,
     anchor = function() return Module.targetFrame end,
-    ChangeTargetFrame = RefreshFrame,
-    CreateTargetFrameTextures = CreateFrameElements
+    ChangeTargetFrame = RefreshFrame
 }
 
 -- Legacy compatibility
@@ -626,4 +564,4 @@ function addon:RefreshTargetFrame()
     RefreshFrame()
 end
 
-print("|cFF00FF00[DragonUI]|r Target module loaded and optimized")
+print("|cFF00FF00[DragonUI]|r Target module loaded and optimized v2.0")

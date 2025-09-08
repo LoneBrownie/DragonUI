@@ -30,10 +30,10 @@
     <!-- <Script file="Chat.lua"/> -->
 
     <!-- Game Menu module -->
-    <!-- <Script file="gamemenu.lua"/> -->
+   <Script file="gamemenu.lua"/> 
 
     <!-- Editor Mode module -->
-    <!-- <Script file="editor_mode.lua"/> -->
+     <Script file="editor_mode.lua"/> 
 
     <!-- Conflict Detection module -->
     <!-- <Script file="compatibility.lua"/> -->
