@@ -196,21 +196,6 @@ end
 -- THREAT SYSTEM (Optimized)
 -- ============================================================================
 
-local function TargetFrame_CheckClassification_Hook(self, forceNormalTexture)
-    -- Después de que Blizzard haga su lógica, aplicamos la nuestra
-    local threatFlash = _G.TargetFrameFlash
-    if threatFlash then
-        threatFlash:SetTexture(TEXTURES.THREAT)
-        threatFlash:SetTexCoord(0, 376 / 512, 0, 134 / 256)
-        threatFlash:SetBlendMode("ADD")
-        threatFlash:SetAlpha(0.7)
-        threatFlash:SetDrawLayer("OVERLAY", 3)
-        threatFlash:ClearAllPoints()
-        threatFlash:SetPoint("BOTTOMLEFT", TargetFrame, "BOTTOMLEFT", 2, 25)
-        threatFlash:SetSize(188, 67)   
-    end
-end
-
 local function UpdateThreat()
     if not UnitExists("target") then
         if frameElements.threatNumeric then
@@ -336,13 +321,7 @@ local function InitializeFrame()
         end
     end
 
-    -- Hook la función que resetea el threat indicator
-    if not Module.threatHooked then
-        hooksecurefunc("TargetFrame_CheckClassification", TargetFrame_CheckClassification_Hook)
-        Module.threatHooked = true
-    end
-
-    
+        
     -- Create background texture ONCE
     if not frameElements.background then
         frameElements.background = TargetFrame:CreateTexture("DragonUI_TargetBG", "BACKGROUND", nil, -7)
@@ -356,6 +335,26 @@ local function InitializeFrame()
         frameElements.border = TargetFrame:CreateTexture("DragonUI_TargetBorder", "OVERLAY", nil, 5)
         frameElements.border:SetTexture(TEXTURES.BORDER)
         frameElements.border:SetPoint("TOPLEFT", frameElements.background, "TOPLEFT", 0, 0)
+    end
+
+    local function TargetFrame_CheckClassification_Hook(self, forceNormalTexture)
+    -- Después de que Blizzard haga su lógica, aplicamos la nuestra
+    local threatFlash = _G.TargetFrameFlash
+    if threatFlash then
+        threatFlash:SetTexture(TEXTURES.THREAT)
+        threatFlash:SetTexCoord(0, 376 / 512, 0, 134 / 256)
+        threatFlash:SetBlendMode("ADD")
+        threatFlash:SetAlpha(0.7)
+        threatFlash:SetDrawLayer("ARTWORK", 10)
+        threatFlash:ClearAllPoints()
+        threatFlash:SetPoint("BOTTOMLEFT", TargetFrame, "BOTTOMLEFT", 2, 25)
+        threatFlash:SetSize(188, 67)   
+    end
+end
+    -- Hook la función que resetea el threat indicator
+    if not Module.threatHooked then
+        hooksecurefunc("TargetFrame_CheckClassification", TargetFrame_CheckClassification_Hook)
+        Module.threatHooked = true
     end
     
     -- Create elite decoration ONCE
