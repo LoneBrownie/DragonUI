@@ -1123,7 +1123,7 @@ local function SetCombatFlashVisible(visible)
         dragonFrame.PlayerFrameDeco:SetTexCoord(0.9775390625, 0.9931640625, 0.259765625, 0.291015625)
         -- ✅ AJUSTAR TAMAÑO PARA EL ICONO DE COMBATE
         dragonFrame.PlayerFrameDeco:SetSize(16, 16) -- Más pequeño que el original (23x23)
-        dragonFrame.PlayerFrameDeco:SetPoint('CENTER', PlayerPortrait, 'CENTER', 19, -21)
+        dragonFrame.PlayerFrameDeco:SetPoint('CENTER', PlayerPortrait, 'CENTER', 18, -20)
         
     else
         -- ✅ RESTAURAR DECORACIÓN NORMAL
