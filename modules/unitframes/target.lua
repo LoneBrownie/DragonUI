@@ -323,31 +323,57 @@ end
 -- ============================================================================
 -- ONE-TIME INITIALIZATION
 -- ============================================================================
+local threatPulseAnimation = nil
 local function TargetFrame_CheckClassification_Hook(self, forceNormalTexture)
-    -- Después de que Blizzard haga su lógica, aplicamos la nuestra
+    -- INTERCEPTAR INMEDIATAMENTE - antes que Blizzard
     local threatFlash = _G.TargetFrameFlash
     if threatFlash then
-        threatFlash:SetTexture(TEXTURES.THREAT)
+        -- PARAR cualquier animación de Blizzard
+        if threatFlash.animOut then threatFlash.animOut:Stop() end
+        if threatFlash.animIn then threatFlash.animIn:Stop() end
         
-        -- Usar las coordenadas específicas { 211, 421, 0, 89 }
-        -- Convertir píxeles a coordenadas UV (0-1)
-        -- width = 1024, height = 512
+        -- APLICAR NUESTRAS CONFIGURACIONES INMEDIATAMENTE
+        threatFlash:SetTexture(TEXTURES.THREAT)
         threatFlash:SetTexCoord(211/1024, 421/1024, 0/512, 89/512)
         threatFlash:SetBlendMode("ADD")
-        threatFlash:SetAlpha(0.7)
+        threatFlash:SetAlpha(0.6)
         
+        -- FORZAR tamaño y posición ANTES de que Blizzard haga cambios
         threatFlash:ClearAllPoints()
-        threatFlash:SetPoint("BOTTOMLEFT", TargetFrame, "BOTTOMLEFT", -2.5, 15)
-        
-        -- Tamaño basado en las coordenadas píxel
-        -- Ancho: 421 - 211 = 210 píxeles
-        -- Alto: 89 - 0 = 89 píxeles
+        threatFlash:SetPoint("BOTTOMLEFT", TargetFrame, "BOTTOMLEFT", -3, 14.5)
         threatFlash:SetSize(214, 91)
         
-        -- Opciones de tamaño alternativas:
-        -- threatFlash:SetSize(168, 71)   -- 80% del tamaño
-        -- threatFlash:SetSize(126, 53)   -- 60% del tamaño
-        -- threatFlash:SetSize(105, 45)   -- 50% del tamaño
+        -- CREAR NUESTRO EFECTO PULSANTE (solo una vez)
+        if not threatFlash.dragonPulseGroup then
+            threatFlash.dragonPulseGroup = threatFlash:CreateAnimationGroup()
+            threatFlash.dragonPulseGroup:SetLooping("BOUNCE")
+            
+            local scaleAnim = threatFlash.dragonPulseGroup:CreateAnimation("Scale")
+            scaleAnim:SetOrigin("CENTER", 0, 0)
+            scaleAnim:SetScale(1.05, 1.05)  -- Escala MUY pequeña
+            scaleAnim:SetDuration(1.2)      -- Más lento
+            scaleAnim:SetSmoothing("IN_OUT")
+            
+            local alphaAnim = threatFlash.dragonPulseGroup:CreateAnimation("Alpha")
+            alphaAnim:SetChange(-0.1)       -- Cambio muy muy sutil
+            alphaAnim:SetDuration(1.2)
+            alphaAnim:SetSmoothing("IN_OUT")
+        end
+        
+        -- Control de nuestra animación
+        local hasThreat = UnitThreatSituation("player", "target") and UnitThreatSituation("player", "target") > 0
+        
+        if hasThreat then
+            if not threatFlash.dragonPulseGroup:IsPlaying() then
+                threatFlash:SetAlpha(0.6)
+                threatFlash.dragonPulseGroup:Play()
+            end
+        else
+            if threatFlash.dragonPulseGroup:IsPlaying() then
+                threatFlash.dragonPulseGroup:Stop()
+                threatFlash:SetAlpha(0.6)
+            end
+        end
     end
 end
 local function InitializeFrame()
