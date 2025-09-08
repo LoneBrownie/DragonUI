@@ -906,8 +906,8 @@ local function CreatePlayerFrameTextures()
         deco:SetDrawLayer('OVERLAY', 5)
         deco:SetTexture(TEXTURES.BASE)
         deco:SetTexCoord(0.953125, 0.9755859375, 0.259765625, 0.3046875)
-        deco:SetPoint('CENTER', PlayerPortrait, 'CENTER', 16, -16)
-        deco:SetSize(22, 22)
+        deco:SetPoint('CENTER', PlayerPortrait, 'CENTER', 16, -16.5)
+        deco:SetSize(23, 23)
         dragonFrame.PlayerFrameDeco = deco
     end
 
@@ -1111,9 +1111,29 @@ local function ChangePlayerframe()
 end
 
 local function SetCombatFlashVisible(visible)
+    local dragonFrame = _G["DragonUIUnitframeFrame"]
+    if not dragonFrame or not dragonFrame.PlayerFrameDeco then
+        return
+    end
+
     if visible then
         combatPulseTimer = 0 -- Reset pulse timer
+        
+        -- ✅ CAMBIAR DECORACIÓN A ICONO DE COMBATE (espadas cruzadas)
+        dragonFrame.PlayerFrameDeco:SetTexCoord(0.9775390625, 0.9931640625, 0.259765625, 0.291015625)
+        -- ✅ AJUSTAR TAMAÑO PARA EL ICONO DE COMBATE
+        dragonFrame.PlayerFrameDeco:SetSize(16, 16) -- Más pequeño que el original (23x23)
+        dragonFrame.PlayerFrameDeco:SetPoint('CENTER', PlayerPortrait, 'CENTER', 19, -21)
+        
+    else
+        -- ✅ RESTAURAR DECORACIÓN NORMAL
+        dragonFrame.PlayerFrameDeco:SetTexCoord(0.953125, 0.9755859375, 0.259765625, 0.3046875)
+        -- ✅ RESTAURAR TAMAÑO ORIGINAL
+        dragonFrame.PlayerFrameDeco:SetSize(23, 23) -- Tamaño original
+        dragonFrame.PlayerFrameDeco:SetPoint('CENTER', PlayerPortrait, 'CENTER', 16, -16.5)
+        
     end
+    
     SetEliteCombatFlashVisible(visible) -- Use unified system
 end
 
