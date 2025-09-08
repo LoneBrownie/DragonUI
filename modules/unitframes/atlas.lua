@@ -3,7 +3,7 @@
     Licensed under the MIT license. See LICENSE file in the project root for details.
 ]]
 
-local addonPath = 'Interface\\AddOns\\RetailUI\\'
+local addonPath = 'Interface\\AddOns\\DragonUI\\'
 
 local UnitFrameAsset = { path = addonPath .. 'Textures\\UI\\UnitFrame.blp', width = 1024, height = 512 }
 local CastingBarAsset = { path = addonPath .. 'Textures\\UI\\CastingBar.blp', width = 512, height = 256 }
@@ -687,3 +687,5 @@ function SetAtlasTexture(texture, textureName)
     texture:SetTexCoord(left / assetInfo.width, right / assetInfo.width, top / assetInfo.height, bottom / assetInfo.height)
     texture:SetSize(right - left, bottom - top)
 end
+
+_G.SetAtlasTexture = SetAtlasTexture

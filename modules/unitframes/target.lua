@@ -37,6 +37,8 @@ local TEXTURES = {
     THREAT_NUMERIC = "Interface\\Addons\\DragonUI\\Textures\\uiunitframe"
 }
 
+
+
 -- Boss classifications
 local BOSS_COORDS = {
     elite = {0.001953125, 0.314453125, 0.322265625, 0.630859375, 80, 79, 4, 1},
@@ -46,14 +48,17 @@ local BOSS_COORDS = {
 
 -- Power types
 local POWER_MAP = {
-    [0] = "Mana", [1] = "Rage", [2] = "Focus", [3] = "Energy", [6] = "RunicPower"
+    [0] = "Mana",
+    [1] = "Rage",
+    [2] = "Focus",
+    [3] = "Energy",
+    [6] = "RunicPower"
 }
 
 -- Threat colors
-local THREAT_COLORS = {
-    {1.0, 1.0, 0.47}, -- Low
-    {1.0, 0.6, 0.0},  -- Medium
-    {1.0, 0.0, 0.0}   -- High
+local THREAT_COLORS = {{1.0, 1.0, 0.47}, -- Low
+{1.0, 0.6, 0.0}, -- Medium
+{1.0, 0.0, 0.0} -- High
 }
 
 -- Frame elements storage
@@ -61,15 +66,13 @@ local frameElements = {
     background = nil,
     border = nil,
     elite = nil,
-    threatGlow = nil,
     threatNumeric = nil
 }
 
 -- Cache for update throttling
 local updateCache = {
     lastHealthUpdate = 0,
-    lastPowerUpdate = 0,
-    lastThreatUpdate = 0
+    lastPowerUpdate = 0
 }
 
 -- ============================================================================
@@ -79,11 +82,15 @@ local updateCache = {
 local function GetConfig()
     local config = addon:GetConfigValue("unitframe", "target") or {}
     local defaults = addon.defaults and addon.defaults.profile.unitframe.target or {}
-    return setmetatable(config, {__index = defaults})
+    return setmetatable(config, {
+        __index = defaults
+    })
 end
 
 local function SafeCall(func, ...)
-    if not func then return end
+    if not func then
+        return
+    end
     local success, result = pcall(func, ...)
     if not success then
         print("|cFFFF0000[DragonUI]|r Error:", result)
@@ -102,31 +109,37 @@ local function SetupBarHooks()
         if healthTexture then
             healthTexture:SetDrawLayer("ARTWORK", 1) -- Cambiado de "BORDER", 1
         end
-        
+
         hooksecurefunc(TargetFrameHealthBar, "SetValue", function(self)
-            if not UnitExists("target") then return end
-            
+            if not UnitExists("target") then
+                return
+            end
+
             local now = GetTime()
-            if now - updateCache.lastHealthUpdate < 0.05 then return end
+            if now - updateCache.lastHealthUpdate < 0.05 then
+                return
+            end
             updateCache.lastHealthUpdate = now
-            
+
             local texture = self:GetStatusBarTexture()
-            if not texture then return end
-            
+            if not texture then
+                return
+            end
+
             -- Update texture path if needed
             local texturePath = TEXTURES.BAR_PREFIX .. "Health"
             if texture:GetTexture() ~= texturePath then
                 texture:SetTexture(texturePath)
                 texture:SetDrawLayer("ARTWORK", 1) -- Asegurar layer correcto
             end
-            
+
             -- Update texture coords
             local min, max = self:GetMinMaxValues()
             local current = self:GetValue()
             if max > 0 and current then
-                texture:SetTexCoord(0, current/max, 0, 1)
+                texture:SetTexCoord(0, current / max, 0, 1)
             end
-            
+
             -- Update color
             local config = GetConfig()
             if config.classcolor and UnitIsPlayer("target") then
@@ -141,54 +154,60 @@ local function SetupBarHooks()
                 texture:SetVertexColor(1, 1, 1)
             end
         end)
-        
+
         TargetFrameHealthBar.DragonUI_Setup = true
     end
-    
+
     -- Setup power bar hooks ONCE
-   if not TargetFrameManaBar.DragonUI_Setup then
+    if not TargetFrameManaBar.DragonUI_Setup then
         local powerTexture = TargetFrameManaBar:GetStatusBarTexture()
         if powerTexture then
             powerTexture:SetDrawLayer("ARTWORK", 1) -- Cambiado de "BORDER", 1
         end
-        
+
         hooksecurefunc(TargetFrameManaBar, "SetValue", function(self)
-            if not UnitExists("target") then return end
-            
+            if not UnitExists("target") then
+                return
+            end
+
             local now = GetTime()
-            if now - updateCache.lastPowerUpdate < 0.05 then return end
+            if now - updateCache.lastPowerUpdate < 0.05 then
+                return
+            end
             updateCache.lastPowerUpdate = now
-            
+
             local texture = self:GetStatusBarTexture()
-            if not texture then return end
-            
+            if not texture then
+                return
+            end
+
             -- Update texture path based on power type
             local powerType = UnitPowerType("target")
             local powerName = POWER_MAP[powerType] or "Mana"
             local texturePath = TEXTURES.BAR_PREFIX .. powerName
-            
+
             if texture:GetTexture() ~= texturePath then
                 texture:SetTexture(texturePath)
                 texture:SetDrawLayer("ARTWORK", 1) -- Asegurar layer correcto
             end
-            
+
             -- Update texture coords
             local min, max = self:GetMinMaxValues()
             local current = self:GetValue()
             if max > 0 and current then
-                texture:SetTexCoord(0, current/max, 0, 1)
+                texture:SetTexCoord(0, current / max, 0, 1)
             end
-            
+
             -- Force white color
             texture:SetVertexColor(1, 1, 1)
         end)
-        
+
         -- Override SetStatusBarColor to prevent color changes
         local origSetColor = TargetFrameManaBar.SetStatusBarColor
         TargetFrameManaBar.SetStatusBarColor = function(self, r, g, b, a)
             origSetColor(self, 1, 1, 1, 1)
         end
-        
+
         TargetFrameManaBar.DragonUI_Setup = true
     end
 end
@@ -199,38 +218,41 @@ end
 
 local function UpdateThreat()
     if not UnitExists("target") then
-        if frameElements.threatGlow then frameElements.threatGlow:Hide() end
-        if frameElements.threatNumeric then frameElements.threatNumeric:Hide() end
+        if frameElements.threatNumeric then
+            frameElements.threatNumeric:Hide()
+        end
         return
     end
-    
-    local now = GetTime()
-    if now - updateCache.lastThreatUpdate < 0.1 then return end
-    updateCache.lastThreatUpdate = now
-    
+
     local status = UnitThreatSituation("player", "target")
     local level = status and math.min(status, 3) or 0
-    
+
     if level > 0 then
+        -- Solo numerical threat
         local _, _, _, pct = UnitDetailedThreatSituation("player", "target")
-        local color = THREAT_COLORS[level]
-        
-        if frameElements.threatGlow then
-            frameElements.threatGlow.texture:SetVertexColor(color[1], color[2], color[3], 0.8)
-            frameElements.threatGlow:Show()
-        end
-        
+
         if frameElements.threatNumeric and pct and pct > 0 then
             local displayPct = math.floor(math.min(100, math.max(0, pct)))
             frameElements.threatNumeric.text:SetText(displayPct .. "%")
-            frameElements.threatNumeric.text:SetTextColor(color[1], color[2], color[3])
+            -- Color fijo o basado en level
+            if level == 1 then
+                frameElements.threatNumeric.text:SetTextColor(1.0, 1.0, 0.47) -- Amarillo
+            elseif level == 2 then
+                frameElements.threatNumeric.text:SetTextColor(1.0, 0.6, 0.0) -- Naranja
+            else
+                frameElements.threatNumeric.text:SetTextColor(1.0, 0.0, 0.0) -- Rojo
+            end
             frameElements.threatNumeric:Show()
         else
-            if frameElements.threatNumeric then frameElements.threatNumeric:Hide() end
+            if frameElements.threatNumeric then
+                frameElements.threatNumeric:Hide()
+            end
         end
     else
-        if frameElements.threatGlow then frameElements.threatGlow:Hide() end
-        if frameElements.threatNumeric then frameElements.threatNumeric:Hide() end
+        -- Ocultar numeric
+        if frameElements.threatNumeric then
+            frameElements.threatNumeric:Hide()
+        end
     end
 end
 
@@ -240,19 +262,21 @@ end
 
 local function UpdateClassification()
     if not UnitExists("target") or not frameElements.elite then
-        if frameElements.elite then frameElements.elite:Hide() end
+        if frameElements.elite then
+            frameElements.elite:Hide()
+        end
         return
     end
-    
+
     local classification = UnitClassification("target")
     local coords = nil
-    
+
     -- Check vehicle first
     if UnitVehicleSeatCount and UnitVehicleSeatCount("target") > 0 then
         frameElements.elite:Hide()
         return
     end
-    
+
     -- Determine classification
     if classification == "worldboss" or classification == "elite" then
         coords = BOSS_COORDS.elite
@@ -266,7 +290,7 @@ local function UpdateClassification()
             coords = BOSS_COORDS.elite
         end
     end
-    
+
     if coords then
         frameElements.elite:SetTexCoord(coords[1], coords[2], coords[3], coords[4])
         frameElements.elite:SetSize(coords[5], coords[6])
@@ -282,13 +306,15 @@ end
 -- ============================================================================
 
 local function UpdateNameBackground()
-    if not TargetFrameNameBackground then return end
-    
+    if not TargetFrameNameBackground then
+        return
+    end
+
     if not UnitExists("target") then
         TargetFrameNameBackground:Hide()
         return
     end
-    
+
     local r, g, b = UnitSelectionColor("target")
     TargetFrameNameBackground:SetVertexColor(r or 0.5, g or 0.5, b or 0.5, 0.8)
     TargetFrameNameBackground:Show()
@@ -297,49 +323,78 @@ end
 -- ============================================================================
 -- ONE-TIME INITIALIZATION
 -- ============================================================================
-
+local function TargetFrame_CheckClassification_Hook(self, forceNormalTexture)
+    -- Después de que Blizzard haga su lógica, aplicamos la nuestra
+    local threatFlash = _G.TargetFrameFlash
+    if threatFlash then
+        threatFlash:SetTexture(TEXTURES.THREAT)
+        
+        -- Usar las coordenadas específicas { 211, 421, 0, 89 }
+        -- Convertir píxeles a coordenadas UV (0-1)
+        -- width = 1024, height = 512
+        threatFlash:SetTexCoord(211/1024, 421/1024, 0/512, 89/512)
+        threatFlash:SetBlendMode("ADD")
+        threatFlash:SetAlpha(0.7)
+        
+        threatFlash:ClearAllPoints()
+        threatFlash:SetPoint("BOTTOMLEFT", TargetFrame, "BOTTOMLEFT", -2.5, 15)
+        
+        -- Tamaño basado en las coordenadas píxel
+        -- Ancho: 421 - 211 = 210 píxeles
+        -- Alto: 89 - 0 = 89 píxeles
+        threatFlash:SetSize(214, 91)
+        
+        -- Opciones de tamaño alternativas:
+        -- threatFlash:SetSize(168, 71)   -- 80% del tamaño
+        -- threatFlash:SetSize(126, 53)   -- 60% del tamaño
+        -- threatFlash:SetSize(105, 45)   -- 50% del tamaño
+    end
+end
 local function InitializeFrame()
-    if Module.configured then return end
-    
+    if Module.configured then
+        return
+    end
+
     -- Hide Blizzard elements ONCE
-    local toHide = {
-        TargetFrameTextureFrameTexture,
-        TargetFrameBackground,
-        TargetFrameFlash,
-        _G.TargetFrameNumericalThreat,
-        TargetFrame.threatNumericIndicator,
-        TargetFrame.threatIndicator
-    }
-    
+    local toHide =
+        {TargetFrameTextureFrameTexture, TargetFrameBackground, _G.TargetFrameNumericalThreat 
+        }
+
     for _, element in ipairs(toHide) do
-        if element then 
+        if element then
             element:SetAlpha(0)
             element:Hide()
         end
     end
-    
+
+    -- Hook la función que resetea el threat indicator
+    if not Module.threatHooked then
+        hooksecurefunc("TargetFrame_CheckClassification", TargetFrame_CheckClassification_Hook)
+        Module.threatHooked = true
+    end
+
     -- Create background texture ONCE
     if not frameElements.background then
         frameElements.background = TargetFrame:CreateTexture("DragonUI_TargetBG", "BACKGROUND", nil, -7)
         frameElements.background:SetTexture(TEXTURES.BACKGROUND)
         frameElements.background:SetPoint("TOPLEFT", TargetFrame, "TOPLEFT", 0, -8)
-        
+
     end
-    
+
     -- Create border texture ONCE
     if not frameElements.border then
         frameElements.border = TargetFrame:CreateTexture("DragonUI_TargetBorder", "OVERLAY", nil, 5)
         frameElements.border:SetTexture(TEXTURES.BORDER)
         frameElements.border:SetPoint("TOPLEFT", frameElements.background, "TOPLEFT", 0, 0)
     end
-    
+
     -- Create elite decoration ONCE
     if not frameElements.elite then
         frameElements.elite = TargetFrame:CreateTexture("DragonUI_TargetElite", "OVERLAY", nil, 7)
         frameElements.elite:SetTexture(TEXTURES.BOSS)
         frameElements.elite:Hide()
     end
-    
+
     -- Configure name background ONCE
     if TargetFrameNameBackground then
         TargetFrameNameBackground:ClearAllPoints()
@@ -350,59 +405,41 @@ local function InitializeFrame()
         TargetFrameNameBackground:SetBlendMode("ADD")
         TargetFrameNameBackground:SetAlpha(0.9)
     end
-    
+
     -- Configure portrait ONCE
     TargetFramePortrait:ClearAllPoints()
     TargetFramePortrait:SetSize(56, 56)
     TargetFramePortrait:SetPoint("TOPRIGHT", TargetFrame, "TOPRIGHT", -47, -15)
     TargetFramePortrait:SetDrawLayer("ARTWORK", 1)
-    
+
     -- Configure health bar ONCE
     TargetFrameHealthBar:ClearAllPoints()
     TargetFrameHealthBar:SetSize(125, 20)
     TargetFrameHealthBar:SetPoint("RIGHT", TargetFramePortrait, "LEFT", -1, 0)
     TargetFrameHealthBar:SetFrameLevel(TargetFrame:GetFrameLevel())
-    
+
     -- Configure power bar ONCE
     TargetFrameManaBar:ClearAllPoints()
     TargetFrameManaBar:SetSize(132, 9)
     TargetFrameManaBar:SetPoint("RIGHT", TargetFramePortrait, "LEFT", 6.5, -16.5)
-    TargetFrameManaBar:SetFrameLevel(TargetFrame:GetFrameLevel() )
-    
+    TargetFrameManaBar:SetFrameLevel(TargetFrame:GetFrameLevel())
+
     -- Configure text elements ONCE
     if TargetFrameTextureFrameName then
         TargetFrameTextureFrameName:ClearAllPoints()
         TargetFrameTextureFrameName:SetPoint("BOTTOM", TargetFrameHealthBar, "TOP", 10, 1)
         TargetFrameTextureFrameName:SetDrawLayer("OVERLAY", 2)
     end
-    
+
     if TargetFrameTextureFrameLevelText then
         TargetFrameTextureFrameLevelText:ClearAllPoints()
         TargetFrameTextureFrameLevelText:SetPoint("BOTTOMRIGHT", TargetFrameHealthBar, "TOPLEFT", 16, 1)
         TargetFrameTextureFrameLevelText:SetDrawLayer("OVERLAY", 2)
     end
-    
+
     -- Setup bar hooks ONCE
     SetupBarHooks()
-    
-    -- Create threat system ONCE
-    if not frameElements.threatGlow then
-        local glow = CreateFrame("Frame", "DragonUITargetThreatGlow", TargetFrame)
-        glow:SetFrameStrata("MEDIUM")
-        glow:SetFrameLevel(TargetFrame:GetFrameLevel() + 2)
-        glow:SetSize(209, 90)
-        glow:SetPoint("TOPLEFT", TargetFrame, "TOPLEFT", 0, 5)
-        glow:Hide()
-        
-        glow.texture = glow:CreateTexture(nil, "OVERLAY", nil, 6)
-        glow.texture:SetTexture(TEXTURES.THREAT)
-        glow.texture:SetTexCoord(0, 0.2061015625, 0.537109375, 0.712890625)
-        glow.texture:SetAllPoints()
-        glow.texture:SetBlendMode("ADD")
-        
-        frameElements.threatGlow = glow
-    end
-    
+
     if not frameElements.threatNumeric then
         local numeric = CreateFrame("Frame", "DragonUITargetNumericalThreat", TargetFrame)
         numeric:SetFrameStrata("HIGH")
@@ -410,45 +447,42 @@ local function InitializeFrame()
         numeric:SetSize(71, 13)
         numeric:SetPoint("BOTTOM", TargetFrame, "TOP", -45, -20)
         numeric:Hide()
-        
+
         local bg = numeric:CreateTexture(nil, "ARTWORK")
         bg:SetTexture(TEXTURES.THREAT_NUMERIC)
         bg:SetTexCoord(0.927734375, 0.9970703125, 0.3125, 0.337890625)
         bg:SetAllPoints()
-        
+
         numeric.text = numeric:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
         numeric.text:SetPoint("CENTER")
         numeric.text:SetFont("Fonts\\FRIZQT__.TTF", 10)
         numeric.text:SetShadowOffset(1, -1)
-        
+
         frameElements.threatNumeric = numeric
     end
-    
+
     -- Apply configuration
     local config = GetConfig()
-    
+
     TargetFrame:ClearAllPoints()
     TargetFrame:SetClampedToScreen(false)
     TargetFrame:SetScale(config.scale or 1)
-    
+
     if config.override then
-        TargetFrame:SetPoint(config.anchor or "TOPLEFT", UIParent, 
-                            config.anchorParent or "TOPLEFT", config.x or 20, config.y or -4)
+        TargetFrame:SetPoint(config.anchor or "TOPLEFT", UIParent, config.anchorParent or "TOPLEFT", config.x or 20,
+            config.y or -4)
     else
         local defaults = addon.defaults and addon.defaults.profile.unitframe.target or {}
-        TargetFrame:SetPoint("TOPLEFT", UIParent, "TOPLEFT", 
-                            defaults.x or 20, defaults.y or -4)
+        TargetFrame:SetPoint("TOPLEFT", UIParent, "TOPLEFT", defaults.x or 20, defaults.y or -4)
     end
-    
+
     -- Setup text system ONCE
     local dragonFrame = _G["DragonUIUnitframeFrame"]
     if dragonFrame and addon.TextSystem and not Module.textSystem then
-        Module.textSystem = addon.TextSystem.SetupFrameTextSystem(
-            "target", "target", dragonFrame,
-            TargetFrameHealthBar, TargetFrameManaBar, "TargetFrame"
-        )
+        Module.textSystem = addon.TextSystem.SetupFrameTextSystem("target", "target", dragonFrame, TargetFrameHealthBar,
+            TargetFrameManaBar, "TargetFrame")
     end
-    
+
     Module.configured = true
 end
 
@@ -465,7 +499,7 @@ local function OnEvent(self, event, ...)
             Module.targetFrame:SetPoint("TOPLEFT", UIParent, "TOPLEFT", 250, -50)
             Module.initialized = true
         end
-        
+
     elseif event == "PLAYER_ENTERING_WORLD" then
         InitializeFrame()
         if UnitExists("target") then
@@ -473,7 +507,7 @@ local function OnEvent(self, event, ...)
             UpdateClassification()
             UpdateThreat()
         end
-        
+
     elseif event == "PLAYER_TARGET_CHANGED" then
         UpdateNameBackground()
         UpdateClassification()
@@ -481,16 +515,16 @@ local function OnEvent(self, event, ...)
         if Module.textSystem then
             Module.textSystem.update()
         end
-        
+
     elseif event == "UNIT_CLASSIFICATION_CHANGED" then
         local unit = ...
         if unit == "target" then
             UpdateClassification()
         end
-        
+
     elseif event == "UNIT_THREAT_SITUATION_UPDATE" or event == "UNIT_THREAT_LIST_UPDATE" then
         UpdateThreat()
-        
+
     elseif event == "UNIT_FACTION" then
         local unit = ...
         if unit == "target" then
@@ -520,7 +554,7 @@ local function RefreshFrame()
     if not Module.configured then
         InitializeFrame()
     end
-    
+
     -- Only update dynamic content
     if UnitExists("target") then
         UpdateNameBackground()
@@ -537,13 +571,12 @@ local function ResetFrame()
     for key, value in pairs(defaults) do
         addon:SetConfigValue("unitframe", "target", key, value)
     end
-    
+
     -- Re-apply position only
     local config = GetConfig()
     TargetFrame:ClearAllPoints()
     TargetFrame:SetScale(config.scale or 1)
-    TargetFrame:SetPoint("TOPLEFT", UIParent, "TOPLEFT", 
-                        defaults.x or 20, defaults.y or -4)
+    TargetFrame:SetPoint("TOPLEFT", UIParent, "TOPLEFT", defaults.x or 20, defaults.y or -4)
 end
 
 -- Export API
@@ -551,7 +584,9 @@ addon.TargetFrame = {
     Refresh = RefreshFrame,
     RefreshTargetFrame = RefreshFrame,
     Reset = ResetFrame,
-    anchor = function() return Module.targetFrame end,
+    anchor = function()
+        return Module.targetFrame
+    end,
     ChangeTargetFrame = RefreshFrame
 }
 

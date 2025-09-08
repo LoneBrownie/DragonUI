@@ -5,6 +5,7 @@
     <Script file="player.lua"/>
     <Script file="target.lua"/>
     <Script file="text_system.lua"/>
+    <Script file="atlas.lua"/>
    
    
 </Ui>
