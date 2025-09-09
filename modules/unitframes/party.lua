@@ -53,7 +53,8 @@ local TEXTURES = {
     focusBar = "Interface\\Addons\\DragonUI\\Textures\\Partyframe\\UI-HUD-UnitFrame-Party-PortraitOn-Bar-Focus",
     rageBar = "Interface\\Addons\\DragonUI\\Textures\\Partyframe\\UI-HUD-UnitFrame-Party-PortraitOn-Bar-Rage",
     energyBar = "Interface\\Addons\\DragonUI\\Textures\\Partyframe\\UI-HUD-UnitFrame-Party-PortraitOn-Bar-Energy",
-    runicPowerBar = "Interface\\Addons\\DragonUI\\Textures\\Partyframe\\UI-HUD-UnitFrame-Party-PortraitOn-Bar-RunicPower"
+    runicPowerBar = "Interface\\Addons\\DragonUI\\Textures\\Partyframe\\UI-HUD-UnitFrame-Party-PortraitOn-Bar-RunicPower",
+    roleIcons = "Interface\\Addons\\DragonUI\\Textures\\roleicons"
 }
 
 -- ===============================================================
@@ -258,7 +259,7 @@ local function StylePartyFrames()
                 masterLooterIcon:ClearAllPoints()
                 masterLooterIcon:SetPoint('TOPLEFT', 58, 20) -- ✅ Posición al lado del leader icon
                 masterLooterIcon:SetSize(16, 16) -- ✅ Tamaño personalizado
-                
+
             end
 
             -- ✅ Flash setup
@@ -294,6 +295,19 @@ local function StylePartyFrames()
                 borderFrame:SetFrameLevel(frame:GetFrameLevel() + 10)
                 borderFrame:SetAllPoints(frame)
                 border:SetParent(borderFrame)
+
+                -- ✅ CREAR ICONO DE ROL
+                if UnitGroupRolesAssigned then -- ✅ Solo si existe la función
+                    local roleIcon = frame:CreateTexture(nil, 'OVERLAY', nil, 9)
+                    roleIcon:SetSize(11, 11)
+                    roleIcon:SetPoint('TOPRIGHT', frame, 'TOPRIGHT', -14, -6)
+                    roleIcon:SetTexture(TEXTURES.roleIcons)
+                    roleIcon:SetTexCoord(0.015625, 0.265625, 0.03125, 0.53125) -- ✅ Default DPS
+                    roleIcon:Hide() -- ✅ Oculto por defecto
+
+                    -- ✅ GUARDAR REFERENCIA
+                    frame.DragonUI_RoleIcon = roleIcon
+                end
 
                 frame.DragonUIStyled = true
             end
@@ -395,6 +409,43 @@ local function UpdateManaBarTexture(frame)
     end
 end
 
+-- ✅ NUEVA FUNCIÓN: Update role icon
+local function UpdateRoleIcon(frame)
+    if not frame or not UnitGroupRolesAssigned then
+        return -- ✅ Salir si no existe la función (por compatibilidad)
+    end
+
+    local unit = "party" .. frame:GetID()
+    if not UnitExists(unit) then
+        return
+    end
+
+    local roleIcon = frame.DragonUI_RoleIcon
+    if not roleIcon then
+        return
+    end
+
+    local role = UnitGroupRolesAssigned(unit)
+
+    if role and role ~= "NONE" then
+        roleIcon:Show()
+        roleIcon:SetTexture(TEXTURES.roleIcons)
+
+        -- ✅ COORDENADAS PARA CADA ROL (basadas en tu addon de referencia)
+        if role == "TANK" then
+            roleIcon:SetTexCoord(0.578125, 0.828125, 0.03125, 0.53125) -- ✅ Tank
+        elseif role == "HEALER" then
+            roleIcon:SetTexCoord(0.296875, 0.546875, 0.03125, 0.53125) -- ✅ Healer
+        elseif role == "DAMAGER" then
+            roleIcon:SetTexCoord(0.015625, 0.265625, 0.03125, 0.53125) -- ✅ DPS
+        else
+            roleIcon:Hide()
+        end
+    else
+        roleIcon:Hide()
+    end
+end
+
 -- ===============================================================
 -- HOOK SETUP FUNCTION
 -- ===============================================================
@@ -445,6 +496,9 @@ local function SetupPartyHooks()
                 masterLooterIcon:SetPoint('TOPLEFT', 58, 11) -- ✅ Posición al lado del leader
                 masterLooterIcon:SetSize(16, 16)
                 masterLooterIcon:SetDrawLayer('OVERLAY', 8)
+            end
+            if UnitGroupRolesAssigned then
+                UpdateRoleIcon(frame)
             end
         end
     end)
@@ -514,6 +568,41 @@ local function SetupPartyHooks()
         end
     end)
 
+    -- Hook Party Roles 
+    hooksecurefunc("PartyMemberFrame_UpdateMember", function(frame)
+        if frame and frame:GetName():match("^PartyMemberFrame%d+$") then
+            -- ...existing code...
+
+            -- AÑADIR REPOSICIONAMIENTO DEL ROLE ICON TAMBIÉN
+            if UnitGroupRolesAssigned then
+                UpdateRoleIcon(frame)
+
+                --  MANTENER POSICIÓN FIJA DEL ROLE ICON
+                local roleIcon = frame.DragonUI_RoleIcon
+                if roleIcon then
+                    roleIcon:ClearAllPoints()
+                    roleIcon:SetPoint('TOPRIGHT', frame, 'TOPRIGHT', -14, -6) -- ✅ Forzar posición
+                    roleIcon:SetSize(11, 11) -- ✅ Forzar tamaño
+                    roleIcon:SetDrawLayer('OVERLAY', 9) -- ✅ Forzar layer
+                end
+            end
+        end
+    end)
+
+    if UnitGroupRolesAssigned then
+        local updateFrame = CreateFrame("Frame")
+        updateFrame:RegisterEvent("GROUP_ROSTER_UPDATE")
+        updateFrame:RegisterEvent("ROLE_CHANGED_INFORM")
+        updateFrame:SetScript("OnEvent", function(self, event, ...)
+            for i = 1, MAX_PARTY_MEMBERS do
+                local frame = _G['PartyMemberFrame' .. i]
+                if frame then
+                    UpdateRoleIcon(frame)
+                end
+            end
+        end)
+    end
+
 end
 
 -- ===============================================================
@@ -549,3 +638,4 @@ SetupPartyHooks() -- Second: safe hooks only
 -- ===============================================================
 
 print("|cFF00FF00[DragonUI]|r Party frames module loaded (taint-free)")
+
