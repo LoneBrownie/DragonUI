@@ -224,7 +224,7 @@ local function StylePartyFrames()
             local leaderIcon = _G[frame:GetName() .. 'LeaderIcon']
             if leaderIcon and not InCombatLockdown() then
                 leaderIcon:ClearAllPoints()
-                leaderIcon:SetPoint('TOPLEFT', 42, 8) -- ✅ Posición personalizada
+                leaderIcon:SetPoint('TOPLEFT', 42, 9) -- ✅ Posición personalizada
                 leaderIcon:SetSize(16, 16) -- ✅ Tamaño personalizado (opcional)
             end
 
@@ -233,8 +233,8 @@ local function StylePartyFrames()
             if flash then
                 flash:SetSize(114, 47)
                 flash:SetTexture(TEXTURES.frame)
-                flash:SetTexCoord(GetPartyCoords("background"))
-                flash:SetPoint('TOPLEFT', 1, -2)
+                flash:SetTexCoord(GetPartyCoords("flash"))
+                flash:SetPoint('TOPLEFT', 2, -2)
                 flash:SetVertexColor(1, 0, 0, 1)
                 flash:SetDrawLayer('ARTWORK', 5)
             end
