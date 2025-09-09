@@ -256,7 +256,7 @@ local function StylePartyFrames()
             local masterLooterIcon = _G[frame:GetName() .. 'MasterIcon']
             if masterLooterIcon then -- ✅ SIN RESTRICCIÓN DE COMBATE
                 masterLooterIcon:ClearAllPoints()
-                masterLooterIcon:SetPoint('TOPLEFT', 58, 9) -- ✅ Posición al lado del leader icon
+                masterLooterIcon:SetPoint('TOPLEFT', 58, 20) -- ✅ Posición al lado del leader icon
                 masterLooterIcon:SetSize(16, 16) -- ✅ Tamaño personalizado
                 
             end
@@ -442,7 +442,7 @@ local function SetupPartyHooks()
             local masterLooterIcon = _G[frame:GetName() .. 'MasterIcon']
             if masterLooterIcon then -- ✅ SIN RESTRICCIÓN DE COMBATE
                 masterLooterIcon:ClearAllPoints()
-                masterLooterIcon:SetPoint('TOPLEFT', 58, 9) -- ✅ Posición al lado del leader
+                masterLooterIcon:SetPoint('TOPLEFT', 58, 11) -- ✅ Posición al lado del leader
                 masterLooterIcon:SetSize(16, 16)
                 masterLooterIcon:SetDrawLayer('OVERLAY', 8)
             end
