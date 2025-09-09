@@ -1,9 +1,21 @@
-local addon = select(2, ...);
+-- ===============================================================
+-- DRAGONUI PARTY FRAMES MODULE
+-- ===============================================================
+local addon = select(2, ...)
 
--- Check if module should load
+-- ===============================================================
+-- EARLY EXIT CHECK
+-- ===============================================================
 if not addon.db or not addon.db.profile or not addon.db.profile.unitframe or not addon.db.profile.unitframe.party then
     return -- Exit early if database not ready
 end
+
+-- ===============================================================
+-- IMPORTS AND GLOBALS
+-- ===============================================================
+
+-- ✅ IMPORTAR SISTEMA DE TEXTO
+local TextSystem = addon.TextSystem
 
 -- Cache globals and APIs
 local _G = _G
@@ -17,9 +29,20 @@ local UnitExists, UnitIsConnected = UnitExists, UnitIsConnected
 local UnitInRange, UnitIsDeadOrGhost = UnitInRange, UnitIsDeadOrGhost
 local MAX_PARTY_MEMBERS = MAX_PARTY_MEMBERS or 4
 
+-- ===============================================================
+-- MODULE NAMESPACE AND STORAGE
+-- ===============================================================
+
 -- Module namespace
 local PartyFrames = {}
 addon.PartyFrames = PartyFrames
+
+-- ✅ ALMACENAMIENTO PARA ELEMENTOS DE TEXTO
+PartyFrames.textElements = {}
+
+-- ===============================================================
+-- CONSTANTS AND CONFIGURATION
+-- ===============================================================
 
 -- Texture paths for our custom party frames
 local TEXTURES = {
@@ -31,6 +54,10 @@ local TEXTURES = {
     energyBar = "Interface\\Addons\\DragonUI\\Textures\\Partyframe\\UI-HUD-UnitFrame-Party-PortraitOn-Bar-Energy",
     runicPowerBar = "Interface\\Addons\\DragonUI\\Textures\\Partyframe\\UI-HUD-UnitFrame-Party-PortraitOn-Bar-RunicPower"
 }
+
+-- ===============================================================
+-- HELPER FUNCTIONS
+-- ===============================================================
 
 -- Get settings helper
 local function GetSettings()
@@ -69,8 +96,9 @@ local function GetClassColor(unit)
     return 1, 1, 1
 end
 
+-- Get texture coordinates for party frame elements
 local function GetPartyCoords(type)
-    if type == "border" then
+    if type == "background" then
         return 0.480469, 0.949219, 0.222656, 0.414062
     elseif type == "flash" then
         return 0.480469, 0.925781, 0.453125, 0.636719
@@ -80,59 +108,110 @@ local function GetPartyCoords(type)
     return 0, 1, 0, 1
 end
 
--- ✅ SIMPLIFIED STYLE FUNCTION (como ejemplos - SOLO propiedades simples)
--- ✅ FUNCIÓN MEJORADA USANDO EL MÉTODO DEL ADDON DE REFERENCIA
+-- ===============================================================
+-- TEXT UPDATE SYSTEM (TAINT-FREE)
+-- ===============================================================
+
+-- Frame and variables for safe text updates
+local updateFrame = CreateFrame("Frame")
+local pendingUpdates = {}
+local updateScheduled = false
+
+-- Safe text update function
+local function SafeUpdateTexts()
+    for frameIndex, _ in pairs(pendingUpdates) do
+        if PartyFrames.textElements[frameIndex] and PartyFrames.textElements[frameIndex].update then
+            PartyFrames.textElements[frameIndex].update()
+        end
+    end
+
+    -- Clear pending updates
+    pendingUpdates = {}
+    updateScheduled = false
+    updateFrame:SetScript("OnUpdate", nil)
+end
+
+-- Schedule text update function (taint-free)
+local function ScheduleTextUpdate(frameIndex)
+    if not frameIndex then
+        return
+    end
+
+    -- Mark frame for update
+    pendingUpdates[frameIndex] = true
+
+    -- If no update is scheduled, create one
+    if not updateScheduled then
+        updateScheduled = true
+        -- ✅ USE OnUpdate with minimal delay (compatible with 3.3.5a)
+        local elapsed = 0
+        updateFrame:SetScript("OnUpdate", function(self, dt)
+            elapsed = elapsed + dt
+            if elapsed >= 0.01 then -- 10ms delay
+                SafeUpdateTexts()
+            end
+        end)
+    end
+end
+
+-- ===============================================================
+-- FRAME STYLING FUNCTIONS
+-- ===============================================================
+
+-- Main styling function for party frames
 local function StylePartyFrames()
     local settings = GetSettings()
-    if not settings then return end
+    if not settings then
+        return
+    end
 
     for i = 1, MAX_PARTY_MEMBERS do
         local frame = _G['PartyMemberFrame' .. i]
         if frame then
-            -- ✅ Scale
+            -- ✅ Scale and texture setup
             frame:SetScale(settings.scale or 1)
-            
-            -- ✅ ESCONDER TEXTURAS BLIZZARD (como addon de referencia)
-            -- Background
+
+            -- Hide background
             local bg = _G[frame:GetName() .. 'Background']
             if bg then
-                bg:Hide() 
-            end
-            
-            -- Texture principal
-            local texture = _G[frame:GetName() .. 'Texture']
-            if texture then
-                texture:SetTexture() 
-                texture:Hide()       
+                bg:Hide()
             end
 
-            -- ✅ Health bar
+            -- Hide default texture
+            local texture = _G[frame:GetName() .. 'Texture']
+            if texture then
+                texture:SetTexture()
+                texture:Hide()
+            end
+
             local healthbar = _G[frame:GetName() .. 'HealthBar']
             if healthbar and not InCombatLockdown() then
                 healthbar:SetStatusBarTexture(TEXTURES.healthBar)
                 healthbar:SetSize(71, 10)
                 healthbar:ClearAllPoints()
                 healthbar:SetPoint('TOPLEFT', 44, -19)
-                healthbar:SetFrameLevel(frame:GetFrameLevel() + 2)
+                healthbar:SetFrameLevel(frame:GetFrameLevel()) -- ✅ MISMO NIVEL QUE EL FRAME
+                healthbar:SetStatusBarColor(1, 1, 1, 1)
             end
 
-            -- ✅ Mana bar
+            -- ✅ REEMPLAZAR Mana bar setup (líneas 192-199)
             local manabar = _G[frame:GetName() .. 'ManaBar']
             if manabar and not InCombatLockdown() then
                 manabar:SetStatusBarTexture(TEXTURES.manaBar)
                 manabar:SetSize(74, 7)
                 manabar:ClearAllPoints()
                 manabar:SetPoint('TOPLEFT', 41, -30)
-                manabar:SetFrameLevel(frame:GetFrameLevel() +1)
+                manabar:SetFrameLevel(frame:GetFrameLevel()) -- ✅ MISMO NIVEL QUE EL FRAME
+                manabar:SetStatusBarColor(1, 1, 1, 1)
             end
 
-            -- ✅ Name
+            -- ✅ Name styling
             local name = _G[frame:GetName() .. 'Name']
             if name then
                 name:SetFont("Fonts\\FRIZQT__.TTF", 10)
                 name:SetShadowColor(0, 0, 0, 1)
                 name:SetShadowOffset(1, -1)
-                
+
                 if not InCombatLockdown() then
                     name:ClearAllPoints()
                     name:SetPoint('TOPLEFT', 46, -6)
@@ -140,138 +219,86 @@ local function StylePartyFrames()
                 end
             end
 
-            -- ✅ Flash (como addon de referencia - reposicionar en lugar de esconder)
+            -- ✅ Flash setup
             local flash = _G[frame:GetName() .. 'Flash']
             if flash then
                 flash:SetSize(114, 47)
                 flash:SetTexture(TEXTURES.frame)
-                flash:SetTexCoord(GetPartyCoords("border"))
+                flash:SetTexCoord(GetPartyCoords("background"))
                 flash:SetPoint('TOPLEFT', 1, -2)
                 flash:SetVertexColor(1, 0, 0, 1)
                 flash:SetDrawLayer('ARTWORK', 5)
             end
 
-            -- ✅ CREAR BORDER (solo una vez)
+            -- ✅ Create background and mark as styled (no TextSystem here to avoid taint)
             if not frame.DragonUIStyled then
-                local border = frame:CreateTexture(nil, 'ARTWORK', nil, 3)
-                border:SetTexture(TEXTURES.frame)
-                border:SetTexCoord(GetPartyCoords("border"))
-                border:SetSize(120, 49)
-                border:SetPoint('TOPLEFT', 1, -2)
-                
+                local background = frame:CreateTexture(nil, 'BACKGROUND', nil, 3)
+                background:SetTexture(TEXTURES.frame)
+                background:SetTexCoord(GetPartyCoords("background"))
+                background:SetSize(120, 49)
+                background:SetPoint('TOPLEFT', 1, -2)
+
+                -- ✅ Mark as styled (no TextSystem call to avoid taint)
                 frame.DragonUIStyled = true
             end
+            -- ✅ REPOSICIONAR TEXTOS DE HEALTH Y MANA
+    if healthbar then
+        local healthText = _G[frame:GetName() .. 'HealthBarText']
+        if healthText then
+            healthText:ClearAllPoints()
+            healthText:SetPoint("CENTER", healthbar, "CENTER", 0, 0) -- ✅ CENTRADO EN LA BARRA
+            healthText:SetDrawLayer("OVERLAY", 7) -- ✅ POR ENCIMA DE TODO
+            healthText:SetFont("Fonts\\FRIZQT__.TTF", 10, "OUTLINE")
+            healthText:SetTextColor(1, 1, 1, 1)
+        end
+    end
+
+    if manabar then
+        local manaText = _G[frame:GetName() .. 'ManaBarText']
+        if manaText then
+            manaText:ClearAllPoints()
+            manaText:SetPoint("CENTER", manabar, "CENTER", 0, 0) -- ✅ CENTRADO EN LA BARRA
+            manaText:SetDrawLayer("OVERLAY", 7) -- ✅ POR ENCIMA DE TODO
+            manaText:SetFont("Fonts\\FRIZQT__.TTF", 10, "OUTLINE")
+            manaText:SetTextColor(1, 1, 1, 1)
+        end
+    end
+
+    frame.DragonUIStyled = true
+end
+        end
+    end
+
+
+-- ===============================================================
+-- TEXT AND COLOR UPDATE FUNCTIONS
+-- ===============================================================
+
+-- Health text update function (taint-free)
+local function UpdateHealthText(statusBar, unit)
+    if not unit and statusBar then
+        local frameName = statusBar:GetParent():GetName()
+        local frameIndex = frameName:match("PartyMemberFrame(%d+)")
+        if frameIndex then
+            -- ✅ Schedule update instead of calling directly
+            ScheduleTextUpdate(tonumber(frameIndex))
         end
     end
 end
 
--- ✅ HOOK PARA REESCONDER TEXTURAS (como addon de referencia)
-local function SetupPartyHooks()
-    -- Hook para mantener texturas escondidas
-    hooksecurefunc("PartyMemberFrame_UpdateMember", function(frame)
-        if frame and frame:GetName():match("^PartyMemberFrame%d+$") then
-            -- Reesconder texturas como en el addon de referencia
-            local texture = _G[frame:GetName() .. 'Texture']
-            if texture then
-                texture:SetTexture() -- Vaciar
-                texture:Hide()       -- Esconder
-            end
-            
-            local bg = _G[frame:GetName() .. 'Background']
-            if bg then
-                bg:Hide()
-            end
+-- Mana text update function (taint-free)
+local function UpdateManaText(statusBar, unit)
+    if not unit and statusBar then
+        local frameName = statusBar:GetParent():GetName()
+        local frameIndex = frameName:match("PartyMemberFrame(%d+)")
+        if frameIndex then
+            -- ✅ Schedule update instead of calling directly
+            ScheduleTextUpdate(tonumber(frameIndex))
         end
-    end)
-
-    -- Hooks para texto (mantener los existentes)
-    hooksecurefunc("TextStatusBar_UpdateTextString", function(statusBar)
-        if statusBar:GetName():find('PartyMemberFrame') then
-            if statusBar:GetName():find('HealthBar') then
-                UpdateHealthText(statusBar)
-            elseif statusBar:GetName():find('ManaBar') then
-                UpdateManaText(statusBar)
-            end
-        end
-    end)
-
-    hooksecurefunc("UnitFramePortrait_Update", function(frame)
-        if frame:GetName() and frame:GetName():match("^PartyMemberFrame%d+$") then
-            UpdatePartyColors(frame)
-        end
-    end)
-end
-
-
--- ✅ TEXT UPDATE functions (como ejemplo 2 con hooks)
-local function UpdateHealthText(statusBar)
-    if not statusBar or not statusBar.unit then
-        return
-    end
-
-    local unit = statusBar.unit
-    if not unit or not unit:match("^party%d+$") then
-        return
-    end
-
-    local settings = GetSettings()
-    if not settings then
-        return
-    end
-
-    -- ✅ USAR TextString existente (como ejemplo 2)
-    local textString = statusBar.TextString
-    if not textString then
-        return
-    end
-
-    local health = UnitHealth(unit)
-    local maxHealth = UnitHealthMax(unit)
-
-    if settings.showHealthTextAlways and maxHealth > 0 then
-        if settings.textFormat == "both" then
-            local percent = math.ceil((health / maxHealth) * 100)
-            textString:SetText(percent .. "%")
-        else
-            textString:SetText(FormatNumber(health))
-        end
-    else
-        textString:SetText("")
     end
 end
 
-local function UpdateManaText(statusBar)
-    if not statusBar or not statusBar.unit then
-        return
-    end
-
-    local unit = statusBar.unit
-    if not unit or not unit:match("^party%d+$") then
-        return
-    end
-
-    local settings = GetSettings()
-    if not settings then
-        return
-    end
-
-    -- ✅ USAR TextString existente (como ejemplo 2)
-    local textString = statusBar.TextString
-    if not textString then
-        return
-    end
-
-    local power = UnitPower(unit)
-    local maxPower = UnitPowerMax(unit)
-
-    if settings.showManaTextAlways and maxPower > 0 then
-        textString:SetText(FormatNumber(power))
-    else
-        textString:SetText("")
-    end
-end
-
--- ✅ UPDATE COLORS function (como ejemplo 1)
+-- Update party colors function
 local function UpdatePartyColors(frame)
     if not frame then
         return
@@ -294,9 +321,54 @@ local function UpdatePartyColors(frame)
     end
 end
 
--- ✅ SETUP HOOKS (como ejemplos - SOLO hooks)
+-- ===============================================================
+-- HOOK SETUP FUNCTION
+-- ===============================================================
+
+-- Setup all necessary hooks for party frames
 local function SetupPartyHooks()
-    -- ✅ Hook como ejemplo 2
+    -- Hook to maintain hidden textures
+    hooksecurefunc("PartyMemberFrame_UpdateMember", function(frame)
+        if frame and frame:GetName():match("^PartyMemberFrame%d+$") then
+            -- Re-hide textures
+            local texture = _G[frame:GetName() .. 'Texture']
+            if texture then
+                texture:SetTexture() -- Empty
+                texture:Hide() -- Hide
+            end
+
+            local bg = _G[frame:GetName() .. 'Background']
+            if bg then
+                bg:Hide()
+            end
+
+            -- ✅ Force white colors on each update
+            local healthbar = _G[frame:GetName() .. 'HealthBar']
+            local manabar = _G[frame:GetName() .. 'ManaBar']
+
+            if healthbar then
+                healthbar:SetStatusBarColor(1, 1, 1, 1) -- ✅ Always white
+            end
+            if manabar then
+                manabar:SetStatusBarColor(1, 1, 1, 1) -- ✅ Always white
+            end
+        end
+    end)
+
+    -- ✅ Additional hooks to intercept color changes
+    hooksecurefunc("UnitFrameHealthBar_Update", function(statusbar, unit)
+        if statusbar and statusbar:GetName() and statusbar:GetName():find('PartyMemberFrame') then
+            statusbar:SetStatusBarColor(1, 1, 1, 1) -- ✅ Force white
+        end
+    end)
+
+    hooksecurefunc("UnitFrameManaBar_Update", function(statusbar, unit)
+        if statusbar and statusbar:GetName() and statusbar:GetName():find('PartyMemberFrame') then
+            statusbar:SetStatusBarColor(1, 1, 1, 1) -- ✅ Force white
+        end
+    end)
+
+    -- Text update hooks
     hooksecurefunc("TextStatusBar_UpdateTextString", function(statusBar)
         if statusBar:GetName():find('PartyMemberFrame') then
             if statusBar:GetName():find('HealthBar') then
@@ -307,7 +379,7 @@ local function SetupPartyHooks()
         end
     end)
 
-    -- ✅ Hook para colores
+    -- Portrait update hook for class colors
     hooksecurefunc("UnitFramePortrait_Update", function(frame)
         if frame:GetName() and frame:GetName():match("^PartyMemberFrame%d+$") then
             UpdatePartyColors(frame)
@@ -315,10 +387,18 @@ local function SetupPartyHooks()
     end)
 end
 
+-- ===============================================================
+-- MODULE INTERFACE FUNCTIONS
+-- ===============================================================
+
 -- Update function for settings changes
 function PartyFrames:UpdateSettings()
     StylePartyFrames()
 end
+
+-- ===============================================================
+-- EXPORTS FOR OPTIONS.LUA
+-- ===============================================================
 
 -- Export for options.lua refresh functions
 addon.RefreshPartyFrames = function()
@@ -327,8 +407,16 @@ addon.RefreshPartyFrames = function()
     end
 end
 
--- ✅ INITIALIZE (como ejemplos)
-StylePartyFrames() -- Solo propiedades simples una vez
-SetupPartyHooks() -- Solo hooks seguros
+-- ===============================================================
+-- INITIALIZATION
+-- ===============================================================
+
+-- ✅ Initialize everything in correct order
+StylePartyFrames() -- First: visual properties only
+SetupPartyHooks() -- Second: safe hooks only
+
+-- ===============================================================
+-- MODULE LOADED CONFIRMATION
+-- ===============================================================
 
 print("|cFF00FF00[DragonUI]|r Party frames module loaded (taint-free)")
