@@ -289,6 +289,7 @@ local defaults = {
                 y = 752
             },
             party = {
+                enabled = true,
                 classcolor = false,
                 textFormat = 'both',
                 breakUpLargeNumbers = true,
@@ -301,7 +302,7 @@ local defaults = {
                 anchor = 'TOPLEFT',
                 anchorParent = 'TOPLEFT',
                 x = 10,
-                y = 720
+                y = -200
             },
             tot = {
                 classcolor = false,
