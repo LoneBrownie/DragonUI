@@ -109,6 +109,30 @@ local function GetPartyCoords(type)
     return 0, 1, 0, 1
 end
 
+-- ✅ NUEVA FUNCIÓN: Get power bar texture
+local function GetPowerBarTexture(unit)
+    if not unit or not UnitExists(unit) then
+        return TEXTURES.manaBar
+    end
+
+    local powerType, powerTypeString = UnitPowerType(unit)
+
+    -- En 3.3.5a los tipos son números, no strings
+    if powerType == 0 then -- MANA
+        return TEXTURES.manaBar
+    elseif powerType == 1 then -- RAGE
+        return TEXTURES.rageBar
+    elseif powerType == 2 then -- FOCUS
+        return TEXTURES.focusBar
+    elseif powerType == 3 then -- ENERGY
+        return TEXTURES.energyBar
+    elseif powerType == 6 then -- RUNIC_POWER (si existe en 3.3.5a)
+        return TEXTURES.runicPowerBar
+    else
+        return TEXTURES.manaBar -- Default
+    end
+end
+
 -- ===============================================================
 -- TEXT UPDATE SYSTEM (TAINT-FREE)
 -- ===============================================================
@@ -222,10 +246,19 @@ local function StylePartyFrames()
 
             -- LEADER ICON STYLING
             local leaderIcon = _G[frame:GetName() .. 'LeaderIcon']
-            if leaderIcon and not InCombatLockdown() then
+            if leaderIcon then -- ✅ QUITAMOS and not InCombatLockdown()
                 leaderIcon:ClearAllPoints()
                 leaderIcon:SetPoint('TOPLEFT', 42, 9) -- ✅ Posición personalizada
                 leaderIcon:SetSize(16, 16) -- ✅ Tamaño personalizado (opcional)
+            end
+
+            -- ✅ MASTER LOOTER ICON STYLING
+            local masterLooterIcon = _G[frame:GetName() .. 'MasterIcon']
+            if masterLooterIcon then -- ✅ SIN RESTRICCIÓN DE COMBATE
+                masterLooterIcon:ClearAllPoints()
+                masterLooterIcon:SetPoint('TOPLEFT', 58, 9) -- ✅ Posición al lado del leader icon
+                masterLooterIcon:SetSize(16, 16) -- ✅ Tamaño personalizado
+                
             end
 
             -- ✅ Flash setup
@@ -343,6 +376,25 @@ local function UpdatePartyColors(frame)
     end
 end
 
+-- ✅ NUEVA FUNCIÓN: Update mana bar texture
+local function UpdateManaBarTexture(frame)
+    if not frame then
+        return
+    end
+
+    local unit = "party" .. frame:GetID()
+    if not UnitExists(unit) then
+        return
+    end
+
+    local manabar = _G[frame:GetName() .. 'ManaBar']
+    if manabar then
+        local powerTexture = GetPowerBarTexture(unit)
+        manabar:SetStatusBarTexture(powerTexture)
+        manabar:SetStatusBarColor(1, 1, 1, 1) -- Mantener blanco
+    end
+end
+
 -- ===============================================================
 -- HOOK SETUP FUNCTION
 -- ===============================================================
@@ -374,6 +426,26 @@ local function SetupPartyHooks()
             if manabar then
                 manabar:SetStatusBarColor(1, 1, 1, 1) -- ✅ Always white
             end
+
+            -- ✅ Update power bar texture
+            UpdateManaBarTexture(frame)
+
+            -- ✅ REPOSICIONAR LEADER ICON TAMBIÉN AQUÍ
+            local leaderIcon = _G[frame:GetName() .. 'LeaderIcon']
+            if leaderIcon then -- ✅ QUITAMOS InCombatLockdown()
+                leaderIcon:ClearAllPoints()
+                leaderIcon:SetPoint('TOPLEFT', 42, 9) -- ✅ Posición personalizada
+                leaderIcon:SetSize(16, 16)
+                leaderIcon:SetDrawLayer('OVERLAY', 8)
+            end
+            -- ✅ REPOSICIONAR MASTER LOOTER ICON TAMBIÉN AQUÍ
+            local masterLooterIcon = _G[frame:GetName() .. 'MasterIcon']
+            if masterLooterIcon then -- ✅ SIN RESTRICCIÓN DE COMBATE
+                masterLooterIcon:ClearAllPoints()
+                masterLooterIcon:SetPoint('TOPLEFT', 58, 9) -- ✅ Posición al lado del leader
+                masterLooterIcon:SetSize(16, 16)
+                masterLooterIcon:SetDrawLayer('OVERLAY', 8)
+            end
         end
     end)
 
@@ -384,9 +456,19 @@ local function SetupPartyHooks()
         end
     end)
 
+    -- ✅ HOOK MEJORADO PARA POWER UPDATES
     hooksecurefunc("UnitFrameManaBar_Update", function(statusbar, unit)
         if statusbar and statusbar:GetName() and statusbar:GetName():find('PartyMemberFrame') then
             statusbar:SetStatusBarColor(1, 1, 1, 1) -- ✅ Force white
+
+            -- ✅ Update texture based on power type
+            local frameName = statusbar:GetParent():GetName()
+            local frameIndex = frameName:match("PartyMemberFrame(%d+)")
+            if frameIndex then
+                local partyUnit = "party" .. frameIndex
+                local powerTexture = GetPowerBarTexture(partyUnit)
+                statusbar:SetStatusBarTexture(powerTexture)
+            end
         end
     end)
 
@@ -420,6 +502,18 @@ local function SetupPartyHooks()
             UpdatePartyColors(frame)
         end
     end)
+    hooksecurefunc("PartyMemberFrame_UpdateLeader", function(frame)
+        if frame and frame:GetName():match("^PartyMemberFrame%d+$") then
+            local leaderIcon = _G[frame:GetName() .. 'LeaderIcon']
+            if leaderIcon then
+                leaderIcon:ClearAllPoints()
+                leaderIcon:SetPoint('TOPLEFT', 42, 9) -- ✅ Reposicionar siempre
+                leaderIcon:SetSize(16, 16)
+                leaderIcon:SetDrawLayer('OVERLAY', 8)
+            end
+        end
+    end)
+
 end
 
 -- ===============================================================
