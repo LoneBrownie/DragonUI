@@ -47,6 +47,7 @@ PartyFrames.textElements = {}
 -- Texture paths for our custom party frames
 local TEXTURES = {
     frame = "Interface\\Addons\\DragonUI\\Textures\\Partyframe\\uipartyframe",
+    border = "Interface\\Addons\\DragonUI\\Textures\\UI-HUD-UnitFrame-TargetofTarget-PortraitOn-BORDER",
     healthBar = "Interface\\Addons\\DragonUI\\Textures\\Partyframe\\UI-HUD-UnitFrame-Party-PortraitOn-Bar-Health",
     manaBar = "Interface\\Addons\\DragonUI\\Textures\\Partyframe\\UI-HUD-UnitFrame-Party-PortraitOn-Bar-Mana",
     focusBar = "Interface\\Addons\\DragonUI\\Textures\\Partyframe\\UI-HUD-UnitFrame-Party-PortraitOn-Bar-Focus",
@@ -219,6 +220,14 @@ local function StylePartyFrames()
                 end
             end
 
+            -- LEADER ICON STYLING
+            local leaderIcon = _G[frame:GetName() .. 'LeaderIcon']
+            if leaderIcon and not InCombatLockdown() then
+                leaderIcon:ClearAllPoints()
+                leaderIcon:SetPoint('TOPLEFT', 42, 8) -- ✅ Posición personalizada
+                leaderIcon:SetSize(16, 16) -- ✅ Tamaño personalizado (opcional)
+            end
+
             -- ✅ Flash setup
             local flash = _G[frame:GetName() .. 'Flash']
             if flash then
@@ -232,43 +241,56 @@ local function StylePartyFrames()
 
             -- ✅ Create background and mark as styled (no TextSystem here to avoid taint)
             if not frame.DragonUIStyled then
+                -- Background (por detrás)
                 local background = frame:CreateTexture(nil, 'BACKGROUND', nil, 3)
                 background:SetTexture(TEXTURES.frame)
                 background:SetTexCoord(GetPartyCoords("background"))
                 background:SetSize(120, 49)
                 background:SetPoint('TOPLEFT', 1, -2)
 
-                -- ✅ Mark as styled (no TextSystem call to avoid taint)
+                -- ✅ BORDER (por encima de todo) - CON FRAMELEVEL FORZADO
+                local border = frame:CreateTexture(nil, 'ARTWORK', nil, 10)
+                border:SetTexture(TEXTURES.border)
+                border:SetTexCoord(GetPartyCoords("border"))
+                border:SetSize(128, 64)
+                border:SetPoint('TOPLEFT', 1, -2)
+                border:SetVertexColor(1, 1, 1, 1)
+
+                -- ✅ FORZAR QUE EL BORDER TENGA UN FRAMELEVEL MÁS ALTO
+                local borderFrame = CreateFrame("Frame", nil, frame)
+                borderFrame:SetFrameLevel(frame:GetFrameLevel() + 10)
+                borderFrame:SetAllPoints(frame)
+                border:SetParent(borderFrame)
+
                 frame.DragonUIStyled = true
             end
             -- ✅ REPOSICIONAR TEXTOS DE HEALTH Y MANA
-    if healthbar then
-        local healthText = _G[frame:GetName() .. 'HealthBarText']
-        if healthText then
-            healthText:ClearAllPoints()
-            healthText:SetPoint("CENTER", healthbar, "CENTER", 0, 0) -- ✅ CENTRADO EN LA BARRA
-            healthText:SetDrawLayer("OVERLAY", 7) -- ✅ POR ENCIMA DE TODO
-            healthText:SetFont("Fonts\\FRIZQT__.TTF", 10, "OUTLINE")
-            healthText:SetTextColor(1, 1, 1, 1)
+            if healthbar then
+                local healthText = _G[frame:GetName() .. 'HealthBarText']
+                if healthText then
+                    healthText:ClearAllPoints()
+                    healthText:SetPoint("CENTER", healthbar, "CENTER", 0, 0) -- ✅ CENTRADO EN LA BARRA
+                    healthText:SetDrawLayer("OVERLAY", 7) -- ✅ POR ENCIMA DE TODO
+                    healthText:SetFont("Fonts\\FRIZQT__.TTF", 10, "OUTLINE")
+                    healthText:SetTextColor(1, 1, 1, 1)
+                end
+            end
+
+            if manabar then
+                local manaText = _G[frame:GetName() .. 'ManaBarText']
+                if manaText then
+                    manaText:ClearAllPoints()
+                    manaText:SetPoint("CENTER", manabar, "CENTER", 0, 0) -- ✅ CENTRADO EN LA BARRA
+                    manaText:SetDrawLayer("OVERLAY", 7) -- ✅ POR ENCIMA DE TODO
+                    manaText:SetFont("Fonts\\FRIZQT__.TTF", 10, "OUTLINE")
+                    manaText:SetTextColor(1, 1, 1, 1)
+                end
+            end
+
+            frame.DragonUIStyled = true
         end
     end
-
-    if manabar then
-        local manaText = _G[frame:GetName() .. 'ManaBarText']
-        if manaText then
-            manaText:ClearAllPoints()
-            manaText:SetPoint("CENTER", manabar, "CENTER", 0, 0) -- ✅ CENTRADO EN LA BARRA
-            manaText:SetDrawLayer("OVERLAY", 7) -- ✅ POR ENCIMA DE TODO
-            manaText:SetFont("Fonts\\FRIZQT__.TTF", 10, "OUTLINE")
-            manaText:SetTextColor(1, 1, 1, 1)
-        end
-    end
-
-    frame.DragonUIStyled = true
 end
-        end
-    end
-
 
 -- ===============================================================
 -- TEXT AND COLOR UPDATE FUNCTIONS
@@ -365,6 +387,19 @@ local function SetupPartyHooks()
     hooksecurefunc("UnitFrameManaBar_Update", function(statusbar, unit)
         if statusbar and statusbar:GetName() and statusbar:GetName():find('PartyMemberFrame') then
             statusbar:SetStatusBarColor(1, 1, 1, 1) -- ✅ Force white
+        end
+    end)
+
+    -- ✅ AÑADIR ESTOS HOOKS ADICIONALES PARA HEALTH
+    hooksecurefunc("HealthBar_OnValueChanged", function(self)
+        if self:GetName() and self:GetName():find('PartyMemberFrame') then
+            self:SetStatusBarColor(1, 1, 1, 1) -- ✅ Force white on value change
+        end
+    end)
+
+    hooksecurefunc("UnitFrameHealthBar_OnUpdate", function(self)
+        if self:GetName() and self:GetName():find('PartyMemberFrame') then
+            self:SetStatusBarColor(1, 1, 1, 1) -- ✅ Force white on update
         end
     end)
 
