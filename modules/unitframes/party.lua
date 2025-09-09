@@ -96,14 +96,14 @@ local function StylePartyFrames()
             -- Background
             local bg = _G[frame:GetName() .. 'Background']
             if bg then
-                bg:Hide() -- ← MÉTODO DEL ADDON DE REFERENCIA
+                bg:Hide() 
             end
             
             -- Texture principal
             local texture = _G[frame:GetName() .. 'Texture']
             if texture then
-                texture:SetTexture() -- ← VACIAR TEXTURA
-                texture:Hide()       -- ← ESCONDER
+                texture:SetTexture() 
+                texture:Hide()       
             end
 
             -- ✅ Health bar
@@ -123,13 +123,13 @@ local function StylePartyFrames()
                 manabar:SetSize(74, 7)
                 manabar:ClearAllPoints()
                 manabar:SetPoint('TOPLEFT', 41, -30)
-                manabar:SetFrameLevel(frame:GetFrameLevel() + 2)
+                manabar:SetFrameLevel(frame:GetFrameLevel() +1)
             end
 
             -- ✅ Name
             local name = _G[frame:GetName() .. 'Name']
             if name then
-                name:SetFont("Fonts\\FRIZQT__.TTF", 10, "OUTLINE")
+                name:SetFont("Fonts\\FRIZQT__.TTF", 10)
                 name:SetShadowColor(0, 0, 0, 1)
                 name:SetShadowOffset(1, -1)
                 
