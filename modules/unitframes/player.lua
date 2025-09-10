@@ -189,7 +189,7 @@ end
 -- Remove unwanted Blizzard frame elements
 local function RemoveBlizzardFrames()
     local elementsToHide = {"PlayerAttackIcon", "PlayerFrameBackground", "PlayerAttackBackground",
-                            "PlayerFrameRoleIcon", "PlayerGuideIcon", "PlayerFrameGroupIndicatorLeft",
+                             "PlayerGuideIcon", "PlayerFrameGroupIndicatorLeft",
                             "PlayerFrameGroupIndicatorRight"}
 
     for _, name in ipairs(elementsToHide) do

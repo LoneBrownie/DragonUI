@@ -40,7 +40,11 @@ local BOSS_COORDS = {
 
 -- Power types
 local POWER_MAP = {
-    [0] = "Mana", [1] = "Rage", [2] = "Focus", [3] = "Energy", [6] = "RunicPower"
+    [0] = "Mana",
+    [1] = "Rage",
+    [2] = "Focus",
+    [3] = "Energy",
+    [6] = "RunicPower"
 }
 
 -- Frame elements storage
@@ -63,7 +67,9 @@ local updateCache = {
 local function GetConfig()
     local config = addon:GetConfigValue("unitframe", "tot") or {}
     local defaults = addon.defaults and addon.defaults.profile.unitframe.tot or {}
-    return setmetatable(config, {__index = defaults})
+    return setmetatable(config, {
+        __index = defaults
+    })
 end
 
 -- ============================================================================
@@ -77,31 +83,37 @@ local function SetupBarHooks()
         if healthTexture then
             healthTexture:SetDrawLayer("ARTWORK", 1)
         end
-        
+
         hooksecurefunc(TargetFrameToTHealthBar, "SetValue", function(self)
-            if not UnitExists("targettarget") then return end
-            
+            if not UnitExists("targettarget") then
+                return
+            end
+
             local now = GetTime()
-            if now - updateCache.lastHealthUpdate < 0.05 then return end
+            if now - updateCache.lastHealthUpdate < 0.05 then
+                return
+            end
             updateCache.lastHealthUpdate = now
-            
+
             local texture = self:GetStatusBarTexture()
-            if not texture then return end
-            
+            if not texture then
+                return
+            end
+
             -- Update texture path
             local texturePath = TEXTURES.BAR_PREFIX .. "Health"
             if texture:GetTexture() ~= texturePath then
                 texture:SetTexture(texturePath)
                 texture:SetDrawLayer("ARTWORK", 1)
             end
-            
+
             -- Update coords
             local min, max = self:GetMinMaxValues()
             local current = self:GetValue()
             if max > 0 and current then
-                texture:SetTexCoord(0, current/max, 0, 1)
+                texture:SetTexCoord(0, current / max, 0, 1)
             end
-            
+
             -- Update color
             local config = GetConfig()
             if config.classcolor and UnitIsPlayer("targettarget") then
@@ -116,48 +128,54 @@ local function SetupBarHooks()
                 texture:SetVertexColor(1, 1, 1)
             end
         end)
-        
+
         TargetFrameToTHealthBar.DragonUI_Setup = true
     end
-    
+
     -- Power bar hooks (igual que tu target.lua)
     if not TargetFrameToTManaBar.DragonUI_Setup then
         local powerTexture = TargetFrameToTManaBar:GetStatusBarTexture()
         if powerTexture then
             powerTexture:SetDrawLayer("ARTWORK", 1)
         end
-        
+
         hooksecurefunc(TargetFrameToTManaBar, "SetValue", function(self)
-            if not UnitExists("targettarget") then return end
-            
+            if not UnitExists("targettarget") then
+                return
+            end
+
             local now = GetTime()
-            if now - updateCache.lastPowerUpdate < 0.05 then return end
+            if now - updateCache.lastPowerUpdate < 0.05 then
+                return
+            end
             updateCache.lastPowerUpdate = now
-            
+
             local texture = self:GetStatusBarTexture()
-            if not texture then return end
-            
+            if not texture then
+                return
+            end
+
             -- Update texture based on power type
             local powerType = UnitPowerType("targettarget")
             local powerName = POWER_MAP[powerType] or "Mana"
             local texturePath = TEXTURES.BAR_PREFIX .. powerName
-            
+
             if texture:GetTexture() ~= texturePath then
                 texture:SetTexture(texturePath)
                 texture:SetDrawLayer("ARTWORK", 1)
             end
-            
+
             -- Update coords
             local min, max = self:GetMinMaxValues()
             local current = self:GetValue()
             if max > 0 and current then
-                texture:SetTexCoord(0, current/max, 0, 1)
+                texture:SetTexCoord(0, current / max, 0, 1)
             end
-            
+
             -- Force white color
             texture:SetVertexColor(1, 1, 1)
         end)
-        
+
         TargetFrameToTManaBar.DragonUI_Setup = true
     end
 end
@@ -175,7 +193,7 @@ local function UpdateClassification()
     local classification = UnitClassification("targettarget")
     local coords = nil
     
-    -- Check vehicle first (como en tu focus.lua)
+    -- Check vehicle first
     if UnitVehicleSeatCount and UnitVehicleSeatCount("targettarget") > 0 then
         frameElements.elite:Hide()
         return
@@ -196,10 +214,18 @@ local function UpdateClassification()
     end
     
     if coords then
-        frameElements.elite:SetTexCoord(coords[1], coords[2], coords[3], coords[4])
-        frameElements.elite:SetSize(coords[5], coords[6])
-        frameElements.elite:SetPoint("CENTER", TargetFrameToTPortrait, "CENTER", coords[7], coords[8])
+        frameElements.elite:SetTexture(TEXTURES.BOSS) -- ✅ AÑADIDO: SetTexture
+        
+        -- ✅ APLICAR FLIP HORIZONTAL A TODAS LAS DECORACIONES
+        local left, right, top, bottom = coords[1], coords[2], coords[3], coords[4]
+        frameElements.elite:SetTexCoord(right, left, top, bottom) -- ✅ FLIPPED: right, left en lugar de left, right
+        
+        -- ✅ USAR VALORES CORREGIDOS DEL DEBUG
+        frameElements.elite:SetSize(50, 49) -- En lugar de coords[5], coords[6]
+        frameElements.elite:SetPoint("CENTER", TargetFrameToTPortrait, "CENTER", -4, -3) -- En lugar de coords[7], coords[8]
+        frameElements.elite:SetDrawLayer("OVERLAY", 11) -- ✅ FORZAR DRAW LAYER
         frameElements.elite:Show()
+        frameElements.elite:SetAlpha(1) -- ✅ ASEGURAR VISIBILIDAD
     else
         frameElements.elite:Hide()
     end
@@ -216,7 +242,9 @@ local function UpdateNameText()
             -- Truncado optimizado para ToT (más corto)
             local function TruncateToTText(textFrame, name, maxWidth)
                 if not textFrame or not name or name == "" then
-                    if textFrame then textFrame:SetText("") end
+                    if textFrame then
+                        textFrame:SetText("")
+                    end
                     return ""
                 end
 
@@ -247,7 +275,7 @@ local function UpdateNameText()
 
                 return bestTruncated
             end
-            
+
             local finalText = TruncateToTText(TargetFrameToTTextureFrameName, name, 50)
             TargetFrameToTTextureFrameName:SetText(finalText)
         else
@@ -263,14 +291,16 @@ end
 -- ============================================================================
 
 local function InitializeFrame()
-    if Module.configured then return end
-    
+    if Module.configured then
+        return
+    end
+
     -- Verificar que ToT existe
     if not TargetFrameToT then
         print("|cFFFF0000[DragonUI]|r TargetFrameToT not available")
         return
     end
-    
+
     -- Get configuration
     local config = GetConfig()
     local scale = config.scale or 1.0
@@ -287,41 +317,41 @@ local function InitializeFrame()
     TargetFrameToT:SetSize(93 + 27, 45)
 
     -- Hide Blizzard elements
-    local toHide = {
-        TargetFrameToTTextureFrameTexture,
-        TargetFrameToTBackground
-    }
-    
+    local toHide = {TargetFrameToTTextureFrameTexture, TargetFrameToTBackground}
+
     for _, element in ipairs(toHide) do
-        if element then 
+        if element then
             element:SetAlpha(0)
             element:Hide()
         end
     end
-    
+
     -- Create background texture
     if not frameElements.background then
         frameElements.background = TargetFrameToT:CreateTexture("DragonUI_ToTBG", "BACKGROUND", nil, 0)
         frameElements.background:SetTexture(TEXTURES.BACKGROUND)
         frameElements.background:SetPoint('LEFT', TargetFrameToTPortrait, 'CENTER', -25 + 1, -10)
     end
-    
+
     -- Create border texture
     if not frameElements.border then
-        frameElements.border = TargetFrameToTHealthBar:CreateTexture("DragonUI_ToTBorder", "OVERLAY", nil, 0)
+        frameElements.border = TargetFrameToTHealthBar:CreateTexture("DragonUI_ToTBorder", "OVERLAY", nil, 1)
         frameElements.border:SetTexture(TEXTURES.BORDER)
         frameElements.border:SetPoint('LEFT', TargetFrameToTPortrait, 'CENTER', -25 + 1, -10)
         frameElements.border:Show()
         frameElements.border:SetAlpha(1)
     end
-    
+
     -- Create elite decoration
-    if not frameElements.elite then
-        frameElements.elite = TargetFrameToT:CreateTexture("DragonUI_ToTElite", "OVERLAY", nil, 7)
-        frameElements.elite:SetTexture(TEXTURES.BOSS)
-        frameElements.elite:Hide()
-    end
+if not frameElements.elite then
+    local eliteFrame = CreateFrame("Frame", "DragonUI_ToTEliteFrame", TargetFrameToT)
+    eliteFrame:SetFrameStrata("MEDIUM") 
+    eliteFrame:SetAllPoints(TargetFrameToTPortrait)
     
+    frameElements.elite = eliteFrame:CreateTexture("DragonUI_ToTElite", "OVERLAY", nil, 1)
+    frameElements.elite:SetTexture(TEXTURES.BOSS)
+    frameElements.elite:Hide()
+end
     -- Configure health bar
     TargetFrameToTHealthBar:Hide()
     TargetFrameToTHealthBar:ClearAllPoints()
@@ -329,12 +359,13 @@ local function InitializeFrame()
     TargetFrameToTHealthBar:SetFrameStrata("LOW")
     TargetFrameToTHealthBar:GetStatusBarTexture():SetDrawLayer("ARTWORK", 1)
     TargetFrameToTHealthBar:GetStatusBarTexture():SetTexture(TEXTURES.BAR_PREFIX .. "Health")
-    TargetFrameToTHealthBar.SetStatusBarColor = function() end -- noop
+    TargetFrameToTHealthBar.SetStatusBarColor = function()
+    end -- noop
     TargetFrameToTHealthBar:GetStatusBarTexture():SetVertexColor(1, 1, 1, 1)
     TargetFrameToTHealthBar:SetSize(70.5, 10)
     TargetFrameToTHealthBar:SetPoint('LEFT', TargetFrameToTPortrait, 'RIGHT', 1 + 1, 0)
     TargetFrameToTHealthBar:Show()
-    
+
     -- Configure power bar
     TargetFrameToTManaBar:Hide()
     TargetFrameToTManaBar:ClearAllPoints()
@@ -342,12 +373,13 @@ local function InitializeFrame()
     TargetFrameToTManaBar:SetFrameStrata("LOW")
     TargetFrameToTManaBar:GetStatusBarTexture():SetDrawLayer("ARTWORK", 1)
     TargetFrameToTManaBar:GetStatusBarTexture():SetTexture(TEXTURES.BAR_PREFIX .. "Mana")
-    TargetFrameToTManaBar.SetStatusBarColor = function() end -- noop
+    TargetFrameToTManaBar.SetStatusBarColor = function()
+    end -- noop
     TargetFrameToTManaBar:GetStatusBarTexture():SetVertexColor(1, 1, 1, 1)
     TargetFrameToTManaBar:SetSize(74, 7.5)
     TargetFrameToTManaBar:SetPoint('LEFT', TargetFrameToTPortrait, 'RIGHT', 1 - 2 - 1.5 + 1, 2 - 10 - 1)
     TargetFrameToTManaBar:Show()
-    
+
     -- Configure name text
     if TargetFrameToTTextureFrameName then
         TargetFrameToTTextureFrameName:ClearAllPoints()
@@ -361,18 +393,26 @@ local function InitializeFrame()
         TargetFrameToTTextureFrameName:SetTextColor(1.0, 0.82, 0.0, 1.0) -- WoW standard yellow
         TargetFrameToTTextureFrameName:SetDrawLayer("BORDER", 1)
     end
-    
+
     -- Setup bar hooks
     SetupBarHooks()
-    
+
     -- ✅ SETUP TEXT SYSTEM (IGUAL QUE TARGET/FOCUS)
     if addon.TextSystem and not Module.textSystem then
-        Module.textSystem = addon.TextSystem.SetupFrameTextSystem(
-            "tot", "targettarget", TargetFrameToT,
-            TargetFrameToTHealthBar, TargetFrameToTManaBar, "TargetFrameToT"
-        )
+        Module.textSystem = addon.TextSystem.SetupFrameTextSystem("tot", "targettarget", TargetFrameToT,
+            TargetFrameToTHealthBar, TargetFrameToTManaBar, "TargetFrameToT")
     end
-    
+
+    if not Module.threatHooked and TargetFrame_CheckClassification then
+    hooksecurefunc("TargetFrame_CheckClassification", function()
+        -- Force update ToT classification when target changes
+        if UnitExists("targettarget") then
+            UpdateClassification()
+        end
+    end)
+    Module.threatHooked = true
+end
+
     Module.configured = true
     print("|cFF00FF00[DragonUI]|r TargetOfTarget configured successfully")
 end
@@ -390,14 +430,14 @@ local function OnEvent(self, event, ...)
             Module.totFrame:SetPoint("TOPLEFT", UIParent, "TOPLEFT", 370, -80)
             Module.initialized = true
         end
-        
+
     elseif event == "PLAYER_ENTERING_WORLD" then
         InitializeFrame()
         if UnitExists("targettarget") then
             UpdateNameText()
             UpdateClassification()
         end
-        
+
     elseif event == "PLAYER_TARGET_CHANGED" then
         -- Target cambió, forzar update del ToT
         UpdateNameText()
@@ -405,7 +445,7 @@ local function OnEvent(self, event, ...)
         if Module.textSystem then
             Module.textSystem.update()
         end
-        
+
     elseif event == "UNIT_TARGET" then
         local unit = ...
         if unit == "target" then -- El target del target cambió
@@ -415,13 +455,13 @@ local function OnEvent(self, event, ...)
                 Module.textSystem.update()
             end
         end
-        
+
     elseif event == "UNIT_CLASSIFICATION_CHANGED" then
         local unit = ...
         if unit == "targettarget" then
             UpdateClassification()
         end
-        
+
     elseif event == "UNIT_FACTION" then
         local unit = ...
         if unit == "targettarget" then
@@ -450,7 +490,7 @@ local function RefreshFrame()
     if not Module.configured then
         InitializeFrame()
     end
-    
+
     if UnitExists("targettarget") then
         UpdateNameText()
         UpdateClassification()
@@ -465,12 +505,11 @@ local function ResetFrame()
     for key, value in pairs(defaults) do
         addon:SetConfigValue("unitframe", "tot", key, value)
     end
-    
+
     local config = GetConfig()
     TargetFrameToT:ClearAllPoints()
     TargetFrameToT:SetScale(config.scale or 1)
-    TargetFrameToT:SetPoint("BOTTOMRIGHT", TargetFrame, "BOTTOMRIGHT", 
-                           defaults.x or (-35 + 27), defaults.y or -15)
+    TargetFrameToT:SetPoint("BOTTOMRIGHT", TargetFrame, "BOTTOMRIGHT", defaults.x or (-35 + 27), defaults.y or -15)
 end
 
 -- Export API (igual que target/focus)
@@ -478,7 +517,9 @@ addon.TargetOfTarget = {
     Refresh = RefreshFrame,
     RefreshToTFrame = RefreshFrame,
     Reset = ResetFrame,
-    anchor = function() return Module.totFrame end,
+    anchor = function()
+        return Module.totFrame
+    end,
     ChangeToTFrame = RefreshFrame
 }
 
