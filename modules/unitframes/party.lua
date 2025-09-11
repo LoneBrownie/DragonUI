@@ -133,30 +133,6 @@ local function GetPowerBarTexture(unit)
     end
 end
 
-
--- ===============================================================  
--- PARTY FRAME TOOLTIP REPOSITIONING
--- ===============================================================
-
--- Hook para reposicionar el tooltip que muestra los buffs del party member
-local function HookPartyTooltipMethods()
-    -- Hook simple para mover tooltips de auras de party members
-    hooksecurefunc(GameTooltip, "SetUnitAura", function(self, unit, index, filter)
-        print("SetUnitAura called for:", unit or "nil", "index:", index or "nil") -- DEBUG temporal
-        if unit and unit:match("^party%d+$") then
-            local frameIndex = unit:match("party(%d+)")
-            local partyFrame = _G["PartyMemberFrame" .. frameIndex]
-            if partyFrame then
-                print("Moving tooltip for", unit, "to party frame", frameIndex) -- DEBUG temporal
-                self:ClearAllPoints()
-                self:SetPoint("TOPLEFT", partyFrame, "TOPRIGHT", 10, 0)
-            end
-        end
-    end)
-end
-
--- Ejecutar cuando el addon se carga
-HookPartyTooltipMethods()
 -- ===============================================================
 -- SIMPLE BLIZZARD BUFF/DEBUFF REPOSITIONING
 -- ===============================================================
@@ -171,13 +147,13 @@ local function RepositionBlizzardBuffs()
                 
                 if buff then
                     buff:ClearAllPoints()
-                    buff:SetPoint('TOPLEFT', frame, 'TOPRIGHT', 5 + (auraIndex-1)*18, -5)
+                    buff:SetPoint('TOPLEFT', frame, 'TOPRIGHT', -5 + (auraIndex-1)*18, -5)
                     buff:SetSize(16, 16)
                 end
                 
                 if debuff then
                     debuff:ClearAllPoints()
-                    debuff:SetPoint('TOPLEFT', frame, 'TOPRIGHT', 5 + (auraIndex-1)*18, -25)
+                    debuff:SetPoint('TOPLEFT', frame, 'TOPRIGHT', -5 + (auraIndex-1)*18, -22)
                     debuff:SetSize(16, 16)
                 end
             end
@@ -468,7 +444,7 @@ local function StylePartyFrames()
                 local pvpIcon = _G[frame:GetName() .. 'PVPIcon']
                 local statusIcon = _G[frame:GetName() .. 'StatusIcon']
                 local blizzardRoleIcon = _G[frame:GetName() .. 'RoleIcon'] -- ✅ AÑADIR
-
+                local guideIcon = _G[frame:GetName() .. 'GuideIcon']
                 -- Mover textos sin crear taint (solo cambiar parent)
                 if name then
                     name:SetParent(borderFrame)
@@ -501,6 +477,10 @@ local function StylePartyFrames()
                 if blizzardRoleIcon then
                     blizzardRoleIcon:SetParent(borderFrame)
                     blizzardRoleIcon:SetDrawLayer('OVERLAY', 11)
+                end
+                if guideIcon then
+                    guideIcon:SetParent(borderFrame)
+                    guideIcon:SetDrawLayer('OVERLAY', 11)
                 end
                 
                 
@@ -544,8 +524,21 @@ local function UpdateHealthText(statusBar, unit)
         local frameName = statusBar:GetParent():GetName()
         local frameIndex = frameName:match("PartyMemberFrame(%d+)")
         if frameIndex then
-            -- ✅ Schedule update instead of calling directly
-            ScheduleTextUpdate(tonumber(frameIndex))
+            -- ✅ ACTUALIZACIÓN DIRECTA CON LARGE NUMBERS
+            local partyUnit = "party" .. frameIndex
+            if UnitExists(partyUnit) then
+                local current = UnitHealth(partyUnit)
+                local max = UnitHealthMax(partyUnit)
+                
+                if current and max then
+                    local healthText = _G[statusBar:GetParent():GetName() .. 'HealthBarText']
+                    if healthText then
+                        local formattedCurrent = FormatNumber(current)
+                        local formattedMax = FormatNumber(max)
+                        healthText:SetText(formattedCurrent .. "/" .. formattedMax)
+                    end
+                end
+            end
         end
     end
 end
@@ -556,8 +549,21 @@ local function UpdateManaText(statusBar, unit)
         local frameName = statusBar:GetParent():GetName()
         local frameIndex = frameName:match("PartyMemberFrame(%d+)")
         if frameIndex then
-            -- ✅ Schedule update instead of calling directly
-            ScheduleTextUpdate(tonumber(frameIndex))
+            -- ✅ ACTUALIZACIÓN DIRECTA CON LARGE NUMBERS
+            local partyUnit = "party" .. frameIndex
+            if UnitExists(partyUnit) then
+                local current = UnitPower(partyUnit)
+                local max = UnitPowerMax(partyUnit)
+                
+                if current and max then
+                    local manaText = _G[statusBar:GetParent():GetName() .. 'ManaBarText']
+                    if manaText then
+                        local formattedCurrent = FormatNumber(current)
+                        local formattedMax = FormatNumber(max)
+                        manaText:SetText(formattedCurrent .. "/" .. formattedMax)
+                    end
+                end
+            end
         end
     end
 end
@@ -673,6 +679,13 @@ local function SetupPartyHooks()
                 masterLooterIcon:SetPoint('TOPLEFT', 58, 11) -- ✅ Posición al lado del leader
                 masterLooterIcon:SetSize(16, 16)
                 masterLooterIcon:SetDrawLayer('OVERLAY', 11) -- ✅ POR ENCIMA DEL BORDER
+            end
+
+            -- ✅ NUEVO: REPOSICIONAR GUIDE ICON
+            local guideIcon = _G[frame:GetName() .. 'GuideIcon']
+            if guideIcon then
+                guideIcon:SetSize(15, 15)
+                guideIcon:SetDrawLayer('OVERLAY', 11) -- ✅ POR ENCIMA DEL BORDER
             end
 
             -- ✅ ASEGURAR QUE EL ROLE ICON DE BLIZZARD ESTÉ VISIBLE

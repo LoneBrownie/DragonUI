@@ -18,10 +18,6 @@ local Module = {
 
 -- Cache Blizzard frames
 local TargetFrameToT = _G.TargetFrameToT
-local TargetFrameToTHealthBar = _G.TargetFrameToTHealthBar
-local TargetFrameToTManaBar = _G.TargetFrameToTManaBar
-local TargetFrameToTPortrait = _G.TargetFrameToTPortrait
-local TargetFrameToTTextureFrameName = _G.TargetFrameToTTextureFrameName
 
 -- Texture paths (ToT específicas)
 local TEXTURES = {
@@ -65,11 +61,7 @@ local updateCache = {
 -- ============================================================================
 
 local function GetConfig()
-    local config = addon:GetConfigValue("unitframe", "tot") or {}
-    local defaults = addon.defaults and addon.defaults.profile.unitframe.tot or {}
-    return setmetatable(config, {
-        __index = defaults
-    })
+    return addon:GetConfigValue("unitframe", "tot") or {}
 end
 
 -- ============================================================================
@@ -181,24 +173,26 @@ local function SetupBarHooks()
 end
 
 -- ============================================================================
--- CLASSIFICATION SYSTEM (IGUAL QUE TARGET/FOCUS)
+-- CLASSIFICATION SYSTEM 
 -- ============================================================================
 
 local function UpdateClassification()
     if not UnitExists("targettarget") or not frameElements.elite then
-        if frameElements.elite then frameElements.elite:Hide() end
+        if frameElements.elite then
+            frameElements.elite:Hide()
+        end
         return
     end
-    
+
     local classification = UnitClassification("targettarget")
     local coords = nil
-    
+
     -- Check vehicle first
     if UnitVehicleSeatCount and UnitVehicleSeatCount("targettarget") > 0 then
         frameElements.elite:Hide()
         return
     end
-    
+
     -- Determine classification
     if classification == "worldboss" or classification == "elite" then
         coords = BOSS_COORDS.elite
@@ -212,14 +206,14 @@ local function UpdateClassification()
             coords = BOSS_COORDS.elite
         end
     end
-    
+
     if coords then
         frameElements.elite:SetTexture(TEXTURES.BOSS) -- ✅ AÑADIDO: SetTexture
-        
+
         -- ✅ APLICAR FLIP HORIZONTAL A TODAS LAS DECORACIONES
         local left, right, top, bottom = coords[1], coords[2], coords[3], coords[4]
         frameElements.elite:SetTexCoord(right, left, top, bottom) -- ✅ FLIPPED: right, left en lugar de left, right
-        
+
         -- ✅ USAR VALORES CORREGIDOS DEL DEBUG
         frameElements.elite:SetSize(50, 49) -- En lugar de coords[5], coords[6]
         frameElements.elite:SetPoint("CENTER", TargetFrameToTPortrait, "CENTER", -4, -3) -- En lugar de coords[7], coords[8]
@@ -228,61 +222,6 @@ local function UpdateClassification()
         frameElements.elite:SetAlpha(1) -- ✅ ASEGURAR VISIBILIDAD
     else
         frameElements.elite:Hide()
-    end
-end
-
--- ============================================================================
--- NAME TEXT OPTIMIZATION (De tu unitframe.lua)
--- ============================================================================
-
-local function UpdateNameText()
-    if TargetFrameToTTextureFrameName and UnitExists('targettarget') then
-        local name = UnitName('targettarget')
-        if name then
-            -- Truncado optimizado para ToT (más corto)
-            local function TruncateToTText(textFrame, name, maxWidth)
-                if not textFrame or not name or name == "" then
-                    if textFrame then
-                        textFrame:SetText("")
-                    end
-                    return ""
-                end
-
-                textFrame:SetText(name)
-                local currentWidth = textFrame:GetStringWidth()
-
-                if currentWidth <= maxWidth then
-                    return name
-                end
-
-                -- Binary search para truncado óptimo
-                local left, right = 1, string.len(name)
-                local bestTruncated = name
-
-                while left <= right do
-                    local mid = math.floor((left + right) / 2)
-                    local testText = string.sub(name, 1, mid) .. "..."
-                    textFrame:SetText(testText)
-                    local testWidth = textFrame:GetStringWidth()
-
-                    if testWidth <= maxWidth then
-                        bestTruncated = testText
-                        left = mid + 1
-                    else
-                        right = mid - 1
-                    end
-                end
-
-                return bestTruncated
-            end
-
-            local finalText = TruncateToTText(TargetFrameToTTextureFrameName, name, 50)
-            TargetFrameToTTextureFrameName:SetText(finalText)
-        else
-            TargetFrameToTTextureFrameName:SetText("")
-        end
-    elseif TargetFrameToTTextureFrameName then
-        TargetFrameToTTextureFrameName:SetText("")
     end
 end
 
@@ -303,18 +242,11 @@ local function InitializeFrame()
 
     -- Get configuration
     local config = GetConfig()
-    local scale = config.scale or 1.0
-    local anchorFrame = config.anchorFrame or 'TargetFrame'
-    local anchor = config.anchor or 'BOTTOMRIGHT'
-    local anchorParent = config.anchorParent or 'BOTTOMRIGHT'
-    local x = config.x or (-35 + 27)
-    local y = config.y or -15
 
     -- Position and scale
     TargetFrameToT:ClearAllPoints()
-    TargetFrameToT:SetPoint(anchor, _G[anchorFrame] or TargetFrame, anchorParent, x, y)
-    TargetFrameToT:SetScale(scale)
-    TargetFrameToT:SetSize(93 + 27, 45)
+    TargetFrameToT:SetPoint("BOTTOMRIGHT", TargetFrame, "BOTTOMRIGHT", config.x or 22, config.y or -15)
+    TargetFrameToT:SetScale(config.scale or 1.0)
 
     -- Hide Blizzard elements
     local toHide = {TargetFrameToTTextureFrameTexture, TargetFrameToTBackground}
@@ -343,15 +275,15 @@ local function InitializeFrame()
     end
 
     -- Create elite decoration
-if not frameElements.elite then
-    local eliteFrame = CreateFrame("Frame", "DragonUI_ToTEliteFrame", TargetFrameToT)
-    eliteFrame:SetFrameStrata("MEDIUM") 
-    eliteFrame:SetAllPoints(TargetFrameToTPortrait)
-    
-    frameElements.elite = eliteFrame:CreateTexture("DragonUI_ToTElite", "OVERLAY", nil, 1)
-    frameElements.elite:SetTexture(TEXTURES.BOSS)
-    frameElements.elite:Hide()
-end
+    if not frameElements.elite then
+        local eliteFrame = CreateFrame("Frame", "DragonUI_ToTEliteFrame", TargetFrameToT)
+        eliteFrame:SetFrameStrata("MEDIUM")
+        eliteFrame:SetAllPoints(TargetFrameToTPortrait)
+
+        frameElements.elite = eliteFrame:CreateTexture("DragonUI_ToTElite", "OVERLAY", nil, 1)
+        frameElements.elite:SetTexture(TEXTURES.BOSS)
+        frameElements.elite:Hide()
+    end
     -- Configure health bar
     TargetFrameToTHealthBar:Hide()
     TargetFrameToTHealthBar:ClearAllPoints()
@@ -390,31 +322,22 @@ end
         if font and size then
             TargetFrameToTTextureFrameName:SetFont(font, math.max(size, 10), flags)
         end
-        TargetFrameToTTextureFrameName:SetTextColor(1.0, 0.82, 0.0, 1.0) -- WoW standard yellow
+        TargetFrameToTTextureFrameName:SetTextColor(1.0, 0.82, 0.0, 1.0)
         TargetFrameToTTextureFrameName:SetDrawLayer("BORDER", 1)
+
+        -- ✅ TRUNCADO AUTOMÁTICO COMO RETAILUI
+        TargetFrameToTTextureFrameName:SetWidth(65)
+        TargetFrameToTTextureFrameName:SetJustifyH("LEFT")
+    end
+
+    -- Force debuff positions if needed
+    if TargetFrameToTDebuff1 then
+        TargetFrameToTDebuff1:ClearAllPoints()
+        TargetFrameToTDebuff1:SetPoint("TOPLEFT", TargetFrameToT, "BOTTOMLEFT", 120, 35)
     end
 
     -- Setup bar hooks
     SetupBarHooks()
-
-    -- ✅ SETUP TEXT SYSTEM (IGUAL QUE TARGET/FOCUS)
-    if addon.TextSystem and not Module.textSystem then
-        Module.textSystem = addon.TextSystem.SetupFrameTextSystem("tot", "targettarget", TargetFrameToT,
-            TargetFrameToTHealthBar, TargetFrameToTManaBar, "TargetFrameToT")
-    end
-
-    if not Module.threatHooked and TargetFrame_CheckClassification then
-    hooksecurefunc("TargetFrame_CheckClassification", function()
-        -- Force update ToT classification when target changes
-        if UnitExists("targettarget") then
-            UpdateClassification()
-        end
-    end)
-    Module.threatHooked = true
-end
-
-    Module.configured = true
-    print("|cFF00FF00[DragonUI]|r TargetOfTarget configured successfully")
 end
 
 -- ============================================================================
@@ -434,13 +357,13 @@ local function OnEvent(self, event, ...)
     elseif event == "PLAYER_ENTERING_WORLD" then
         InitializeFrame()
         if UnitExists("targettarget") then
-            UpdateNameText()
+
             UpdateClassification()
         end
 
     elseif event == "PLAYER_TARGET_CHANGED" then
         -- Target cambió, forzar update del ToT
-        UpdateNameText()
+
         UpdateClassification()
         if Module.textSystem then
             Module.textSystem.update()
@@ -449,7 +372,7 @@ local function OnEvent(self, event, ...)
     elseif event == "UNIT_TARGET" then
         local unit = ...
         if unit == "target" then -- El target del target cambió
-            UpdateNameText()
+
             UpdateClassification()
             if Module.textSystem then
                 Module.textSystem.update()
@@ -492,7 +415,7 @@ local function RefreshFrame()
     end
 
     if UnitExists("targettarget") then
-        UpdateNameText()
+
         UpdateClassification()
         if Module.textSystem then
             Module.textSystem.update()
@@ -501,15 +424,16 @@ local function RefreshFrame()
 end
 
 local function ResetFrame()
-    local defaults = addon.defaults and addon.defaults.profile.unitframe.tot or {}
-    for key, value in pairs(defaults) do
-        addon:SetConfigValue("unitframe", "tot", key, value)
-    end
+    -- Reset a valores por defecto de la DB
+    addon:SetConfigValue("unitframe", "tot", "x", 22)
+    addon:SetConfigValue("unitframe", "tot", "y", -15)
+    addon:SetConfigValue("unitframe", "tot", "scale", 1.0)
 
+    -- Aplicar inmediatamente
     local config = GetConfig()
     TargetFrameToT:ClearAllPoints()
-    TargetFrameToT:SetScale(config.scale or 1)
-    TargetFrameToT:SetPoint("BOTTOMRIGHT", TargetFrame, "BOTTOMRIGHT", defaults.x or (-35 + 27), defaults.y or -15)
+    TargetFrameToT:SetPoint("BOTTOMRIGHT", TargetFrame, "BOTTOMRIGHT", config.x, config.y)
+    TargetFrameToT:SetScale(config.scale)
 end
 
 -- Export API (igual que target/focus)
