@@ -8,6 +8,6 @@
     <Script file="focus.lua"/>
     <Script file="tot.lua"/>
     <Script file="party.lua"/>
-   
-   
+    <Script file="pet.lua"/>
+
 </Ui>
