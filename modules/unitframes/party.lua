@@ -133,302 +133,74 @@ local function GetPowerBarTexture(unit)
     end
 end
 
+
+-- ===============================================================  
+-- PARTY FRAME TOOLTIP REPOSITIONING
 -- ===============================================================
--- BUFF MANAGEMENT SYSTEM (3.3.5a COMPATIBLE)
--- ===============================================================
 
--- Buff configuration
-local BUFF_CONFIG = {
-    maxBuffs = 8,           -- Maximum visible buffs per frame
-    maxDebuffs = 4,         -- Maximum visible debuffs per frame
-    buffSize = 16,          -- Size of buff icons
-    debuffSize = 16,        -- Size of debuff icons
-    iconSpacing = 2,        -- Space between icons
-    offsetX = 43,            -- Horizontal offset from frame
-    offsetY = -92,            -- Vertical offset above frame
-}
-
--- Buff frame storage
-local buffFrames = {}
-
--- Helper function to determine if aura is dispellable
-local function IsDispellable(dispelType, unit)
-    if not dispelType then return false end
-    
-    -- Get player's dispel abilities (3.3.5a compatible)
-    local _, playerClass = UnitClass("player")
-    local canDispel = false
-    
-    if dispelType == "Magic" then
-        canDispel = (playerClass == "PRIEST" or playerClass == "SHAMAN" or 
-                    playerClass == "MAGE" or playerClass == "WARLOCK")
-    elseif dispelType == "Disease" then
-        canDispel = (playerClass == "PRIEST" or playerClass == "SHAMAN" or 
-                    playerClass == "PALADIN")
-    elseif dispelType == "Poison" then
-        canDispel = (playerClass == "SHAMAN" or playerClass == "DRUID" or 
-                    playerClass == "PALADIN")
-    elseif dispelType == "Curse" then
-        canDispel = (playerClass == "MAGE" or playerClass == "DRUID")
-    end
-    
-    return canDispel
-end
-
--- Create buff icon
-local function CreateBuffIcon(parent, index, isDebuff)
-    local iconSize = isDebuff and BUFF_CONFIG.debuffSize or BUFF_CONFIG.buffSize
-    local prefix = isDebuff and "Debuff" or "Buff"
-    
-    local button = CreateFrame("Button", parent:GetName() .. prefix .. index, parent)
-    button:SetSize(iconSize, iconSize)
-    
-    -- Icon texture
-    local icon = button:CreateTexture(nil, "ARTWORK")
-    icon:SetAllPoints()
-    button.icon = icon
-    
-    -- Border texture
-    local border = button:CreateTexture(nil, "OVERLAY")
-    border:SetTexture("Interface\\Buttons\\UI-Debuff-Overlays")
-    border:SetAllPoints()
-    border:SetTexCoord(0.296875, 0.5703125, 0, 0.515625)
-    button.border = border
-    
-    -- Duration text
-    local duration = button:CreateFontString(nil, "OVERLAY", "NumberFontNormal")
-    duration:SetPoint("BOTTOM", button, "BOTTOM", 0, 0)
-    duration:SetTextColor(1, 1, 1)
-    button.duration = duration
-    
-    -- Stack count text
-    local count = button:CreateFontString(nil, "OVERLAY", "NumberFontNormal")
-    count:SetPoint("TOPRIGHT", button, "TOPRIGHT", -1, -1)
-    count:SetTextColor(1, 1, 1)
-    button.count = count
-    
-    -- Tooltip functionality
-    button:SetScript("OnEnter", function(self)
-        if self.spellId then
-            GameTooltip:SetOwner(self, "ANCHOR_BOTTOMLEFT")
-            GameTooltip:SetSpellByID(self.spellId)
-            GameTooltip:Show()
+-- Hook para reposicionar el tooltip que muestra los buffs del party member
+local function HookPartyTooltipMethods()
+    -- Hook simple para mover tooltips de auras de party members
+    hooksecurefunc(GameTooltip, "SetUnitAura", function(self, unit, index, filter)
+        print("SetUnitAura called for:", unit or "nil", "index:", index or "nil") -- DEBUG temporal
+        if unit and unit:match("^party%d+$") then
+            local frameIndex = unit:match("party(%d+)")
+            local partyFrame = _G["PartyMemberFrame" .. frameIndex]
+            if partyFrame then
+                print("Moving tooltip for", unit, "to party frame", frameIndex) -- DEBUG temporal
+                self:ClearAllPoints()
+                self:SetPoint("TOPLEFT", partyFrame, "TOPRIGHT", 10, 0)
+            end
         end
     end)
-    
-    button:SetScript("OnLeave", function(self)
-        GameTooltip:Hide()
-    end)
-    
-    button:Hide()
-    return button
 end
 
--- Create buff container for a party frame
-local function CreateBuffContainer(partyFrame, frameIndex)
-    local container = CreateFrame("Frame", "DragonUIPartyBuffs" .. frameIndex, partyFrame)
-    container:SetSize(200, 50) -- Adjust as needed
-    container:SetPoint("BOTTOMLEFT", partyFrame, "TOPLEFT", BUFF_CONFIG.offsetX, BUFF_CONFIG.offsetY)
-    
-    -- Create buff icons
-    container.buffs = {}
-    for i = 1, BUFF_CONFIG.maxBuffs do
-        container.buffs[i] = CreateBuffIcon(container, i, false)
-    end
-    
-    -- Create debuff icons
-    container.debuffs = {}
-    for i = 1, BUFF_CONFIG.maxDebuffs do
-        container.debuffs[i] = CreateBuffIcon(container, i, true)
-    end
-    
-    -- Position buff icons (horizontal row)
-    for i = 1, BUFF_CONFIG.maxBuffs do
-        local icon = container.buffs[i]
-        if i == 1 then
-            icon:SetPoint("TOPLEFT", container, "TOPLEFT", 0, 0)
-        else
-            icon:SetPoint("LEFT", container.buffs[i-1], "RIGHT", BUFF_CONFIG.iconSpacing, 0)
-        end
-    end
-    
-    -- Position debuff icons (below buffs)
-    for i = 1, BUFF_CONFIG.maxDebuffs do
-        local icon = container.debuffs[i]
-        if i == 1 then
-            icon:SetPoint("TOPLEFT", container.buffs[1], "BOTTOMLEFT", 0, -BUFF_CONFIG.iconSpacing)
-        else
-            icon:SetPoint("LEFT", container.debuffs[i-1], "RIGHT", BUFF_CONFIG.iconSpacing, 0)
-        end
-    end
-    
-    return container
-end
-
--- Update buffs for a party frame
-local function UpdatePartyBuffs(frameIndex)
-    local frame = _G['PartyMemberFrame' .. frameIndex]
-    if not frame or not buffFrames[frameIndex] then
-        return
-    end
-    
-    local unit = "party" .. frameIndex
-    if not UnitExists(unit) then
-        -- Hide all buff icons
-        for i = 1, BUFF_CONFIG.maxBuffs do
-            buffFrames[frameIndex].buffs[i]:Hide()
-        end
-        for i = 1, BUFF_CONFIG.maxDebuffs do
-            buffFrames[frameIndex].debuffs[i]:Hide()
-        end
-        return
-    end
-    
-    local container = buffFrames[frameIndex]
-    local buffIndex = 1
-    local debuffIndex = 1
-    
-    -- Hide all icons first
-    for i = 1, BUFF_CONFIG.maxBuffs do
-        container.buffs[i]:Hide()
-    end
-    for i = 1, BUFF_CONFIG.maxDebuffs do
-        container.debuffs[i]:Hide()
-    end
-    
-    -- ✅ BUFFS (beneficial auras) - 3.3.5a compatible
-    for i = 1, 40 do -- Check up to 40 buff slots
-        local name, rank, icon, count, dispelType, duration, expirationTime, unitCaster, 
-              isStealable, shouldConsolidate, spellId = UnitBuff(unit, i)
-        
-        if not name then break end -- No more buffs
-        
-        if buffIndex <= BUFF_CONFIG.maxBuffs then
-            local buffIcon = container.buffs[buffIndex]
-            
-            -- Set icon
-            buffIcon.icon:SetTexture(icon)
-            
-            -- Set count
-            if count and count > 1 then
-                buffIcon.count:SetText(count)
-                buffIcon.count:Show()
-            else
-                buffIcon.count:Hide()
-            end
-            
-            -- Set duration
-            if duration and duration > 0 and expirationTime then
-                local timeLeft = expirationTime - GetTime()
-                if timeLeft > 60 then
-                    buffIcon.duration:SetText(math.floor(timeLeft / 60) .. "m")
-                elseif timeLeft > 0 then
-                    buffIcon.duration:SetText(math.floor(timeLeft))
-                else
-                    buffIcon.duration:SetText("")
-                end
-                buffIcon.duration:Show()
-            else
-                buffIcon.duration:Hide()
-            end
-            
-            -- Set border (green for buffs)
-            buffIcon.border:SetVertexColor(0, 1, 0, 1)
-            
-            -- Store spell info
-            buffIcon.spellId = spellId
-            buffIcon.name = name
-            
-            buffIcon:Show()
-            buffIndex = buffIndex + 1
-        end
-    end
-    
-    -- ✅ DEBUFFS (harmful auras) - 3.3.5a compatible
-    for i = 1, 40 do -- Check up to 40 debuff slots
-        local name, rank, icon, count, dispelType, duration, expirationTime, unitCaster, 
-              isStealable, shouldConsolidate, spellId = UnitDebuff(unit, i)
-        
-        if not name then break end -- No more debuffs
-        
-        if debuffIndex <= BUFF_CONFIG.maxDebuffs then
-            local debuffIcon = container.debuffs[debuffIndex]
-            
-            -- Set icon
-            debuffIcon.icon:SetTexture(icon)
-            
-            -- Set count
-            if count and count > 1 then
-                debuffIcon.count:SetText(count)
-                debuffIcon.count:Show()
-            else
-                debuffIcon.count:Hide()
-            end
-            
-            -- Set duration
-            if duration and duration > 0 and expirationTime then
-                local timeLeft = expirationTime - GetTime()
-                if timeLeft > 60 then
-                    debuffIcon.duration:SetText(math.floor(timeLeft / 60) .. "m")
-                elseif timeLeft > 0 then
-                    debuffIcon.duration:SetText(math.floor(timeLeft))
-                else
-                    debuffIcon.duration:SetText("")
-                end
-                debuffIcon.duration:Show()
-            else
-                debuffIcon.duration:Hide()
-            end
-            
-            -- Set border color based on dispel type
-            if IsDispellable(dispelType, unit) then
-                -- Can dispel - bright border
-                if dispelType == "Magic" then
-                    debuffIcon.border:SetVertexColor(0.2, 0.6, 1, 1) -- Blue
-                elseif dispelType == "Disease" then
-                    debuffIcon.border:SetVertexColor(0.6, 0.4, 0, 1) -- Brown
-                elseif dispelType == "Poison" then
-                    debuffIcon.border:SetVertexColor(0, 0.6, 0, 1) -- Green
-                elseif dispelType == "Curse" then
-                    debuffIcon.border:SetVertexColor(0.6, 0, 1, 1) -- Purple
-                else
-                    debuffIcon.border:SetVertexColor(1, 0, 0, 1) -- Red
-                end
-            else
-                -- Cannot dispel - red border
-                debuffIcon.border:SetVertexColor(1, 0, 0, 1)
-            end
-            
-            -- Store spell info
-            debuffIcon.spellId = spellId
-            debuffIcon.name = name
-            
-            debuffIcon:Show()
-            debuffIndex = debuffIndex + 1
-        end
-    end
-end
-
+-- Ejecutar cuando el addon se carga
+HookPartyTooltipMethods()
 -- ===============================================================
--- BUFF UPDATE TIMER
+-- SIMPLE BLIZZARD BUFF/DEBUFF REPOSITIONING
 -- ===============================================================
-
-local buffUpdateFrame = CreateFrame("Frame")
-local buffUpdateElapsed = 0
-local BUFF_UPDATE_FREQUENCY = 0.5 -- Update every 0.5 seconds
-
-buffUpdateFrame:SetScript("OnUpdate", function(self, elapsed)
-    buffUpdateElapsed = buffUpdateElapsed + elapsed
-    if buffUpdateElapsed >= BUFF_UPDATE_FREQUENCY then
-        buffUpdateElapsed = 0
-        
-        -- Update buffs for all party members
-        for i = 1, MAX_PARTY_MEMBERS do
-            UpdatePartyBuffs(i)
+local function RepositionBlizzardBuffs()
+    for i = 1, MAX_PARTY_MEMBERS do
+        local frame = _G['PartyMemberFrame' .. i]
+        if frame then
+            -- ✅ MOVER BUFFS Y DEBUFFS JUNTOS
+            for auraIndex = 1, 4 do
+                local buff = _G['PartyMemberFrame' .. i .. 'Buff' .. auraIndex]
+                local debuff = _G['PartyMemberFrame' .. i .. 'Debuff' .. auraIndex]
+                
+                if buff then
+                    buff:ClearAllPoints()
+                    buff:SetPoint('TOPLEFT', frame, 'TOPRIGHT', 5 + (auraIndex-1)*18, -5)
+                    buff:SetSize(16, 16)
+                end
+                
+                if debuff then
+                    debuff:ClearAllPoints()
+                    debuff:SetPoint('TOPLEFT', frame, 'TOPRIGHT', 5 + (auraIndex-1)*18, -25)
+                    debuff:SetSize(16, 16)
+                end
+            end
         end
+    end
+end
+
+-- Hook para aplicar reposicionamiento (3.3.5a compatible)
+hooksecurefunc("PartyMemberFrame_UpdateMember", function(frame)
+    if frame and frame:GetName():match("^PartyMemberFrame%d+$") then
+        -- Aplicar reposicionamiento inmediatamente
+        RepositionBlizzardBuffs()
     end
 end)
 
+-- Hook adicional para cuando se muestran/ocultan buffs/debuffs
+local buffRepositionFrame = CreateFrame("Frame")
+buffRepositionFrame:RegisterEvent("UNIT_AURA")
+buffRepositionFrame:SetScript("OnEvent", function(self, event, unit)
+    if unit and unit:match("^party%d+$") then
+        RepositionBlizzardBuffs()
+    end
+end)
 -- ===============================================================
 -- TEXT UPDATE SYSTEM (TAINT-FREE)
 -- ===============================================================
@@ -686,8 +458,6 @@ local function StylePartyFrames()
                 borderFrame:SetAllPoints(frame)
                 border:SetParent(borderFrame)
 
-                -- ✅ CREAR BUFF CONTAINER
-                buffFrames[i] = CreateBuffContainer(frame, i)
 
                 -- ✅ MOVER TEXTOS AL FRAME DEL BORDER PARA QUE ESTÉN POR ENCIMA
                 local name = _G[frame:GetName() .. 'Name']
