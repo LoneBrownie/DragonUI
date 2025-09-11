@@ -210,13 +210,13 @@ local function UpdateClassification()
     if coords then
         frameElements.elite:SetTexture(TEXTURES.BOSS) -- ✅ AÑADIDO: SetTexture
 
-        -- ✅ APLICAR FLIP HORIZONTAL A TODAS LAS DECORACIONES
+        --  APLICAR FLIP HORIZONTAL A TODAS LAS DECORACIONES
         local left, right, top, bottom = coords[1], coords[2], coords[3], coords[4]
         frameElements.elite:SetTexCoord(right, left, top, bottom) -- ✅ FLIPPED: right, left en lugar de left, right
 
-        -- ✅ USAR VALORES CORREGIDOS DEL DEBUG
-        frameElements.elite:SetSize(50, 49) -- En lugar de coords[5], coords[6]
-        frameElements.elite:SetPoint("CENTER", TargetFrameToTPortrait, "CENTER", -4, -3) -- En lugar de coords[7], coords[8]
+        --  USAR VALORES CORREGIDOS DEL DEBUG
+        frameElements.elite:SetSize(51, 51) -- En lugar de coords[5], coords[6]
+        frameElements.elite:SetPoint("CENTER", TargetFrameToTPortrait, "CENTER", -4, -2) -- En lugar de coords[7], coords[8]
         frameElements.elite:SetDrawLayer("OVERLAY", 11) -- ✅ FORZAR DRAW LAYER
         frameElements.elite:Show()
         frameElements.elite:SetAlpha(1) -- ✅ ASEGURAR VISIBILIDAD
