@@ -14,9 +14,6 @@ end
 -- IMPORTS AND GLOBALS
 -- ===============================================================
 
--- ✅ IMPORTAR SISTEMA DE TEXTO
-local TextSystem = addon.TextSystem
-
 -- Cache globals and APIs
 local _G = _G
 local unpack = unpack
@@ -37,7 +34,6 @@ local MAX_PARTY_MEMBERS = MAX_PARTY_MEMBERS or 4
 local PartyFrames = {}
 addon.PartyFrames = PartyFrames
 
--- ✅ ALMACENAMIENTO PARA ELEMENTOS DE TEXTO
 PartyFrames.textElements = {}
 
 -- ===============================================================
@@ -46,6 +42,7 @@ PartyFrames.textElements = {}
 
 -- Texture paths for our custom party frames
 local TEXTURES = {
+    healthBarStatus = "Interface\\Addons\\DragonUI\\Textures\\Partyframe\\UI-HUD-UnitFrame-Party-PortraitOn-Bar-Health-Status",
     frame = "Interface\\Addons\\DragonUI\\Textures\\Partyframe\\uipartyframe",
     border = "Interface\\Addons\\DragonUI\\Textures\\UI-HUD-UnitFrame-TargetofTarget-PortraitOn-BORDER",
     healthBar = "Interface\\Addons\\DragonUI\\Textures\\Partyframe\\UI-HUD-UnitFrame-Party-PortraitOn-Bar-Health",
@@ -53,7 +50,7 @@ local TEXTURES = {
     focusBar = "Interface\\Addons\\DragonUI\\Textures\\Partyframe\\UI-HUD-UnitFrame-Party-PortraitOn-Bar-Focus",
     rageBar = "Interface\\Addons\\DragonUI\\Textures\\Partyframe\\UI-HUD-UnitFrame-Party-PortraitOn-Bar-Rage",
     energyBar = "Interface\\Addons\\DragonUI\\Textures\\Partyframe\\UI-HUD-UnitFrame-Party-PortraitOn-Bar-Energy",
-    runicPowerBar = "Interface\\Addons\\DragonUI\\Textures\\Partyframe\\UI-HUD-UnitFrame-Party-PortraitOn-Bar-RunicPower",
+    runicPowerBar = "Interface\\Addons\\DragonUI\\Textures\\Partyframe\\UI-HUD-UnitFrame-Party-PortraitOn-Bar-RunicPower"
 }
 
 -- ===============================================================
@@ -134,6 +131,73 @@ local function GetPowerBarTexture(unit)
 end
 
 -- ===============================================================
+-- CLASS COLORS
+-- ===============================================================
+
+-- ✅ NUEVA FUNCIÓN: Get class color para party member
+local function GetPartyClassColor(partyIndex)
+    local unit = "party" .. partyIndex
+    if not UnitExists(unit) or not UnitIsPlayer(unit) then
+        return 1, 1, 1 -- Blanco si no es jugador
+    end
+
+    local _, class = UnitClass(unit)
+    if class and RAID_CLASS_COLORS[class] then
+        local color = RAID_CLASS_COLORS[class]
+        return color.r, color.g, color.b
+    end
+
+    return 1, 1, 1 -- Blanco por defecto
+end
+
+-- ✅ NUEVA FUNCIÓN: Update party health bar con class color
+local function UpdatePartyHealthBarColor(partyIndex)
+    if not partyIndex or partyIndex < 1 or partyIndex > 4 then
+        return
+    end
+
+    local unit = "party" .. partyIndex
+    if not UnitExists(unit) then
+        return
+    end
+
+    local healthbar = _G['PartyMemberFrame' .. partyIndex .. 'HealthBar']
+    if not healthbar then
+        return
+    end
+
+    local settings = GetSettings()
+    if not settings then
+        return
+    end
+
+    local texture = healthbar:GetStatusBarTexture()
+    if not texture then
+        return
+    end
+
+    if settings.classcolor and UnitIsPlayer(unit) then
+        -- ✅ USAR CONSTANTE EN LUGAR DE STRING HARDCODED
+        local statusTexturePath = TEXTURES.healthBarStatus
+        if texture:GetTexture() ~= statusTexturePath then
+            texture:SetTexture(statusTexturePath)
+        end
+
+        -- ✅ APLICAR COLOR DE CLASE
+        local r, g, b = GetPartyClassColor(partyIndex)
+        healthbar:SetStatusBarColor(r, g, b, 1)
+    else
+        -- ✅ USAR CONSTANTE EN LUGAR DE STRING HARDCODED
+        local normalTexturePath = TEXTURES.healthBar
+        if texture:GetTexture() ~= normalTexturePath then
+            texture:SetTexture(normalTexturePath)
+        end
+
+        -- ✅ COLOR BLANCO (la textura ya tiene color)
+        healthbar:SetStatusBarColor(1, 1, 1, 1)
+    end
+end
+-- ===============================================================
 -- SIMPLE BLIZZARD BUFF/DEBUFF REPOSITIONING
 -- ===============================================================
 local function RepositionBlizzardBuffs()
@@ -144,16 +208,16 @@ local function RepositionBlizzardBuffs()
             for auraIndex = 1, 4 do
                 local buff = _G['PartyMemberFrame' .. i .. 'Buff' .. auraIndex]
                 local debuff = _G['PartyMemberFrame' .. i .. 'Debuff' .. auraIndex]
-                
+
                 if buff then
                     buff:ClearAllPoints()
-                    buff:SetPoint('TOPLEFT', frame, 'TOPRIGHT', -5 + (auraIndex-1)*18, -5)
+                    buff:SetPoint('TOPLEFT', frame, 'TOPRIGHT', -5 + (auraIndex - 1) * 18, -5)
                     buff:SetSize(16, 16)
                 end
-                
+
                 if debuff then
                     debuff:ClearAllPoints()
-                    debuff:SetPoint('TOPLEFT', frame, 'TOPRIGHT', -5 + (auraIndex-1)*18, -22)
+                    debuff:SetPoint('TOPLEFT', frame, 'TOPRIGHT', -5 + (auraIndex - 1) * 18, -22)
                     debuff:SetSize(16, 16)
                 end
             end
@@ -161,22 +225,7 @@ local function RepositionBlizzardBuffs()
     end
 end
 
--- Hook para aplicar reposicionamiento (3.3.5a compatible)
-hooksecurefunc("PartyMemberFrame_UpdateMember", function(frame)
-    if frame and frame:GetName():match("^PartyMemberFrame%d+$") then
-        -- Aplicar reposicionamiento inmediatamente
-        RepositionBlizzardBuffs()
-    end
-end)
 
--- Hook adicional para cuando se muestran/ocultan buffs/debuffs
-local buffRepositionFrame = CreateFrame("Frame")
-buffRepositionFrame:RegisterEvent("UNIT_AURA")
-buffRepositionFrame:SetScript("OnEvent", function(self, event, unit)
-    if unit and unit:match("^party%d+$") then
-        RepositionBlizzardBuffs()
-    end
-end)
 -- ===============================================================
 -- TEXT UPDATE SYSTEM (TAINT-FREE)
 -- ===============================================================
@@ -237,9 +286,10 @@ local function SetupHealthBarClipping(frame)
         return
     end
 
-    -- Hook SetValue para clipping dinámico
+    -- Hook SetValue para clipping dinámico Y class color
     hooksecurefunc(healthbar, "SetValue", function(self, value)
-        local unit = "party" .. frame:GetID()
+        local frameIndex = frame:GetID()
+        local unit = "party" .. frameIndex
         if not UnitExists(unit) then
             return
         end
@@ -249,20 +299,19 @@ local function SetupHealthBarClipping(frame)
             return
         end
 
+        -- ✅ APLICAR CLASS COLOR PRIMERO
+        UpdatePartyHealthBarColor(frameIndex)
+
+        -- ✅ CLIPPING DINÁMICO: Solo mostrar la parte llena de la textura
         local min, max = self:GetMinMaxValues()
         local current = value or self:GetValue()
 
         if max > 0 and current then
-            -- ✅ CLIPPING DINÁMICO: Solo mostrar la parte llena de la textura
             local percentage = current / max
             texture:SetTexCoord(0, percentage, 0, 1)
         else
             texture:SetTexCoord(0, 1, 0, 1)
         end
-
-        -- Mantener textura y color
-        texture:SetTexture(TEXTURES.healthBar)
-        texture:SetVertexColor(1, 1, 1, 1)
     end)
 
     healthbar.DragonUI_ClippingSetup = true
@@ -340,7 +389,6 @@ local function StylePartyFrames()
                 texture:Hide()
             end
 
-            
             -- Barra de vida
             local healthbar = _G[frame:GetName() .. 'HealthBar']
             if healthbar and not InCombatLockdown() then
@@ -348,11 +396,14 @@ local function StylePartyFrames()
                 healthbar:SetSize(71, 10)
                 healthbar:ClearAllPoints()
                 healthbar:SetPoint('TOPLEFT', 44, -19)
-                healthbar:SetFrameLevel(frame:GetFrameLevel()) -- ✅ MISMO NIVEL QUE EL FRAME
+                healthbar:SetFrameLevel(frame:GetFrameLevel())
                 healthbar:SetStatusBarColor(1, 1, 1, 1)
 
-                -- ✅ CONFIGURAR CLIPPING DINÁMICO
+                -- ✅ CONFIGURAR CLIPPING DINÁMICO CON CLASS COLOR
                 SetupHealthBarClipping(frame)
+
+                -- ✅ APLICAR CLASS COLOR INICIAL
+                UpdatePartyHealthBarColor(i)
             end
 
             -- ✅ REEMPLAZAR Mana bar setup (líneas 192-199)
@@ -434,7 +485,6 @@ local function StylePartyFrames()
                 borderFrame:SetAllPoints(frame)
                 border:SetParent(borderFrame)
 
-
                 -- ✅ MOVER TEXTOS AL FRAME DEL BORDER PARA QUE ESTÉN POR ENCIMA
                 local name = _G[frame:GetName() .. 'Name']
                 local healthText = _G[frame:GetName() .. 'HealthBarText']
@@ -482,8 +532,7 @@ local function StylePartyFrames()
                     guideIcon:SetParent(borderFrame)
                     guideIcon:SetDrawLayer('OVERLAY', 11)
                 end
-                
-                
+
                 frame.DragonUIStyled = true
             end
             -- ✅ REPOSICIONAR TEXTOS DE HEALTH Y MANA
@@ -529,7 +578,7 @@ local function UpdateHealthText(statusBar, unit)
             if UnitExists(partyUnit) then
                 local current = UnitHealth(partyUnit)
                 local max = UnitHealthMax(partyUnit)
-                
+
                 if current and max then
                     local healthText = _G[statusBar:GetParent():GetName() .. 'HealthBarText']
                     if healthText then
@@ -554,7 +603,7 @@ local function UpdateManaText(statusBar, unit)
             if UnitExists(partyUnit) then
                 local current = UnitPower(partyUnit)
                 local max = UnitPowerMax(partyUnit)
-                
+
                 if current and max then
                     local manaText = _G[statusBar:GetParent():GetName() .. 'ManaBarText']
                     if manaText then
@@ -616,14 +665,14 @@ end
 
 -- Setup all necessary hooks for party frames
 local function SetupPartyHooks()
-    -- Hook to maintain hidden textures
+    -- Hook principal para mantener estilos (SIMPLIFIED)
     hooksecurefunc("PartyMemberFrame_UpdateMember", function(frame)
         if frame and frame:GetName():match("^PartyMemberFrame%d+$") then
-            -- Re-hide textures
+            -- Re-hide textures (always needed)
             local texture = _G[frame:GetName() .. 'Texture']
             if texture then
-                texture:SetTexture() -- Empty
-                texture:Hide() -- Hide
+                texture:SetTexture()
+                texture:Hide()
             end
 
             local bg = _G[frame:GetName() .. 'Background']
@@ -631,77 +680,28 @@ local function SetupPartyHooks()
                 bg:Hide()
             end
 
-            -- ✅ Force white colors on each update
+            -- ✅ MANTENER SOLO CONFIGURACIÓN DE CLIPPING (ACE3 maneja colors)
             local healthbar = _G[frame:GetName() .. 'HealthBar']
             local manabar = _G[frame:GetName() .. 'ManaBar']
 
             if healthbar then
-                healthbar:SetStatusBarColor(1, 1, 1, 1) -- ✅ Always white
-
-                -- ✅ ASEGURAR CLIPPING DINÁMICO EN CADA UPDATE
                 SetupHealthBarClipping(frame)
-
-                -- ✅ FORZAR RECÁLCULO DE CLIPPING
-                local current = healthbar:GetValue()
-                if current then
-                    healthbar:SetValue(current)
-                end
             end
+
             if manabar then
-                manabar:SetStatusBarColor(1, 1, 1, 1) -- ✅ Always white
-
-                -- ✅ ASEGURAR CLIPPING DINÁMICO EN CADA UPDATE
+                manabar:SetStatusBarColor(1, 1, 1, 1)
                 SetupManaBarClipping(frame)
-
-                -- ✅ FORZAR RECÁLCULO DE CLIPPING
-                local current = manabar:GetValue()
-                if current then
-                    manabar:SetValue(current)
-                end
             end
 
-            -- ✅ Update power bar texture
+            -- Update power bar texture
             UpdateManaBarTexture(frame)
-
-            -- ✅ REPOSICIONAR LEADER ICON TAMBIÉN AQUÍ
-            local leaderIcon = _G[frame:GetName() .. 'LeaderIcon']
-            if leaderIcon then -- ✅ QUITAMOS InCombatLockdown()
-                leaderIcon:ClearAllPoints()
-                leaderIcon:SetPoint('TOPLEFT', 42, 9) -- ✅ Posición personalizada
-                leaderIcon:SetSize(16, 16)
-                leaderIcon:SetDrawLayer('OVERLAY', 11) -- ✅ POR ENCIMA DEL BORDER
-            end
-
-            -- ✅ REPOSICIONAR MASTER LOOTER ICON TAMBIÉN AQUÍ
-            local masterLooterIcon = _G[frame:GetName() .. 'MasterIcon']
-            if masterLooterIcon then -- ✅ SIN RESTRICCIÓN DE COMBATE
-                masterLooterIcon:ClearAllPoints()
-                masterLooterIcon:SetPoint('TOPLEFT', 58, 11) -- ✅ Posición al lado del leader
-                masterLooterIcon:SetSize(16, 16)
-                masterLooterIcon:SetDrawLayer('OVERLAY', 11) -- ✅ POR ENCIMA DEL BORDER
-            end
-
-            -- ✅ NUEVO: REPOSICIONAR GUIDE ICON
-            local guideIcon = _G[frame:GetName() .. 'GuideIcon']
-            if guideIcon then
-                guideIcon:SetSize(15, 15)
-                guideIcon:SetDrawLayer('OVERLAY', 11) -- ✅ POR ENCIMA DEL BORDER
-            end
-
-            -- ✅ ASEGURAR QUE EL ROLE ICON DE BLIZZARD ESTÉ VISIBLE
-            local blizzardRoleIcon = _G[frame:GetName() .. 'RoleIcon']
-            if blizzardRoleIcon then
-                blizzardRoleIcon:SetDrawLayer('OVERLAY', 11) -- ✅ POR ENCIMA DEL BORDER
-            end
         end
     end)
 
-    -- ✅ Additional hooks to intercept color changes
+    -- ✅ HOOK PRINCIPAL PARA CLASS COLOR (SIMPLIFIED)
     hooksecurefunc("UnitFrameHealthBar_Update", function(statusbar, unit)
         if statusbar and statusbar:GetName() and statusbar:GetName():find('PartyMemberFrame') then
-            statusbar:SetStatusBarColor(1, 1, 1, 1) -- ✅ Force white
-
-            -- ✅ MANTENER CLIPPING DINÁMICO
+            -- ✅ SOLO MANTENER CLIPPING DINÁMICO - ACE3 SE ENCARGA DEL COLOR
             local texture = statusbar:GetStatusBarTexture()
             if texture then
                 local min, max = statusbar:GetMinMaxValues()
@@ -709,18 +709,16 @@ local function SetupPartyHooks()
                 if max > 0 and current then
                     local percentage = current / max
                     texture:SetTexCoord(0, percentage, 0, 1)
-                    texture:SetTexture(TEXTURES.healthBar)
                 end
             end
         end
     end)
 
-    -- ✅ HOOK MEJORADO PARA POWER UPDATES
+    -- ✅ HOOK PARA MANA BAR (SIN TOCAR HEALTH)
     hooksecurefunc("UnitFrameManaBar_Update", function(statusbar, unit)
         if statusbar and statusbar:GetName() and statusbar:GetName():find('PartyMemberFrame') then
-            statusbar:SetStatusBarColor(1, 1, 1, 1) -- ✅ Force white
+            statusbar:SetStatusBarColor(1, 1, 1, 1) -- ✅ Solo mana en blanco
 
-            -- ✅ Update texture based on power type Y MANTENER CLIPPING
             local frameName = statusbar:GetParent():GetName()
             local frameIndex = frameName:match("PartyMemberFrame(%d+)")
             if frameIndex then
@@ -742,82 +740,21 @@ local function SetupPartyHooks()
             end
         end
     end)
-
-    -- ✅ AÑADIR ESTOS HOOKS ADICIONALES PARA HEALTH
-    hooksecurefunc("HealthBar_OnValueChanged", function(self)
-        if self:GetName() and self:GetName():find('PartyMemberFrame') then
-            self:SetStatusBarColor(1, 1, 1, 1) -- ✅ Force white on value change
-
-            -- ✅ MANTENER CLIPPING DINÁMICO EN VALUE CHANGE
-            local texture = self:GetStatusBarTexture()
-            if texture then
-                local min, max = self:GetMinMaxValues()
-                local current = self:GetValue()
-                if max > 0 and current then
-                    local percentage = current / max
-                    texture:SetTexCoord(0, percentage, 0, 1)
-                    texture:SetTexture(TEXTURES.healthBar)
-                end
-            end
-        end
-    end)
-
-    hooksecurefunc("UnitFrameHealthBar_OnUpdate", function(self)
-        if self:GetName() and self:GetName():find('PartyMemberFrame') then
-            self:SetStatusBarColor(1, 1, 1, 1) -- ✅ Force white on update
-
-            -- ✅ MANTENER CLIPPING DINÁMICO EN UPDATE
-            local texture = self:GetStatusBarTexture()
-            if texture then
-                local min, max = self:GetMinMaxValues()
-                local current = self:GetValue()
-                if max > 0 and current then
-                    local percentage = current / max
-                    texture:SetTexCoord(0, percentage, 0, 1)
-                    texture:SetTexture(TEXTURES.healthBar)
-                end
-            end
-        end
-    end)
-
-    -- Text update hooks
-    hooksecurefunc("TextStatusBar_UpdateTextString", function(statusBar)
-        if statusBar:GetName():find('PartyMemberFrame') then
-            if statusBar:GetName():find('HealthBar') then
-                UpdateHealthText(statusBar)
-            elseif statusBar:GetName():find('ManaBar') then
-                UpdateManaText(statusBar)
-            end
-        end
-    end)
-
-    -- Portrait update hook for class colors
-    hooksecurefunc("UnitFramePortrait_Update", function(frame)
-        if frame:GetName() and frame:GetName():match("^PartyMemberFrame%d+$") then
-            UpdatePartyColors(frame)
-        end
-    end)
-    hooksecurefunc("PartyMemberFrame_UpdateLeader", function(frame)
-        if frame and frame:GetName():match("^PartyMemberFrame%d+$") then
-            local leaderIcon = _G[frame:GetName() .. 'LeaderIcon']
-            if leaderIcon then
-                leaderIcon:ClearAllPoints()
-                leaderIcon:SetPoint('TOPLEFT', 42, 9) -- ✅ Reposicionar siempre
-                leaderIcon:SetSize(16, 16)
-                leaderIcon:SetDrawLayer('OVERLAY', 11) -- ✅ POR ENCIMA DEL BORDER
-            end
-        end
-    end)
-
 end
 
 -- ===============================================================
--- MODULE INTERFACE FUNCTIONS
+-- MODULE INTERFACE FUNCTIONS (SIMPLIFIED FOR ACE3)
 -- ===============================================================
 
--- Update function for settings changes
+-- ✅ FUNCIÓN SIMPLIFICADA COMPATIBLE CON ACE3
 function PartyFrames:UpdateSettings()
+    -- ✅ SOLO APLICAR ESTILOS BASE - ACE3 SE ENCARGA DEL CLASS COLOR
     StylePartyFrames()
+    
+    -- ✅ REPOSICIONAR BUFFS
+    RepositionBlizzardBuffs()
+    
+    print("|cFF00FF00[DragonUI]|r Party frames updated via Ace3")
 end
 
 -- ===============================================================
@@ -838,6 +775,7 @@ end
 -- ✅ Initialize everything in correct order
 StylePartyFrames() -- First: visual properties only
 SetupPartyHooks() -- Second: safe hooks only
+
 
 -- ===============================================================
 -- MODULE LOADED CONFIRMATION

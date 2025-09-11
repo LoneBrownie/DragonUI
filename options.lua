@@ -14,102 +14,6 @@ StaticPopupDialogs["DRAGONUI_RELOAD_UI"] = {
     preferredIndex = 3
 };
 
--- Helper function to create set functions with automatic refresh
--- Uses throttling to reduce scroll reset issues
-local refreshThrottle = {}
-local function createSetFunction(section, key, subkey, refreshFunctions)
-    return function(info, val)
-        if subkey then
-            -- Ensure the parent table exists and is actually a table
-            if not addon.db.profile[section][key] or type(addon.db.profile[section][key]) ~= "table" then
-                addon.db.profile[section][key] = {}
-            end
-            addon.db.profile[section][key][subkey] = val;
-        else
-            addon.db.profile[section][key] = val;
-        end
-        if refreshFunctions then
-            -- Throttle refresh calls to reduce UI resets
-            local throttleKey = refreshFunctions
-            if refreshThrottle[throttleKey] then
-                return -- Skip if already scheduled
-            end
-            refreshThrottle[throttleKey] = true
-
-            -- Use a simple frame-based delay
-            local frame = CreateFrame("Frame")
-            local elapsed = 0
-            frame:SetScript("OnUpdate", function(self, dt)
-                elapsed = elapsed + dt
-                if elapsed >= 0.1 then -- 100ms delay
-                    frame:SetScript("OnUpdate", nil)
-                    refreshThrottle[throttleKey] = nil
-
-                    -- Handle multiple refresh functions separated by spaces
-                    for refreshFunc in refreshFunctions:gmatch("%S+") do
-                        if addon[refreshFunc] then
-                            addon[refreshFunc]();
-                        end
-                    end
-                end
-            end)
-        end
-    end
-end
-
--- Helper function for instant refresh (no throttling) for real-time feedback
-local function createInstantSetFunction(section, key, subkey, refreshFunction)
-    return function(info, val)
-        if subkey then
-            -- Ensure the parent table exists and is actually a table
-            if not addon.db.profile[section][key] or type(addon.db.profile[section][key]) ~= "table" then
-                addon.db.profile[section][key] = {}
-            end
-            addon.db.profile[section][key][subkey] = val;
-        else
-            addon.db.profile[section][key] = val;
-        end
-        if refreshFunction and addon[refreshFunction] then
-            addon[refreshFunction]();
-        end
-    end
-end
-
--- Helper for color set functions
-local function createColorSetFunction(section, key, subkey, refreshFunctions)
-    return function(info, r, g, b, a)
-        if subkey then
-            addon.db.profile[section][key][subkey] = {r, g, b, a or 1};
-        else
-            addon.db.profile[section][key] = {r, g, b, a or 1};
-        end
-        if refreshFunctions then
-            -- Use the same throttled refresh as createSetFunction
-            local throttleKey = refreshFunctions
-            if refreshThrottle[throttleKey] then
-                return
-            end
-            refreshThrottle[throttleKey] = true
-
-            local frame = CreateFrame("Frame")
-            local elapsed = 0
-            frame:SetScript("OnUpdate", function(self, dt)
-                elapsed = elapsed + dt
-                if elapsed >= 0.1 then
-                    frame:SetScript("OnUpdate", nil)
-                    refreshThrottle[throttleKey] = nil
-
-                    for refreshFunc in refreshFunctions:gmatch("%S+") do
-                        if addon[refreshFunc] then
-                            addon[refreshFunc]();
-                        end
-                    end
-                end
-            end)
-        end
-    end
-end
-
 -- Function to create configuration options (called after DB is ready)
 function addon:CreateOptionsTable()
     return {
@@ -173,7 +77,12 @@ function addon:CreateOptionsTable()
                                 get = function()
                                     return addon.db.profile.mainbars.scale_actionbar
                                 end,
-                                set = createSetFunction("mainbars", "scale_actionbar", nil, "RefreshMainbars"),
+                                set = function(info, value)
+                                    addon.db.profile.mainbars.scale_actionbar = value
+                                    if addon.RefreshMainbars then
+                                        addon.RefreshMainbars()
+                                    end
+                                end,
                                 order = 1
                             },
                             -- AÑADIR CONFIGURACIONES DE POSICIÓN
@@ -221,7 +130,12 @@ function addon:CreateOptionsTable()
                                 get = function()
                                     return addon.db.profile.mainbars.player.x or 0
                                 end,
-                                set = createInstantSetFunction("mainbars", "player", "x", "PositionActionBars"),
+                                set = function(info, value)
+                                    addon.db.profile.mainbars.player.x = value
+                                    if addon.PositionActionBars then
+                                        addon.PositionActionBars()
+                                    end
+                                end,
                                 order = 5,
                                 -- Se deshabilita si la barra no está en modo 'override'.
                                 disabled = function()
@@ -237,7 +151,12 @@ function addon:CreateOptionsTable()
                                 get = function()
                                     return addon.db.profile.mainbars.player.y or 0
                                 end,
-                                set = createInstantSetFunction("mainbars", "player", "y", "PositionActionBars"),
+                                set = function(info, value)
+                                    addon.db.profile.mainbars.player.y = value
+                                    if addon.PositionActionBars then
+                                        addon.PositionActionBars()
+                                    end
+                                end,
                                 order = 6,
                                 disabled = function()
                                     return not addon.db.profile.mainbars.player.override
@@ -252,7 +171,12 @@ function addon:CreateOptionsTable()
                                 get = function()
                                     return addon.db.profile.mainbars.left.x or 0
                                 end,
-                                set = createInstantSetFunction("mainbars", "left", "x", "PositionActionBars"),
+                                set = function(info, value)
+                                    addon.db.profile.mainbars.left.x = value
+                                    if addon.PositionActionBars then
+                                        addon.PositionActionBars()
+                                    end
+                                end,
                                 order = 7,
                                 disabled = function()
                                     return not addon.db.profile.mainbars.left.override
@@ -267,7 +191,12 @@ function addon:CreateOptionsTable()
                                 get = function()
                                     return addon.db.profile.mainbars.left.y or 0
                                 end,
-                                set = createInstantSetFunction("mainbars", "left", "y", "PositionActionBars"),
+                                set = function(info, value)
+                                    addon.db.profile.mainbars.left.y = value
+                                    if addon.PositionActionBars then
+                                        addon.PositionActionBars()
+                                    end
+                                end,
                                 order = 8,
                                 disabled = function()
                                     return not addon.db.profile.mainbars.left.override
@@ -282,7 +211,12 @@ function addon:CreateOptionsTable()
                                 get = function()
                                     return addon.db.profile.mainbars.right.x or 0
                                 end,
-                                set = createInstantSetFunction("mainbars", "right", "x", "PositionActionBars"),
+                                set = function(info, value)
+                                    addon.db.profile.mainbars.right.x = value
+                                    if addon.PositionActionBars then
+                                        addon.PositionActionBars()
+                                    end
+                                end,
                                 order = 9,
                                 disabled = function()
                                     return not addon.db.profile.mainbars.right.override
@@ -297,7 +231,12 @@ function addon:CreateOptionsTable()
                                 get = function()
                                     return addon.db.profile.mainbars.right.y or 0
                                 end,
-                                set = createInstantSetFunction("mainbars", "right", "y", "PositionActionBars"),
+                                set = function(info, value)
+                                    addon.db.profile.mainbars.right.y = value
+                                    if addon.PositionActionBars then
+                                        addon.PositionActionBars()
+                                    end
+                                end,
                                 order = 10,
                                 disabled = function()
                                     return not addon.db.profile.mainbars.right.override
@@ -318,7 +257,12 @@ function addon:CreateOptionsTable()
                                 get = function()
                                     return addon.db.profile.buttons.only_actionbackground
                                 end,
-                                set = createSetFunction("buttons", "only_actionbackground", nil, "RefreshButtons"),
+                                set = function(info, value)
+                                    addon.db.profile.buttons.only_actionbackground = value
+                                    if addon.RefreshButtons then
+                                        addon.RefreshButtons()
+                                    end
+                                end,
                                 order = 1
                             },
                             hide_main_bar_background = {
@@ -328,7 +272,12 @@ function addon:CreateOptionsTable()
                                 get = function()
                                     return addon.db.profile.buttons.hide_main_bar_background
                                 end,
-                                set = createSetFunction("buttons", "hide_main_bar_background", nil, "RefreshMainbars"),
+                                set = function(info, value)
+                                    addon.db.profile.buttons.hide_main_bar_background = value
+                                    if addon.RefreshMainbars then
+                                        addon.RefreshMainbars()
+                                    end
+                                end,
                                 order = 1.5
                             },
                             count = {
@@ -343,7 +292,12 @@ function addon:CreateOptionsTable()
                                         get = function()
                                             return addon.db.profile.buttons.count.show
                                         end,
-                                        set = createSetFunction("buttons", "count", "show", "RefreshButtons"),
+                                        set = function(info, value)
+                                            addon.db.profile.buttons.count.show = value
+                                            if addon.RefreshButtons then
+                                                addon.RefreshButtons()
+                                            end
+                                        end,
                                         order = 1
                                     }
                                 }
@@ -360,7 +314,12 @@ function addon:CreateOptionsTable()
                                         get = function()
                                             return addon.db.profile.buttons.hotkey.show
                                         end,
-                                        set = createSetFunction("buttons", "hotkey", "show", "RefreshButtons"),
+                                        set = function(info, value)
+                                            addon.db.profile.buttons.hotkey.show = value
+                                            if addon.RefreshButtons then
+                                                addon.RefreshButtons()
+                                            end
+                                        end,
                                         order = 1
                                     },
                                     range = {
@@ -370,7 +329,12 @@ function addon:CreateOptionsTable()
                                         get = function()
                                             return addon.db.profile.buttons.hotkey.range
                                         end,
-                                        set = createSetFunction("buttons", "hotkey", "range", "RefreshButtons"),
+                                        set = function(info, value)
+                                            addon.db.profile.buttons.hotkey.range = value
+                                            if addon.RefreshButtons then
+                                                addon.RefreshButtons()
+                                            end
+                                        end,
                                         order = 2
                                     }
                                 }
@@ -387,7 +351,12 @@ function addon:CreateOptionsTable()
                                         get = function()
                                             return addon.db.profile.buttons.macros.show
                                         end,
-                                        set = createSetFunction("buttons", "macros", "show", "RefreshButtons"),
+                                        set = function(info, value)
+                                            addon.db.profile.buttons.macros.show = value
+                                            if addon.RefreshButtons then
+                                                addon.RefreshButtons()
+                                            end
+                                        end,
                                         order = 1
                                     }
                                 }
@@ -404,7 +373,12 @@ function addon:CreateOptionsTable()
                                         get = function()
                                             return addon.db.profile.buttons.pages.show
                                         end,
-                                        set = createSetFunction("buttons", "pages", "show", "RefreshMainbars"),
+                                        set = function(info, value)
+                                            addon.db.profile.buttons.pages.show = value
+                                            if addon.RefreshMainbars then
+                                                addon.RefreshMainbars()
+                                            end
+                                        end,
                                         order = 1
                                     }
                                 }
@@ -422,7 +396,12 @@ function addon:CreateOptionsTable()
                                         get = function()
                                             return addon.db.profile.buttons.cooldown.show
                                         end,
-                                        set = createSetFunction("buttons", "cooldown", "show", "RefreshCooldowns"),
+                                        set = function(info, value)
+                                            addon.db.profile.buttons.cooldown.show = value
+                                            if addon.RefreshCooldowns then
+                                                addon.RefreshCooldowns()
+                                            end
+                                        end,
                                         order = 1
                                     },
                                     min_duration = {
@@ -435,8 +414,12 @@ function addon:CreateOptionsTable()
                                         get = function()
                                             return addon.db.profile.buttons.cooldown.min_duration
                                         end,
-                                        set = createSetFunction("buttons", "cooldown", "min_duration",
-                                            "RefreshCooldowns"),
+                                        set = function(info, value)
+                                            addon.db.profile.buttons.cooldown.min_duration = value
+                                            if addon.RefreshCooldowns then
+                                                addon.RefreshCooldowns()
+                                            end
+                                        end,
                                         order = 2
                                     },
                                     color = {
@@ -447,7 +430,12 @@ function addon:CreateOptionsTable()
                                             local c = addon.db.profile.buttons.cooldown.color;
                                             return c[1], c[2], c[3], c[4];
                                         end,
-                                        set = createColorSetFunction("buttons", "cooldown", "color", "RefreshCooldowns"),
+                                        set = function(info, r, g, b, a)
+                                            addon.db.profile.buttons.cooldown.color = {r, g, b, a}
+                                            if addon.RefreshCooldowns then
+                                                addon.RefreshCooldowns()
+                                            end
+                                        end,
                                         hasAlpha = true,
                                         order = 3
                                     }
@@ -461,7 +449,12 @@ function addon:CreateOptionsTable()
                                     local c = addon.db.profile.buttons.macros.color;
                                     return c[1], c[2], c[3], c[4];
                                 end,
-                                set = createColorSetFunction("buttons", "macros", "color", "RefreshButtons"),
+                                set = function(info, r, g, b, a)
+                                    addon.db.profile.buttons.macros.color = {r, g, b, a}
+                                    if addon.RefreshButtons then
+                                        addon.RefreshButtons()
+                                    end
+                                end,
                                 hasAlpha = true,
                                 order = 8
                             },
@@ -473,7 +466,12 @@ function addon:CreateOptionsTable()
                                     local c = addon.db.profile.buttons.hotkey.shadow;
                                     return c[1], c[2], c[3], c[4];
                                 end,
-                                set = createColorSetFunction("buttons", "hotkey", "shadow", "RefreshButtons"),
+                                set = function(info, r, g, b, a)
+                                    addon.db.profile.buttons.hotkey.shadow = {r, g, b, a}
+                                    if addon.RefreshButtons then
+                                        addon.RefreshButtons()
+                                    end
+                                end,
                                 hasAlpha = true,
                                 order = 10
                             },
@@ -485,7 +483,12 @@ function addon:CreateOptionsTable()
                                     local c = addon.db.profile.buttons.border_color;
                                     return c[1], c[2], c[3], c[4];
                                 end,
-                                set = createColorSetFunction("buttons", "border_color", "RefreshButtons"),
+                                set = function(info, r, g, b, a)
+                                    addon.db.profile.buttons.border_color = {r, g, b, a}
+                                    if addon.RefreshButtons then
+                                        addon.RefreshButtons()
+                                    end
+                                end,
                                 hasAlpha = true,
                                 order = 10
                             }
@@ -783,7 +786,12 @@ function addon:CreateOptionsTable()
                         get = function()
                             return addon.db.profile.xprepbar.bothbar_offset
                         end,
-                        set = createSetFunction("xprepbar", "bothbar_offset", nil, "RefreshXpRepBarPosition"),
+                        set = function(info, value)
+                            addon.db.profile.xprepbar.bothbar_offset = value
+                            if addon.RefreshXpRepBarPosition then
+                                addon.RefreshXpRepBarPosition()
+                            end
+                        end,
                         order = 1
                     },
                     singlebar_offset = {
@@ -796,7 +804,12 @@ function addon:CreateOptionsTable()
                         get = function()
                             return addon.db.profile.xprepbar.singlebar_offset
                         end,
-                        set = createSetFunction("xprepbar", "singlebar_offset", nil, "RefreshXpRepBarPosition"),
+                        set = function(info, value)
+                            addon.db.profile.xprepbar.singlebar_offset = value
+                            if addon.RefreshXpRepBarPosition then
+                                addon.RefreshXpRepBarPosition()
+                            end
+                        end,
                         order = 2
                     },
                     nobar_offset = {
@@ -809,7 +822,12 @@ function addon:CreateOptionsTable()
                         get = function()
                             return addon.db.profile.xprepbar.nobar_offset
                         end,
-                        set = createSetFunction("xprepbar", "nobar_offset", nil, "RefreshXpRepBarPosition"),
+                        set = function(info, value)
+                            addon.db.profile.xprepbar.nobar_offset = value
+                            if addon.RefreshXpRepBarPosition then
+                                addon.RefreshXpRepBarPosition()
+                            end
+                        end,
                         order = 3
                     },
                     repbar_abovexp_offset = {
@@ -822,7 +840,12 @@ function addon:CreateOptionsTable()
                         get = function()
                             return addon.db.profile.xprepbar.repbar_abovexp_offset
                         end,
-                        set = createSetFunction("xprepbar", "repbar_abovexp_offset", nil, "RefreshRepBarPosition"),
+                        set = function(info, value)
+                            addon.db.profile.xprepbar.repbar_abovexp_offset = value
+                            if addon.RefreshRepBarPosition then
+                                addon.RefreshRepBarPosition()
+                            end
+                        end,
                         order = 4
                     },
                     repbar_offset = {
@@ -835,7 +858,12 @@ function addon:CreateOptionsTable()
                         get = function()
                             return addon.db.profile.xprepbar.repbar_offset
                         end,
-                        set = createSetFunction("xprepbar", "repbar_offset", nil, "RefreshRepBarPosition"),
+                        set = function(info, value)
+                            addon.db.profile.xprepbar.repbar_offset = value
+                            if addon.RefreshRepBarPosition then
+                                addon.RefreshRepBarPosition()
+                            end
+                        end,
                         order = 5
                     }
                 }
@@ -920,8 +948,13 @@ function addon:CreateOptionsTable()
                                 get = function()
                                     return addon.db.profile.additional.size
                                 end,
-                                set = createSetFunction("additional", "size", nil,
-                                    "RefreshStance RefreshPetbar RefreshVehicle RefreshMulticast"),
+                                set = function(info, value)
+                                    addon.db.profile.additional.size = value
+                                    if addon.RefreshStance then addon.RefreshStance() end
+                                    if addon.RefreshPetbar then addon.RefreshPetbar() end
+                                    if addon.RefreshVehicle then addon.RefreshVehicle() end
+                                    if addon.RefreshMulticast then addon.RefreshMulticast() end
+                                end,
                                 order = 1,
                                 width = "half"
                             },
@@ -935,8 +968,13 @@ function addon:CreateOptionsTable()
                                 get = function()
                                     return addon.db.profile.additional.spacing
                                 end,
-                                set = createSetFunction("additional", "spacing", nil,
-                                    "RefreshStance RefreshPetbar RefreshVehicle RefreshMulticast"),
+                                set = function(info, value)
+                                    addon.db.profile.additional.spacing = value
+                                    if addon.RefreshStance then addon.RefreshStance() end
+                                    if addon.RefreshPetbar then addon.RefreshPetbar() end
+                                    if addon.RefreshVehicle then addon.RefreshVehicle() end
+                                    if addon.RefreshMulticast then addon.RefreshMulticast() end
+                                end,
                                 order = 2,
                                 width = "half"
                             }
@@ -969,7 +1007,12 @@ function addon:CreateOptionsTable()
                                         get = function()
                                             return addon.db.profile.additional.stance.x_position
                                         end,
-                                        set = createSetFunction("additional", "stance", "x_position", "RefreshStance"),
+                                        set = function(info, value)
+                                            addon.db.profile.additional.stance.x_position = value
+                                            if addon.RefreshStance then
+                                                addon.RefreshStance()
+                                            end
+                                        end,
                                         order = 1,
                                         width = "full"
                                     },
@@ -985,7 +1028,12 @@ function addon:CreateOptionsTable()
                                         get = function()
                                             return addon.db.profile.additional.stance.y_offset
                                         end,
-                                        set = createSetFunction("additional", "stance", "y_offset", "RefreshStance"),
+                                        set = function(info, value)
+                                            addon.db.profile.additional.stance.y_offset = value
+                                            if addon.RefreshStance then
+                                                addon.RefreshStance()
+                                            end
+                                        end,
                                         order = 2,
                                         width = "full"
                                     }
@@ -1008,7 +1056,12 @@ function addon:CreateOptionsTable()
                                         get = function()
                                             return addon.db.profile.additional.pet.x_position
                                         end,
-                                        set = createSetFunction("additional", "pet", "x_position", "RefreshPetbar"),
+                                        set = function(info, value)
+                                            addon.db.profile.additional.pet.x_position = value
+                                            if addon.RefreshPetbar then
+                                                addon.RefreshPetbar()
+                                            end
+                                        end,
                                         order = 1,
                                         width = "double"
                                     },
@@ -1022,7 +1075,12 @@ function addon:CreateOptionsTable()
                                         get = function()
                                             return addon.db.profile.additional.pet.y_offset or 0
                                         end,
-                                        set = createSetFunction("additional", "pet", "y_offset", "RefreshPetbar"),
+                                        set = function(info, value)
+                                            addon.db.profile.additional.pet.y_offset = value
+                                            if addon.RefreshPetbar then
+                                                addon.RefreshPetbar()
+                                            end
+                                        end,
                                         order = 2,
                                         width = "full"
                                     },
@@ -1033,7 +1091,12 @@ function addon:CreateOptionsTable()
                                         get = function()
                                             return addon.db.profile.additional.pet.grid
                                         end,
-                                        set = createSetFunction("additional", "pet", "grid", "RefreshPetbar"),
+                                        set = function(info, value)
+                                            addon.db.profile.additional.pet.grid = value
+                                            if addon.RefreshPetbar then
+                                                addon.RefreshPetbar()
+                                            end
+                                        end,
                                         order = 3,
                                         width = "full"
                                     }
@@ -1059,7 +1122,12 @@ function addon:CreateOptionsTable()
                                             return (addon.db.profile.additional.vehicle and
                                                        addon.db.profile.additional.vehicle.x_position) or 0
                                         end,
-                                        set = createSetFunction("additional", "vehicle", "x_position", "RefreshVehicle"),
+                                        set = function(info, value)
+                                            addon.db.profile.additional.vehicle.x_position = value
+                                            if addon.RefreshVehicle then
+                                                addon.RefreshVehicle()
+                                            end
+                                        end,
                                         order = 1,
                                         width = "double"
                                     },
@@ -1070,7 +1138,12 @@ function addon:CreateOptionsTable()
                                         get = function()
                                             return addon.db.profile.additional.vehicle.artstyle
                                         end,
-                                        set = createSetFunction("additional", "vehicle", "artstyle", "RefreshVehicle"),
+                                        set = function(info, value)
+                                            addon.db.profile.additional.vehicle.artstyle = value
+                                            if addon.RefreshVehicle then
+                                                addon.RefreshVehicle()
+                                            end
+                                        end,
                                         order = 2,
                                         width = "full"
                                     }
@@ -1095,8 +1168,12 @@ function addon:CreateOptionsTable()
                                             return (addon.db.profile.additional.totem and
                                                        addon.db.profile.additional.totem.x_position) or 0
                                         end,
-                                        set = createInstantSetFunction("additional", "totem", "x_position",
-                                            "RefreshMulticast")
+                                        set = function(info, value)
+                                            addon.db.profile.additional.totem.x_position = value
+                                            if addon.RefreshMulticast then
+                                                addon.RefreshMulticast()
+                                            end
+                                        end
                                     },
                                     y_offset = {
                                         type = 'range',
@@ -1110,8 +1187,12 @@ function addon:CreateOptionsTable()
                                             return (addon.db.profile.additional.totem and
                                                        addon.db.profile.additional.totem.y_offset) or 0
                                         end,
-                                        set = createInstantSetFunction("additional", "totem", "y_offset",
-                                            "RefreshMulticast")
+                                        set = function(info, value)
+                                            addon.db.profile.additional.totem.y_offset = value
+                                            if addon.RefreshMulticast then
+                                                addon.RefreshMulticast()
+                                            end
+                                        end
                                     }
                                 }
                             }
@@ -1220,7 +1301,12 @@ function addon:CreateOptionsTable()
                         get = function()
                             return addon.db.profile.map.scale
                         end,
-                        set = createSetFunction("map", "scale", nil, "RefreshMinimap"),
+                        set = function(info, value)
+                            addon.db.profile.map.scale = value
+                            if addon.RefreshMinimap then
+                                addon.RefreshMinimap()
+                            end
+                        end,
                         order = 1
                     },
                     border_alpha = {
@@ -1233,7 +1319,12 @@ function addon:CreateOptionsTable()
                         get = function()
                             return addon.db.profile.map.border_alpha
                         end,
-                        set = createSetFunction("map", "border_alpha", nil, "RefreshMinimap"),
+                        set = function(info, value)
+                            addon.db.profile.map.border_alpha = value
+                            if addon.RefreshMinimap then
+                                addon.RefreshMinimap()
+                            end
+                        end,
                         order = 2
                     },
                     blip_skin = {
@@ -1243,7 +1334,12 @@ function addon:CreateOptionsTable()
                         get = function()
                             return addon.db.profile.map.blip_skin
                         end,
-                        set = createSetFunction("map", "blip_skin", nil, "RefreshMinimap"),
+                        set = function(info, value)
+                            addon.db.profile.map.blip_skin = value
+                            if addon.RefreshMinimap then
+                                addon.RefreshMinimap()
+                            end
+                        end,
                         order = 3
                     },
                     player_arrow_size = {
@@ -1256,7 +1352,12 @@ function addon:CreateOptionsTable()
                         get = function()
                             return addon.db.profile.map.player_arrow_size
                         end,
-                        set = createSetFunction("map", "player_arrow_size", nil, "RefreshMinimap"),
+                        set = function(info, value)
+                            addon.db.profile.map.player_arrow_size = value
+                            if addon.RefreshMinimap then
+                                addon.RefreshMinimap()
+                            end
+                        end,
                         order = 4
                     },
                     tracking_icons = {
@@ -1266,7 +1367,12 @@ function addon:CreateOptionsTable()
                         get = function()
                             return addon.db.profile.map.tracking_icons
                         end,
-                        set = createSetFunction("map", "tracking_icons", nil, "RefreshMinimap"),
+                        set = function(info, value)
+                            addon.db.profile.map.tracking_icons = value
+                            if addon.RefreshMinimap then
+                                addon.RefreshMinimap()
+                            end
+                        end,
                         order = 5
                     },
                     skin_button = {
@@ -1307,7 +1413,12 @@ function addon:CreateOptionsTable()
                         get = function()
                             return addon.db.profile.map.zonetext_font_size
                         end,
-                        set = createSetFunction("map", "zonetext_font_size", nil, "RefreshMinimap"),
+                        set = function(info, value)
+                            addon.db.profile.map.zonetext_font_size = value
+                            if addon.RefreshMinimap then
+                                addon.RefreshMinimap()
+                            end
+                        end,
                         order = 10
                     },
                     zoom_in_out = {
@@ -1317,7 +1428,12 @@ function addon:CreateOptionsTable()
                         get = function()
                             return addon.db.profile.map.zoom_in_out
                         end,
-                        set = createSetFunction("map", "zoom_in_out", nil, "RefreshMinimap"),
+                        set = function(info, value)
+                            addon.db.profile.map.zoom_in_out = value
+                            if addon.RefreshMinimap then
+                                addon.RefreshMinimap()
+                            end
+                        end,
                         order = 10
                     },
 
@@ -1344,7 +1460,12 @@ function addon:CreateOptionsTable()
                             end
                             return addon.db.profile.map.auras.x_offset or -70
                         end,
-                        set = createInstantSetFunction("map", "auras", "x_offset", "RefreshAuraPosition"),
+                        set = function(info, value)
+                            addon.db.profile.map.auras.x_offset = value
+                            if addon.RefreshAuraPosition then
+                                addon.RefreshAuraPosition()
+                            end
+                        end,
                         order = 10.2
                     },
                     auras_y_offset = {
@@ -1364,7 +1485,12 @@ function addon:CreateOptionsTable()
                             end
                             return addon.db.profile.map.auras.y_offset or 23
                         end,
-                        set = createInstantSetFunction("map", "auras", "y_offset", "RefreshAuraPosition"),
+                        set = function(info, value)
+                            addon.db.profile.map.auras.y_offset = value
+                            if addon.RefreshAuraPosition then
+                                addon.RefreshAuraPosition()
+                            end
+                        end,
                         order = 10.3
                     },
 
@@ -1404,7 +1530,12 @@ function addon:CreateOptionsTable()
                         get = function()
                             return addon.db.profile.map.mail_icon_x
                         end,
-                        set = createSetFunction("map", "mail_icon_x", nil, "RefreshMinimap"),
+                        set = function(info, value)
+                            addon.db.profile.map.mail_icon_x = value
+                            if addon.RefreshMinimap then
+                                addon.RefreshMinimap()
+                            end
+                        end,
                         order = 12
                     },
                     mail_icon_y = {
@@ -1417,7 +1548,12 @@ function addon:CreateOptionsTable()
                         get = function()
                             return addon.db.profile.map.mail_icon_y
                         end,
-                        set = createSetFunction("map", "mail_icon_y", nil, "RefreshMinimap"),
+                        set = function(info, value)
+                            addon.db.profile.map.mail_icon_y = value
+                            if addon.RefreshMinimap then
+                                addon.RefreshMinimap()
+                            end
+                        end,
                         order = 13
                     },
                     mail_reset = {
@@ -1447,7 +1583,12 @@ function addon:CreateOptionsTable()
                         get = function()
                             return addon.db.profile.times.clock
                         end,
-                        set = createSetFunction("times", "clock", nil, "RefreshMinimapTime"),
+                        set = function(info, value)
+                            addon.db.profile.times.clock = value
+                            if addon.RefreshMinimapTime then
+                                addon.RefreshMinimapTime()
+                            end
+                        end,
                         order = 1
                     },
                     calendar = {
@@ -1456,7 +1597,12 @@ function addon:CreateOptionsTable()
                         get = function()
                             return addon.db.profile.times.calendar
                         end,
-                        set = createSetFunction("times", "calendar", nil, "RefreshMinimapTime"),
+                        set = function(info, value)
+                            addon.db.profile.times.calendar = value
+                            if addon.RefreshMinimapTime then
+                                addon.RefreshMinimapTime()
+                            end
+                        end,
                         order = 2
                     },
                     clock_font_size = {
@@ -1469,7 +1615,12 @@ function addon:CreateOptionsTable()
                         get = function()
                             return addon.db.profile.times.clock_font_size
                         end,
-                        set = createSetFunction("times", "clock_font_size", nil, "RefreshMinimapTime"),
+                        set = function(info, value)
+                            addon.db.profile.times.clock_font_size = value
+                            if addon.RefreshMinimapTime then
+                                addon.RefreshMinimapTime()
+                            end
+                        end,
                         order = 3
                     }
                 }
@@ -2047,7 +2198,12 @@ function addon:CreateOptionsTable()
                                 get = function()
                                     return addon.db.profile.castbar.focus.enabled
                                 end,
-                                set = createInstantSetFunction("castbar", "focus", "enabled", "RefreshFocusCastbar"),
+                                set = function(info, value)
+                                    addon.db.profile.castbar.focus.enabled = value
+                                    if addon.RefreshFocusCastbar then
+                                        addon.RefreshFocusCastbar()
+                                    end
+                                end,
                                 order = 1
                             },
                             x_position = {
@@ -2060,7 +2216,12 @@ function addon:CreateOptionsTable()
                                 get = function()
                                     return addon.db.profile.castbar.focus.x_position or 0
                                 end,
-                                set = createInstantSetFunction("castbar", "focus", "x_position", "RefreshFocusCastbar"),
+                                set = function(info, value)
+                                    addon.db.profile.castbar.focus.x_position = value
+                                    if addon.RefreshFocusCastbar then
+                                        addon.RefreshFocusCastbar()
+                                    end
+                                end,
                                 order = 2
                             },
                             y_position = {
@@ -2073,7 +2234,12 @@ function addon:CreateOptionsTable()
                                 get = function()
                                     return addon.db.profile.castbar.focus.y_position or 0
                                 end,
-                                set = createInstantSetFunction("castbar", "focus", "y_position", "RefreshFocusCastbar"),
+                                set = function(info, value)
+                                    addon.db.profile.castbar.focus.y_position = value
+                                    if addon.RefreshFocusCastbar then
+                                        addon.RefreshFocusCastbar()
+                                    end
+                                end,
                                 order = 3
                             },
                             sizeX = {
@@ -2086,7 +2252,12 @@ function addon:CreateOptionsTable()
                                 get = function()
                                     return addon.db.profile.castbar.focus.sizeX or 200
                                 end,
-                                set = createInstantSetFunction("castbar", "focus", "sizeX", "RefreshFocusCastbar"),
+                                set = function(info, value)
+                                    addon.db.profile.castbar.focus.sizeX = value
+                                    if addon.RefreshFocusCastbar then
+                                        addon.RefreshFocusCastbar()
+                                    end
+                                end,
                                 order = 4
                             },
                             sizeY = {
@@ -2099,7 +2270,12 @@ function addon:CreateOptionsTable()
                                 get = function()
                                     return addon.db.profile.castbar.focus.sizeY or 16
                                 end,
-                                set = createInstantSetFunction("castbar", "focus", "sizeY", "RefreshFocusCastbar"),
+                                set = function(info, value)
+                                    addon.db.profile.castbar.focus.sizeY = value
+                                    if addon.RefreshFocusCastbar then
+                                        addon.RefreshFocusCastbar()
+                                    end
+                                end,
                                 order = 5
                             },
                             scale = {
@@ -2112,7 +2288,12 @@ function addon:CreateOptionsTable()
                                 get = function()
                                     return addon.db.profile.castbar.focus.scale or 1
                                 end,
-                                set = createInstantSetFunction("castbar", "focus", "scale", "RefreshFocusCastbar"),
+                                set = function(info, value)
+                                    addon.db.profile.castbar.focus.scale = value
+                                    if addon.RefreshFocusCastbar then
+                                        addon.RefreshFocusCastbar()
+                                    end
+                                end,
                                 order = 6
                             },
                             showIcon = {
@@ -2122,7 +2303,12 @@ function addon:CreateOptionsTable()
                                 get = function()
                                     return addon.db.profile.castbar.focus.showIcon
                                 end,
-                                set = createInstantSetFunction("castbar", "focus", "showIcon", "RefreshFocusCastbar"),
+                                set = function(info, value)
+                                    addon.db.profile.castbar.focus.showIcon = value
+                                    if addon.RefreshFocusCastbar then
+                                        addon.RefreshFocusCastbar()
+                                    end
+                                end,
                                 order = 7
                             },
                             sizeIcon = {
@@ -2135,7 +2321,12 @@ function addon:CreateOptionsTable()
                                 get = function()
                                     return addon.db.profile.castbar.focus.sizeIcon or 20
                                 end,
-                                set = createInstantSetFunction("castbar", "focus", "sizeIcon", "RefreshFocusCastbar"),
+                                set = function(info, value)
+                                    addon.db.profile.castbar.focus.sizeIcon = value
+                                    if addon.RefreshFocusCastbar then
+                                        addon.RefreshFocusCastbar()
+                                    end
+                                end,
                                 order = 8,
                                 disabled = function()
                                     return not addon.db.profile.castbar.focus.showIcon
@@ -2152,7 +2343,12 @@ function addon:CreateOptionsTable()
                                 get = function()
                                     return addon.db.profile.castbar.focus.text_mode or "detailed"
                                 end,
-                                set = createInstantSetFunction("castbar", "focus", "text_mode", "RefreshFocusCastbar"),
+                                set = function(info, value)
+                                    addon.db.profile.castbar.focus.text_mode = value
+                                    if addon.RefreshFocusCastbar then
+                                        addon.RefreshFocusCastbar()
+                                    end
+                                end,
                                 order = 9
                             },
                             precision_time = {
@@ -2198,7 +2394,12 @@ function addon:CreateOptionsTable()
                                 get = function()
                                     return addon.db.profile.castbar.focus.autoAdjust
                                 end,
-                                set = createInstantSetFunction("castbar", "focus", "autoAdjust", "RefreshFocusCastbar"),
+                                set = function(info, value)
+                                    addon.db.profile.castbar.focus.autoAdjust = value
+                                    if addon.RefreshFocusCastbar then
+                                        addon.RefreshFocusCastbar()
+                                    end
+                                end,
                                 order = 12
                             },
                             holdTime = {
@@ -2211,7 +2412,12 @@ function addon:CreateOptionsTable()
                                 get = function()
                                     return addon.db.profile.castbar.focus.holdTime or 0.3
                                 end,
-                                set = createInstantSetFunction("castbar", "focus", "holdTime", "RefreshFocusCastbar"),
+                                set = function(info, value)
+                                    addon.db.profile.castbar.focus.holdTime = value
+                                    if addon.RefreshFocusCastbar then
+                                        addon.RefreshFocusCastbar()
+                                    end
+                                end,
                                 order = 13
                             },
                             holdTimeInterrupt = {
@@ -2224,8 +2430,12 @@ function addon:CreateOptionsTable()
                                 get = function()
                                     return addon.db.profile.castbar.focus.holdTimeInterrupt or 0.8
                                 end,
-                                set = createInstantSetFunction("castbar", "focus", "holdTimeInterrupt",
-                                    "RefreshFocusCastbar"),
+                                set = function(info, value)
+                                    addon.db.profile.castbar.focus.holdTimeInterrupt = value
+                                    if addon.RefreshFocusCastbar then
+                                        addon.RefreshFocusCastbar()
+                                    end
+                                end,
                                 order = 14
                             },
                             reset_position = {
@@ -2257,7 +2467,12 @@ function addon:CreateOptionsTable()
                         get = function()
                             return addon.db.profile.chat.enabled
                         end,
-                        set = createSetFunction("chat", "enabled", nil, "RefreshChat"),
+                        set = function(info, value)
+                            addon.db.profile.chat.enabled = value
+                            if addon.RefreshChat then
+                                addon.RefreshChat()
+                            end
+                        end,
                         order = 1
                     },
                     header1 = {
@@ -2275,7 +2490,12 @@ function addon:CreateOptionsTable()
                         get = function()
                             return addon.db.profile.chat.x_position
                         end,
-                        set = createSetFunction("chat", "x_position", nil, "RefreshChat"),
+                        set = function(info, value)
+                            addon.db.profile.chat.x_position = value
+                            if addon.RefreshChat then
+                                addon.RefreshChat()
+                            end
+                        end,
                         order = 11,
                         disabled = function()
                             return not addon.db.profile.chat.enabled
@@ -2291,7 +2511,12 @@ function addon:CreateOptionsTable()
                         get = function()
                             return addon.db.profile.chat.y_position
                         end,
-                        set = createSetFunction("chat", "y_position", nil, "RefreshChat"),
+                        set = function(info, value)
+                            addon.db.profile.chat.y_position = value
+                            if addon.RefreshChat then
+                                addon.RefreshChat()
+                            end
+                        end,
                         order = 12,
                         disabled = function()
                             return not addon.db.profile.chat.enabled
@@ -2312,7 +2537,12 @@ function addon:CreateOptionsTable()
                         get = function()
                             return addon.db.profile.chat.size_x
                         end,
-                        set = createSetFunction("chat", "size_x", nil, "RefreshChat"),
+                        set = function(info, value)
+                            addon.db.profile.chat.size_x = value
+                            if addon.RefreshChat then
+                                addon.RefreshChat()
+                            end
+                        end,
                         order = 21,
                         disabled = function()
                             return not addon.db.profile.chat.enabled
@@ -2328,7 +2558,12 @@ function addon:CreateOptionsTable()
                         get = function()
                             return addon.db.profile.chat.size_y
                         end,
-                        set = createSetFunction("chat", "size_y", nil, "RefreshChat"),
+                        set = function(info, value)
+                            addon.db.profile.chat.size_y = value
+                            if addon.RefreshChat then
+                                addon.RefreshChat()
+                            end
+                        end,
                         order = 22,
                         disabled = function()
                             return not addon.db.profile.chat.enabled
@@ -2344,7 +2579,12 @@ function addon:CreateOptionsTable()
                         get = function()
                             return addon.db.profile.chat.scale
                         end,
-                        set = createSetFunction("chat", "scale", nil, "RefreshChat"),
+                        set = function(info, value)
+                            addon.db.profile.chat.scale = value
+                            if addon.RefreshChat then
+                                addon.RefreshChat()
+                            end
+                        end,
                         order = 23,
                         disabled = function()
                             return not addon.db.profile.chat.enabled
@@ -2374,7 +2614,13 @@ function addon:CreateOptionsTable()
                                 get = function()
                                     return addon.db.profile.unitframe.scale
                                 end,
-                                set = createSetFunction("unitframe", "scale", nil, "RefreshUnitFrames"),
+                                set = function(info, value)
+                                    addon.db.profile.unitframe.scale = value
+                                    -- ✅ TRIGGER DIRECTO SIN THROTTLING
+                                    if addon.RefreshUnitFrames then
+                                        addon.RefreshUnitFrames()
+                                    end
+                                end,
                                 order = 1
                             }
                         }
@@ -2395,7 +2641,13 @@ function addon:CreateOptionsTable()
                                 get = function()
                                     return addon.db.profile.unitframe.player.scale
                                 end,
-                                set = createSetFunction("unitframe", "player", "scale", "RefreshUnitFrames"),
+                                set = function(info, value)
+                                    addon.db.profile.unitframe.player.scale = value
+                                    -- ✅ REFRESH AUTOMÁTICO
+                                    if addon.PlayerFrame and addon.PlayerFrame.RefreshPlayerFrame then
+                                        addon.PlayerFrame.RefreshPlayerFrame()
+                                    end
+                                end,
                                 order = 1
                             },
                             classcolor = {
@@ -2405,7 +2657,13 @@ function addon:CreateOptionsTable()
                                 get = function()
                                     return addon.db.profile.unitframe.player.classcolor
                                 end,
-                                set = createSetFunction("unitframe", "player", "classcolor", "RefreshUnitFrames"),
+                                set = function(info, value)
+                                    addon.db.profile.unitframe.player.classcolor = value
+                                    -- ✅ TRIGGER INMEDIATO
+                                    if addon.PlayerFrame and addon.PlayerFrame.UpdatePlayerHealthBarColor then
+                                        addon.PlayerFrame.UpdatePlayerHealthBarColor()
+                                    end
+                                end,
                                 order = 2
                             },
                             breakUpLargeNumbers = {
@@ -2415,8 +2673,13 @@ function addon:CreateOptionsTable()
                                 get = function()
                                     return addon.db.profile.unitframe.player.breakUpLargeNumbers
                                 end,
-                                set = createSetFunction("unitframe", "player", "breakUpLargeNumbers",
-                                    "RefreshUnitFrames"),
+                                set = function(info, value)
+                                    addon.db.profile.unitframe.player.breakUpLargeNumbers = value
+                                    -- ✅ AUTO-REFRESH
+                                    if addon.PlayerFrame and addon.PlayerFrame.RefreshPlayerFrame then
+                                        addon.PlayerFrame.RefreshPlayerFrame()
+                                    end
+                                end,
                                 order = 3
                             },
                             textFormat = {
@@ -2432,7 +2695,13 @@ function addon:CreateOptionsTable()
                                 get = function()
                                     return addon.db.profile.unitframe.player.textFormat
                                 end,
-                                set = createSetFunction("unitframe", "player", "textFormat", "RefreshUnitFrames"),
+                                set = function(info, value)
+                                    addon.db.profile.unitframe.player.textFormat = value
+                                    -- ✅ AUTO-REFRESH
+                                    if addon.PlayerFrame and addon.PlayerFrame.RefreshPlayerFrame then
+                                        addon.PlayerFrame.RefreshPlayerFrame()
+                                    end
+                                end,
                                 order = 4
                             },
                             showHealthTextAlways = {
@@ -2442,8 +2711,13 @@ function addon:CreateOptionsTable()
                                 get = function()
                                     return addon.db.profile.unitframe.player.showHealthTextAlways
                                 end,
-                                set = createSetFunction("unitframe", "player", "showHealthTextAlways",
-                                    "RefreshUnitFrames"),
+                                set = function(info, value)
+                                    addon.db.profile.unitframe.player.showHealthTextAlways = value
+                                    -- ✅ AUTO-REFRESH
+                                    if addon.PlayerFrame and addon.PlayerFrame.RefreshPlayerFrame then
+                                        addon.PlayerFrame.RefreshPlayerFrame()
+                                    end
+                                end,
                                 order = 5
                             },
                             showManaTextAlways = {
@@ -2453,7 +2727,13 @@ function addon:CreateOptionsTable()
                                 get = function()
                                     return addon.db.profile.unitframe.player.showManaTextAlways
                                 end,
-                                set = createSetFunction("unitframe", "player", "showManaTextAlways", "RefreshUnitFrames"),
+                                set = function(info, value)
+                                    addon.db.profile.unitframe.player.showManaTextAlways = value
+                                    -- ✅ AUTO-REFRESH
+                                    if addon.PlayerFrame and addon.PlayerFrame.RefreshPlayerFrame then
+                                        addon.PlayerFrame.RefreshPlayerFrame()
+                                    end
+                                end,
                                 order = 6
                             },
                             override = {
@@ -2463,13 +2743,14 @@ function addon:CreateOptionsTable()
                                 get = function()
                                     return addon.db.profile.unitframe.player.override
                                 end,
-                                set = function(info, val)
-                                    addon.db.profile.unitframe.player.override = val
-                                    if addon.RefreshPlayerFrame then
-                                        addon.RefreshPlayerFrame()
+                                set = function(info, value)
+                                    addon.db.profile.unitframe.player.override = value
+                                    -- ✅ AUTO-REFRESH
+                                    if addon.PlayerFrame and addon.PlayerFrame.RefreshPlayerFrame then
+                                        addon.PlayerFrame.RefreshPlayerFrame()
                                     end
                                 end,
-                                order = 6
+                                order = 7
                             },
                             x = {
                                 type = 'range',
@@ -2481,8 +2762,14 @@ function addon:CreateOptionsTable()
                                 get = function()
                                     return addon.db.profile.unitframe.player.x
                                 end,
-                                set = createSetFunction("unitframe", "player", "x", "RefreshPlayerFrame"), -- ❌ Era "RefreshUnitFrames"
-                                order = 7,
+                                set = function(info, value)
+                                    addon.db.profile.unitframe.player.x = value
+                                    -- ✅ AUTO-REFRESH INMEDIATO
+                                    if addon.PlayerFrame and addon.PlayerFrame.RefreshPlayerFrame then
+                                        addon.PlayerFrame.RefreshPlayerFrame()
+                                    end
+                                end,
+                                order = 8,
                                 disabled = function()
                                     return not addon.db.profile.unitframe.player.override
                                 end
@@ -2497,9 +2784,14 @@ function addon:CreateOptionsTable()
                                 get = function()
                                     return addon.db.profile.unitframe.player.y
                                 end,
-
-                                set = createSetFunction("unitframe", "player", "y", "RefreshPlayerFrame"), -- ❌ Era "RefreshUnitFrames"
-                                order = 8,
+                                set = function(info, value)
+                                    addon.db.profile.unitframe.player.y = value
+                                    -- ✅ AUTO-REFRESH INMEDIATO
+                                    if addon.PlayerFrame and addon.PlayerFrame.RefreshPlayerFrame then
+                                        addon.PlayerFrame.RefreshPlayerFrame()
+                                    end
+                                end,
+                                order = 9,
                                 disabled = function()
                                     return not addon.db.profile.unitframe.player.override
                                 end
@@ -2516,8 +2808,14 @@ function addon:CreateOptionsTable()
                                 get = function()
                                     return addon.db.profile.unitframe.player.dragon_decoration or "none"
                                 end,
-                                set = createSetFunction("unitframe", "player", "dragon_decoration", "RefreshPlayerFrame"),
-                                order = 9
+                                set = function(info, value)
+                                    addon.db.profile.unitframe.player.dragon_decoration = value
+                                    -- ✅ AUTO-REFRESH
+                                    if addon.PlayerFrame and addon.PlayerFrame.RefreshPlayerFrame then
+                                        addon.PlayerFrame.RefreshPlayerFrame()
+                                    end
+                                end,
+                                order = 10
                             }
                         }
                     },
@@ -2537,7 +2835,13 @@ function addon:CreateOptionsTable()
                                 get = function()
                                     return addon.db.profile.unitframe.target.scale
                                 end,
-                                set = createSetFunction("unitframe", "target", "scale", "RefreshUnitFrames"),
+                                set = function(info, value)
+                                    addon.db.profile.unitframe.target.scale = value
+                                    -- ✅ AUTO-REFRESH
+                                    if addon.TargetFrame and addon.TargetFrame.RefreshTargetFrame then
+                                        addon.TargetFrame.RefreshTargetFrame()
+                                    end
+                                end,
                                 order = 1
                             },
                             classcolor = {
@@ -2547,7 +2851,13 @@ function addon:CreateOptionsTable()
                                 get = function()
                                     return addon.db.profile.unitframe.target.classcolor
                                 end,
-                                set = createSetFunction("unitframe", "target", "classcolor", "RefreshUnitFrames"),
+                                set = function(info, value)
+                                    addon.db.profile.unitframe.target.classcolor = value
+                                    -- ✅ TRIGGER INMEDIATO
+                                    if addon.TargetFrame and addon.TargetFrame.UpdateTargetHealthBarColor then
+                                        addon.TargetFrame.UpdateTargetHealthBarColor()
+                                    end
+                                end,
                                 order = 2
                             },
                             breakUpLargeNumbers = {
@@ -2557,8 +2867,13 @@ function addon:CreateOptionsTable()
                                 get = function()
                                     return addon.db.profile.unitframe.target.breakUpLargeNumbers
                                 end,
-                                set = createSetFunction("unitframe", "target", "breakUpLargeNumbers",
-                                    "RefreshUnitFrames"),
+                                set = function(info, value)
+                                    addon.db.profile.unitframe.target.breakUpLargeNumbers = value
+                                    -- ✅ AUTO-REFRESH
+                                    if addon.TargetFrame and addon.TargetFrame.RefreshTargetFrame then
+                                        addon.TargetFrame.RefreshTargetFrame()
+                                    end
+                                end,
                                 order = 3
                             },
                             textFormat = {
@@ -2574,7 +2889,13 @@ function addon:CreateOptionsTable()
                                 get = function()
                                     return addon.db.profile.unitframe.target.textFormat
                                 end,
-                                set = createSetFunction("unitframe", "target", "textFormat", "RefreshUnitFrames"),
+                                set = function(info, value)
+                                    addon.db.profile.unitframe.target.textFormat = value
+                                    -- ✅ AUTO-REFRESH
+                                    if addon.TargetFrame and addon.TargetFrame.RefreshTargetFrame then
+                                        addon.TargetFrame.RefreshTargetFrame()
+                                    end
+                                end,
                                 order = 4
                             },
                             showHealthTextAlways = {
@@ -2584,8 +2905,13 @@ function addon:CreateOptionsTable()
                                 get = function()
                                     return addon.db.profile.unitframe.target.showHealthTextAlways
                                 end,
-                                set = createSetFunction("unitframe", "target", "showHealthTextAlways",
-                                    "RefreshUnitFrames"),
+                                set = function(info, value)
+                                    addon.db.profile.unitframe.target.showHealthTextAlways = value
+                                    -- ✅ AUTO-REFRESH
+                                    if addon.TargetFrame and addon.TargetFrame.RefreshTargetFrame then
+                                        addon.TargetFrame.RefreshTargetFrame()
+                                    end
+                                end,
                                 order = 5
                             },
                             showManaTextAlways = {
@@ -2595,7 +2921,13 @@ function addon:CreateOptionsTable()
                                 get = function()
                                     return addon.db.profile.unitframe.target.showManaTextAlways
                                 end,
-                                set = createSetFunction("unitframe", "target", "showManaTextAlways", "RefreshUnitFrames"),
+                                set = function(info, value)
+                                    addon.db.profile.unitframe.target.showManaTextAlways = value
+                                    -- ✅ AUTO-REFRESH
+                                    if addon.TargetFrame and addon.TargetFrame.RefreshTargetFrame then
+                                        addon.TargetFrame.RefreshTargetFrame()
+                                    end
+                                end,
                                 order = 6
                             },
                             enableThreatGlow = {
@@ -2605,8 +2937,14 @@ function addon:CreateOptionsTable()
                                 get = function()
                                     return addon.db.profile.unitframe.target.enableThreatGlow
                                 end,
-                                set = createSetFunction("unitframe", "target", "enableThreatGlow", "RefreshUnitFrames"),
-                                order = 6
+                                set = function(info, value)
+                                    addon.db.profile.unitframe.target.enableThreatGlow = value
+                                    -- ✅ AUTO-REFRESH
+                                    if addon.TargetFrame and addon.TargetFrame.RefreshTargetFrame then
+                                        addon.TargetFrame.RefreshTargetFrame()
+                                    end
+                                end,
+                                order = 7
                             },
                             override = {
                                 type = 'toggle',
@@ -2615,8 +2953,14 @@ function addon:CreateOptionsTable()
                                 get = function()
                                     return addon.db.profile.unitframe.target.override
                                 end,
-                                set = createSetFunction("unitframe", "target", "override", "RefreshUnitFrames"),
-                                order = 7
+                                set = function(info, value)
+                                    addon.db.profile.unitframe.target.override = value
+                                    -- ✅ AUTO-REFRESH
+                                    if addon.TargetFrame and addon.TargetFrame.RefreshTargetFrame then
+                                        addon.TargetFrame.RefreshTargetFrame()
+                                    end
+                                end,
+                                order = 8
                             },
                             x = {
                                 type = 'range',
@@ -2628,8 +2972,14 @@ function addon:CreateOptionsTable()
                                 get = function()
                                     return addon.db.profile.unitframe.target.x
                                 end,
-                                set = createSetFunction("unitframe", "target", "x", "RefreshUnitFrames"),
-                                order = 8,
+                                set = function(info, value)
+                                    addon.db.profile.unitframe.target.x = value
+                                    -- ✅ AUTO-REFRESH INMEDIATO
+                                    if addon.TargetFrame and addon.TargetFrame.RefreshTargetFrame then
+                                        addon.TargetFrame.RefreshTargetFrame()
+                                    end
+                                end,
+                                order = 9,
                                 disabled = function()
                                     return not addon.db.profile.unitframe.target.override
                                 end
@@ -2644,7 +2994,13 @@ function addon:CreateOptionsTable()
                                 get = function()
                                     return addon.db.profile.unitframe.target.y
                                 end,
-                                set = createSetFunction("unitframe", "target", "y", "RefreshUnitFrames"),
+                                set = function(info, value)
+                                    addon.db.profile.unitframe.target.y = value
+                                    -- ✅ AUTO-REFRESH INMEDIATO
+                                    if addon.TargetFrame and addon.TargetFrame.RefreshTargetFrame then
+                                        addon.TargetFrame.RefreshTargetFrame()
+                                    end
+                                end,
                                 order = 10,
                                 disabled = function()
                                     return not addon.db.profile.unitframe.target.override
@@ -2668,7 +3024,12 @@ function addon:CreateOptionsTable()
                                 get = function()
                                     return addon.db.profile.unitframe.tot.scale
                                 end,
-                                set = createSetFunction("unitframe", "tot", "scale", "RefreshUnitFrames"),
+                                set = function(info, value)
+                                    addon.db.profile.unitframe.tot.scale = value
+                                    if addon.RefreshUnitFrames then
+                                        addon.RefreshUnitFrames()
+                                    end
+                                end,
                                 order = 1
                             },
                             classcolor = {
@@ -2678,7 +3039,12 @@ function addon:CreateOptionsTable()
                                 get = function()
                                     return addon.db.profile.unitframe.tot.classcolor
                                 end,
-                                set = createSetFunction("unitframe", "tot", "classcolor", "RefreshUnitFrames"),
+                                set = function(info, value)
+                                    addon.db.profile.unitframe.tot.classcolor = value
+                                    if addon.RefreshUnitFrames then
+                                        addon.RefreshUnitFrames()
+                                    end
+                                end,
                                 order = 2
                             },
                             x = {
@@ -2691,7 +3057,12 @@ function addon:CreateOptionsTable()
                                 get = function()
                                     return addon.db.profile.unitframe.tot.x
                                 end,
-                                set = createSetFunction("unitframe", "tot", "x", "RefreshUnitFrames"),
+                                set = function(info, value)
+                                    addon.db.profile.unitframe.tot.x = value
+                                    if addon.RefreshUnitFrames then
+                                        addon.RefreshUnitFrames()
+                                    end
+                                end,
                                 order = 3
                             },
                             y = {
@@ -2704,7 +3075,12 @@ function addon:CreateOptionsTable()
                                 get = function()
                                     return addon.db.profile.unitframe.tot.y
                                 end,
-                                set = createSetFunction("unitframe", "tot", "y", "RefreshUnitFrames"),
+                                set = function(info, value)
+                                    addon.db.profile.unitframe.tot.y = value
+                                    if addon.RefreshUnitFrames then
+                                        addon.RefreshUnitFrames()
+                                    end
+                                end,
                                 order = 4
                             }
                         }
@@ -2725,7 +3101,12 @@ function addon:CreateOptionsTable()
                                 get = function()
                                     return addon.db.profile.unitframe.fot.scale
                                 end,
-                                set = createSetFunction("unitframe", "fot", "scale", "RefreshUnitFrames"),
+                                set = function(info, value)
+                                    addon.db.profile.unitframe.fot.scale = value
+                                    if addon.RefreshUnitFrames then
+                                        addon.RefreshUnitFrames()
+                                    end
+                                end,
                                 order = 1
                             },
                             classcolor = {
@@ -2735,7 +3116,12 @@ function addon:CreateOptionsTable()
                                 get = function()
                                     return addon.db.profile.unitframe.fot.classcolor
                                 end,
-                                set = createSetFunction("unitframe", "fot", "classcolor", "RefreshUnitFrames"),
+                                set = function(info, value)
+                                    addon.db.profile.unitframe.fot.classcolor = value
+                                    if addon.RefreshUnitFrames then
+                                        addon.RefreshUnitFrames()
+                                    end
+                                end,
                                 order = 2
                             },
                             x = {
@@ -2748,7 +3134,12 @@ function addon:CreateOptionsTable()
                                 get = function()
                                     return addon.db.profile.unitframe.fot.x
                                 end,
-                                set = createSetFunction("unitframe", "fot", "x", "RefreshUnitFrames"),
+                                set = function(info, value)
+                                    addon.db.profile.unitframe.fot.x = value
+                                    if addon.RefreshUnitFrames then
+                                        addon.RefreshUnitFrames()
+                                    end
+                                end,
                                 order = 3
                             },
                             y = {
@@ -2761,7 +3152,12 @@ function addon:CreateOptionsTable()
                                 get = function()
                                     return addon.db.profile.unitframe.fot.y
                                 end,
-                                set = createSetFunction("unitframe", "fot", "y", "RefreshUnitFrames"),
+                                set = function(info, value)
+                                    addon.db.profile.unitframe.fot.y = value
+                                    if addon.RefreshUnitFrames then
+                                        addon.RefreshUnitFrames()
+                                    end
+                                end,
                                 order = 4
                             }
                         }
@@ -2782,7 +3178,12 @@ function addon:CreateOptionsTable()
                                 get = function()
                                     return addon.db.profile.unitframe.focus.scale
                                 end,
-                                set = createSetFunction("unitframe", "focus", "scale", "RefreshUnitFrames"),
+                                set = function(info, value)
+                                    addon.db.profile.unitframe.focus.scale = value
+                                    if addon.RefreshUnitFrames then
+                                        addon.RefreshUnitFrames()
+                                    end
+                                end,
                                 order = 1
                             },
                             classcolor = {
@@ -2792,7 +3193,12 @@ function addon:CreateOptionsTable()
                                 get = function()
                                     return addon.db.profile.unitframe.focus.classcolor
                                 end,
-                                set = createSetFunction("unitframe", "focus", "classcolor", "RefreshUnitFrames"),
+                                set = function(info, value)
+                                    addon.db.profile.unitframe.focus.classcolor = value
+                                    if addon.RefreshUnitFrames then
+                                        addon.RefreshUnitFrames()
+                                    end
+                                end,
                                 order = 2
                             },
                             breakUpLargeNumbers = {
@@ -2802,7 +3208,12 @@ function addon:CreateOptionsTable()
                                 get = function()
                                     return addon.db.profile.unitframe.focus.breakUpLargeNumbers
                                 end,
-                                set = createSetFunction("unitframe", "focus", "breakUpLargeNumbers", "RefreshUnitFrames"),
+                                set = function(info, value)
+                                    addon.db.profile.unitframe.focus.breakUpLargeNumbers = value
+                                    if addon.RefreshUnitFrames then
+                                        addon.RefreshUnitFrames()
+                                    end
+                                end,
                                 order = 3
                             },
                             textFormat = {
@@ -2818,7 +3229,12 @@ function addon:CreateOptionsTable()
                                 get = function()
                                     return addon.db.profile.unitframe.focus.textFormat
                                 end,
-                                set = createSetFunction("unitframe", "focus", "textFormat", "RefreshUnitFrames"),
+                                set = function(info, value)
+                                    addon.db.profile.unitframe.focus.textFormat = value
+                                    if addon.RefreshUnitFrames then
+                                        addon.RefreshUnitFrames()
+                                    end
+                                end,
                                 order = 4
                             },
                             showHealthTextAlways = {
@@ -2828,8 +3244,12 @@ function addon:CreateOptionsTable()
                                 get = function()
                                     return addon.db.profile.unitframe.focus.showHealthTextAlways
                                 end,
-                                set = createSetFunction("unitframe", "focus", "showHealthTextAlways",
-                                    "RefreshUnitFrames"),
+                                set = function(info, value)
+                                    addon.db.profile.unitframe.focus.showHealthTextAlways = value
+                                    if addon.RefreshUnitFrames then
+                                        addon.RefreshUnitFrames()
+                                    end
+                                end,
                                 order = 5
                             },
                             showManaTextAlways = {
@@ -2839,7 +3259,12 @@ function addon:CreateOptionsTable()
                                 get = function()
                                     return addon.db.profile.unitframe.focus.showManaTextAlways
                                 end,
-                                set = createSetFunction("unitframe", "focus", "showManaTextAlways", "RefreshUnitFrames"),
+                                set = function(info, value)
+                                    addon.db.profile.unitframe.focus.showManaTextAlways = value
+                                    if addon.RefreshUnitFrames then
+                                        addon.RefreshUnitFrames()
+                                    end
+                                end,
                                 order = 6
                             },
                             override = {
@@ -2849,7 +3274,12 @@ function addon:CreateOptionsTable()
                                 get = function()
                                     return addon.db.profile.unitframe.focus.override
                                 end,
-                                set = createSetFunction("unitframe", "focus", "override", "RefreshUnitFrames"),
+                                set = function(info, value)
+                                    addon.db.profile.unitframe.focus.override = value
+                                    if addon.RefreshUnitFrames then
+                                        addon.RefreshUnitFrames()
+                                    end
+                                end,
                                 order = 6
                             },
                             x = {
@@ -2862,7 +3292,12 @@ function addon:CreateOptionsTable()
                                 get = function()
                                     return addon.db.profile.unitframe.focus.x
                                 end,
-                                set = createSetFunction("unitframe", "focus", "x", "RefreshUnitFrames"),
+                                set = function(info, value)
+                                    addon.db.profile.unitframe.focus.x = value
+                                    if addon.RefreshUnitFrames then
+                                        addon.RefreshUnitFrames()
+                                    end
+                                end,
                                 order = 7,
                                 disabled = function()
                                     return not addon.db.profile.unitframe.focus.override
@@ -2878,7 +3313,12 @@ function addon:CreateOptionsTable()
                                 get = function()
                                     return addon.db.profile.unitframe.focus.y
                                 end,
-                                set = createSetFunction("unitframe", "focus", "y", "RefreshUnitFrames"),
+                                set = function(info, value)
+                                    addon.db.profile.unitframe.focus.y = value
+                                    if addon.RefreshUnitFrames then
+                                        addon.RefreshUnitFrames()
+                                    end
+                                end,
                                 order = 8,
                                 disabled = function()
                                     return not addon.db.profile.unitframe.focus.override
@@ -2902,7 +3342,12 @@ function addon:CreateOptionsTable()
                                 get = function()
                                     return addon.db.profile.unitframe.pet.scale
                                 end,
-                                set = createSetFunction("unitframe", "pet", "scale", "RefreshPetFrame"),
+                                set = function(info, value)
+                                    addon.db.profile.unitframe.pet.scale = value
+                                    if addon.RefreshPetFrame then
+                                        addon.RefreshPetFrame()
+                                    end
+                                end,
                                 order = 1
                             },
                             textFormat = {
@@ -2918,7 +3363,12 @@ function addon:CreateOptionsTable()
                                 get = function()
                                     return addon.db.profile.unitframe.pet.textFormat
                                 end,
-                                set = createSetFunction("unitframe", "pet", "textFormat", "RefreshPetFrame"),
+                                set = function(info, value)
+                                    addon.db.profile.unitframe.pet.textFormat = value
+                                    if addon.RefreshPetFrame then
+                                        addon.RefreshPetFrame()
+                                    end
+                                end,
                                 order = 2
                             },
                             breakUpLargeNumbers = {
@@ -2928,7 +3378,12 @@ function addon:CreateOptionsTable()
                                 get = function()
                                     return addon.db.profile.unitframe.pet.breakUpLargeNumbers
                                 end,
-                                set = createSetFunction("unitframe", "pet", "breakUpLargeNumbers", "RefreshPetFrame"),
+                                set = function(info, value)
+                                    addon.db.profile.unitframe.pet.breakUpLargeNumbers = value
+                                    if addon.RefreshPetFrame then
+                                        addon.RefreshPetFrame()
+                                    end
+                                end,
                                 order = 3
                             },
                             showHealthTextAlways = {
@@ -2938,7 +3393,12 @@ function addon:CreateOptionsTable()
                                 get = function()
                                     return addon.db.profile.unitframe.pet.showHealthTextAlways
                                 end,
-                                set = createSetFunction("unitframe", "pet", "showHealthTextAlways", "RefreshPetFrame"),
+                                set = function(info, value)
+                                    addon.db.profile.unitframe.pet.showHealthTextAlways = value
+                                    if addon.RefreshPetFrame then
+                                        addon.RefreshPetFrame()
+                                    end
+                                end,
                                 order = 4
                             },
                             showManaTextAlways = {
@@ -2948,7 +3408,12 @@ function addon:CreateOptionsTable()
                                 get = function()
                                     return addon.db.profile.unitframe.pet.showManaTextAlways
                                 end,
-                                set = createSetFunction("unitframe", "pet", "showManaTextAlways", "RefreshPetFrame"),
+                                set = function(info, value)
+                                    addon.db.profile.unitframe.pet.showManaTextAlways = value
+                                    if addon.RefreshPetFrame then
+                                        addon.RefreshPetFrame()
+                                    end
+                                end,
                                 order = 5
                             },
                             enableThreatGlow = {
@@ -2958,7 +3423,12 @@ function addon:CreateOptionsTable()
                                 get = function()
                                     return addon.db.profile.unitframe.pet.enableThreatGlow
                                 end,
-                                set = createSetFunction("unitframe", "pet", "enableThreatGlow", "RefreshPetFrame"),
+                                set = function(info, value)
+                                    addon.db.profile.unitframe.pet.enableThreatGlow = value
+                                    if addon.RefreshPetFrame then
+                                        addon.RefreshPetFrame()
+                                    end
+                                end,
                                 order = 6
                             },
                             override = {
@@ -2968,7 +3438,12 @@ function addon:CreateOptionsTable()
                                 get = function()
                                     return addon.db.profile.unitframe.pet.override
                                 end,
-                                set = createSetFunction("unitframe", "pet", "override", "RefreshPetFrame"),
+                                set = function(info, value)
+                                    addon.db.profile.unitframe.pet.override = value
+                                    if addon.RefreshPetFrame then
+                                        addon.RefreshPetFrame()
+                                    end
+                                end,
                                 order = 7
                             },
                             -- REMOVED: Anchor options are not needed for a simple movable frame.
@@ -2983,7 +3458,12 @@ function addon:CreateOptionsTable()
                                 get = function()
                                     return addon.db.profile.unitframe.pet.x
                                 end,
-                                set = createSetFunction("unitframe", "pet", "x", "RefreshPetFrame"),
+                                set = function(info, value)
+                                    addon.db.profile.unitframe.pet.x = value
+                                    if addon.RefreshPetFrame then
+                                        addon.RefreshPetFrame()
+                                    end
+                                end,
                                 order = 10,
                                 disabled = function()
                                     return not addon.db.profile.unitframe.pet.override
@@ -2999,7 +3479,12 @@ function addon:CreateOptionsTable()
                                 get = function()
                                     return addon.db.profile.unitframe.pet.y
                                 end,
-                                set = createSetFunction("unitframe", "pet", "y", "RefreshPetFrame"),
+                                set = function(info, value)
+                                    addon.db.profile.unitframe.pet.y = value
+                                    if addon.RefreshPetFrame then
+                                        addon.RefreshPetFrame()
+                                    end
+                                end,
                                 order = 11,
                                 disabled = function()
                                     return not addon.db.profile.unitframe.pet.override
@@ -3013,6 +3498,11 @@ function addon:CreateOptionsTable()
                         name = "Party Frames",
                         order = 6,
                         args = {
+                            info_text = {
+                                type = 'description',
+                                name = "|cffFFD700Party Frames Configuration|r\n\nCustom styling for party member frames with automatic health/mana text display and class colors.",
+                                order = 0
+                            },
                             scale = {
                                 type = 'range',
                                 name = "Scale",
@@ -3023,34 +3513,30 @@ function addon:CreateOptionsTable()
                                 get = function()
                                     return addon.db.profile.unitframe.party.scale
                                 end,
-                                set = createSetFunction("unitframe", "party", "scale", "RefreshUnitFrames"),
+                                set = function(info, value)
+                                    addon.db.profile.unitframe.party.scale = value
+                                    -- ✅ AUTO-REFRESH
+                                    if addon.RefreshPartyFrames then
+                                        addon.RefreshPartyFrames()
+                                    end
+                                end,
                                 order = 1
                             },
                             classcolor = {
                                 type = 'toggle',
                                 name = "Class Color",
-                                desc = "Use class color for health bars",
+                                desc = "Use class color for health bars in party frames",
                                 get = function()
                                     return addon.db.profile.unitframe.party.classcolor
                                 end,
-                                set = createSetFunction("unitframe", "party", "classcolor", "RefreshUnitFrames"),
-                                order = 2
-                            },
-                            textFormat = {
-                                type = 'select',
-                                name = "Text Format",
-                                desc = "How to display health and mana values",
-                                values = {
-                                    numeric = "Current Value Only",
-                                    percentage = "Percentage Only",
-                                    both = "Both (Numbers + Percentage)",
-                                    formatted = "Current/Max Values"
-                                },
-                                get = function()
-                                    return addon.db.profile.unitframe.party.textFormat
+                                set = function(info, value)
+                                    addon.db.profile.unitframe.party.classcolor = value
+                                    -- ✅ AUTO-REFRESH
+                                    if addon.RefreshPartyFrames then
+                                        addon.RefreshPartyFrames()
+                                    end
                                 end,
-                                set = createSetFunction("unitframe", "party", "textFormat", "RefreshUnitFrames"),
-                                order = 3
+                                order = 2
                             },
                             breakUpLargeNumbers = {
                                 type = 'toggle',
@@ -3059,30 +3545,17 @@ function addon:CreateOptionsTable()
                                 get = function()
                                     return addon.db.profile.unitframe.party.breakUpLargeNumbers
                                 end,
-                                set = createSetFunction("unitframe", "party", "breakUpLargeNumbers", "RefreshUnitFrames"),
-                                order = 4
-                            },
-                            showHealthTextAlways = {
-                                type = 'toggle',
-                                name = "Always Show Health Text",
-                                desc = "Always display health text (otherwise only on mouseover)",
-                                get = function()
-                                    return addon.db.profile.unitframe.party.showHealthTextAlways
+                                set = function(info, value)
+                                    addon.db.profile.unitframe.party.breakUpLargeNumbers = value
+                                    -- ✅ AUTO-REFRESH
+                                    if addon.RefreshPartyFrames then
+                                        addon.RefreshPartyFrames()
+                                    end
                                 end,
-                                set = createSetFunction("unitframe", "party", "showHealthTextAlways",
-                                    "RefreshUnitFrames"),
-                                order = 5
+                                order = 3
                             },
-                            showManaTextAlways = {
-                                type = 'toggle',
-                                name = "Always Show Mana Text",
-                                desc = "Always display mana/energy/rage text (otherwise only on mouseover)",
-                                get = function()
-                                    return addon.db.profile.unitframe.party.showManaTextAlways
-                                end,
-                                set = createSetFunction("unitframe", "party", "showManaTextAlways", "RefreshUnitFrames"),
-                                order = 6
-                            },
+                            -- ❌ ELIMINADAS: textFormat, showHealthTextAlways, showManaTextAlways
+                            -- ✅ RAZÓN: El party ya no usa el sistema de textos personalizado
                             orientation = {
                                 type = 'select',
                                 name = "Orientation",
@@ -3094,8 +3567,14 @@ function addon:CreateOptionsTable()
                                 get = function()
                                     return addon.db.profile.unitframe.party.orientation
                                 end,
-                                set = createSetFunction("unitframe", "party", "orientation", "RefreshUnitFrames"),
-                                order = 7
+                                set = function(info, value)
+                                    addon.db.profile.unitframe.party.orientation = value
+                                    -- ✅ AUTO-REFRESH
+                                    if addon.RefreshPartyFrames then
+                                        addon.RefreshPartyFrames()
+                                    end
+                                end,
+                                order = 4
                             },
                             padding = {
                                 type = 'range',
@@ -3107,8 +3586,14 @@ function addon:CreateOptionsTable()
                                 get = function()
                                     return addon.db.profile.unitframe.party.padding
                                 end,
-                                set = createSetFunction("unitframe", "party", "padding", "RefreshUnitFrames"),
-                                order = 8
+                                set = function(info, value)
+                                    addon.db.profile.unitframe.party.padding = value
+                                    -- ✅ AUTO-REFRESH
+                                    if addon.RefreshPartyFrames then
+                                        addon.RefreshPartyFrames()
+                                    end
+                                end,
+                                order = 5
                             },
                             override = {
                                 type = 'toggle',
@@ -3117,8 +3602,14 @@ function addon:CreateOptionsTable()
                                 get = function()
                                     return addon.db.profile.unitframe.party.override
                                 end,
-                                set = createSetFunction("unitframe", "party", "override", "RefreshUnitFrames"),
-                                order = 10
+                                set = function(info, value)
+                                    addon.db.profile.unitframe.party.override = value
+                                    -- ✅ AUTO-REFRESH
+                                    if addon.RefreshPartyFrames then
+                                        addon.RefreshPartyFrames()
+                                    end
+                                end,
+                                order = 6
                             },
                             x = {
                                 type = 'range',
@@ -3130,8 +3621,14 @@ function addon:CreateOptionsTable()
                                 get = function()
                                     return addon.db.profile.unitframe.party.x
                                 end,
-                                set = createSetFunction("unitframe", "party", "x", "RefreshUnitFrames"),
-                                order = 10,
+                                set = function(info, value)
+                                    addon.db.profile.unitframe.party.x = value
+                                    -- ✅ AUTO-REFRESH INMEDIATO
+                                    if addon.RefreshPartyFrames then
+                                        addon.RefreshPartyFrames()
+                                    end
+                                end,
+                                order = 7,
                                 disabled = function()
                                     return not addon.db.profile.unitframe.party.override
                                 end
@@ -3146,8 +3643,14 @@ function addon:CreateOptionsTable()
                                 get = function()
                                     return addon.db.profile.unitframe.party.y
                                 end,
-                                set = createSetFunction("unitframe", "party", "y", "RefreshUnitFrames"),
-                                order = 11,
+                                set = function(info, value)
+                                    addon.db.profile.unitframe.party.y = value
+                                    -- ✅ AUTO-REFRESH INMEDIATO
+                                    if addon.RefreshPartyFrames then
+                                        addon.RefreshPartyFrames()
+                                    end
+                                end,
+                                order = 8,
                                 disabled = function()
                                     return not addon.db.profile.unitframe.party.override
                                 end

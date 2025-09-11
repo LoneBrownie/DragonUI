@@ -71,10 +71,10 @@ local DRAGON_COORDINATES = {
         offset = {4, 1}
     },
     rareelite = {
-    texCoord = {0.388671875, 0.001953125, 0.001953125, 0.31835937},
-    size = {99, 81},  -- 97*1.02 ≈ 99, 79*1.02 ≈ 81
-    offset = {23, 2}
-}
+        texCoord = {0.388671875, 0.001953125, 0.001953125, 0.31835937},
+        size = {99, 81}, -- 97*1.02 ≈ 99, 79*1.02 ≈ 81
+        offset = {23, 2}
+    }
 }
 
 -- Combat Flash animation settings *NO Elite activated
@@ -110,7 +110,8 @@ local HEALTH_EVENTS = {
 
 local POWER_EVENTS = {
     UNIT_MAXMANA = true,
-    UNIT_DISPLAYPOWER = true
+    UNIT_DISPLAYPOWER = true,
+    UNIT_POWER_UPDATE = true
 }
 
 -- Rune type coordinates
@@ -188,9 +189,8 @@ end
 
 -- Remove unwanted Blizzard frame elements
 local function RemoveBlizzardFrames()
-    local elementsToHide = {"PlayerAttackIcon", "PlayerFrameBackground", "PlayerAttackBackground",
-                             "PlayerGuideIcon", "PlayerFrameGroupIndicatorLeft",
-                            "PlayerFrameGroupIndicatorRight"}
+    local elementsToHide = {"PlayerAttackIcon", "PlayerFrameBackground", "PlayerAttackBackground", "PlayerGuideIcon",
+                            "PlayerFrameGroupIndicatorLeft", "PlayerFrameGroupIndicatorRight"}
 
     for _, name in ipairs(elementsToHide) do
         local obj = _G[name]
@@ -422,7 +422,7 @@ local function PlayerFrame_OnUpdate(self, elapsed)
         -- Elite Status pulse animation
         AnimateEliteStatusPulse(elapsed)
     end)
-    
+
     if not success then
         print("|cFFFF0000[DragonUI]|r Error in PlayerFrame_OnUpdate:", err)
     end
@@ -617,7 +617,45 @@ end
 -- ============================================================================
 -- BAR COLOR & TEXTURE MANAGEMENT
 -- ============================================================================
+-- Update player health bar color and texture based on class color setting
+local function UpdatePlayerHealthBarColor()
+    if not PlayerFrameHealthBar then
+        return
+    end
 
+    local config = GetPlayerConfig()
+    local texture = PlayerFrameHealthBar:GetStatusBarTexture()
+
+    if not texture then
+        return
+    end
+
+    if config.classcolor then
+        -- ✅ USAR TEXTURA STATUS (BLANCA) PARA CLASS COLOR
+        local statusTexturePath = TEXTURES.HEALTH_STATUS
+        if texture:GetTexture() ~= statusTexturePath then
+            texture:SetTexture(statusTexturePath)
+        end
+
+        -- ✅ APLICAR COLOR DE CLASE DEL PLAYER
+        local _, class = UnitClass("player")
+        local color = RAID_CLASS_COLORS[class]
+        if color then
+            PlayerFrameHealthBar:SetStatusBarColor(color.r, color.g, color.b, 1)
+        else
+            PlayerFrameHealthBar:SetStatusBarColor(1, 1, 1, 1)
+        end
+    else
+        -- ✅ USAR TEXTURA NORMAL (COLORED) SIN CLASS COLOR
+        local normalTexturePath = TEXTURES.HEALTH_BAR
+        if texture:GetTexture() ~= normalTexturePath then
+            texture:SetTexture(normalTexturePath)
+        end
+
+        -- ✅ COLOR BLANCO (la textura ya tiene color)
+        PlayerFrameHealthBar:SetStatusBarColor(1, 1, 1, 1)
+    end
+end
 -- Update health bar color and texture
 local function UpdateHealthBarColor(statusBar, unit)
     if not unit then
@@ -627,33 +665,31 @@ local function UpdateHealthBarColor(statusBar, unit)
         return
     end
 
-    local healthBarTexture = statusBar:GetStatusBarTexture()
-    if not healthBarTexture or not UnitIsConnected(unit) then
-        return
-    end
-
-    local config = GetPlayerConfig()
-    local hasVehicleUI = UnitHasVehicleUI("player")
-
-    if config.classcolor and not hasVehicleUI then
-        healthBarTexture:SetTexture(TEXTURES.HEALTH_STATUS)
-        local _, englishClass = UnitClass(unit)
-        local color = RAID_CLASS_COLORS[englishClass]
-        if color then
-            statusBar:SetStatusBarColor(color.r, color.g, color.b)
-        else
-            statusBar:SetStatusBarColor(1, 1, 1)
-        end
-    else
-        healthBarTexture:SetTexture(TEXTURES.HEALTH_BAR)
-        statusBar:SetStatusBarColor(1, 1, 1)
-    end
+    -- ✅ LLAMAR A LA NUEVA FUNCIÓN
+    UpdatePlayerHealthBarColor()
 end
 
 -- Update mana bar color (always white for texture purity)
 local function UpdateManaBarColor(statusBar)
     if statusBar == PlayerFrameManaBar then
         statusBar:SetStatusBarColor(1, 1, 1)
+    end
+end
+
+-- Update power bar texture based on current power type (handles druid forms)
+local function UpdatePowerBarTexture(statusBar)
+    if statusBar ~= PlayerFrameManaBar then
+        return
+    end
+
+    local powerType, powerTypeString = UnitPowerType('player')
+    local powerTexture = TEXTURES.POWER_BARS[powerTypeString] or TEXTURES.POWER_BARS.MANA
+
+    -- ✅ CAMBIAR TEXTURA según el tipo de poder actual
+    local currentTexture = statusBar:GetStatusBarTexture():GetTexture()
+    if currentTexture ~= powerTexture then
+        statusBar:GetStatusBarTexture():SetTexture(powerTexture)
+        print("|cFF00FF00[DragonUI]|r Power texture changed to:", powerTypeString)
     end
 end
 
@@ -780,8 +816,8 @@ local function UpdatePlayerDragonDecoration()
         return
     end
 
-    -- Create HIGH strata frame for dragon
-    local dragonParent = CreateFrame("Frame", nil, UIParent)
+    -- Create HIGH strata frame for dragon (parented to PlayerFrame for scaling)
+    local dragonParent = CreateFrame("Frame", nil, PlayerFrame)
     dragonParent:SetFrameStrata("MEDIUM")
     dragonParent:SetFrameLevel(1)
     dragonParent:SetSize(coords.size[1], coords.size[2])
@@ -813,7 +849,7 @@ local function CreatePlayerFrameTextures()
     HideBlizzardGlows()
 
     if not dragonFrame.EliteIconContainer then
-        local iconContainer = CreateFrame("Frame", "DragonUI_EliteIconContainer", UIParent)
+        local iconContainer = CreateFrame("Frame", "DragonUI_EliteIconContainer", PlayerFrame)
         iconContainer:SetFrameStrata("HIGH")
         iconContainer:SetFrameLevel(1000)
         iconContainer:SetSize(200, 200)
@@ -822,7 +858,7 @@ local function CreatePlayerFrameTextures()
     end
 
     if not dragonFrame.DragonUICombatGlow then
-        local combatFlashFrame = CreateFrame("Frame", "DragonUICombatFlash", UIParent)
+        local combatFlashFrame = CreateFrame("Frame", "DragonUICombatFlash", PlayerFrame)
         combatFlashFrame:SetFrameStrata("LOW")
         combatFlashFrame:SetFrameLevel(900)
         combatFlashFrame:SetSize(192, 71)
@@ -844,7 +880,7 @@ local function CreatePlayerFrameTextures()
     -- CREATE ELITE GLOW SYSTEM - Two glows using ELITE_GLOW_COORDINATES
     if not dragonFrame.EliteStatusGlow then
         -- Elite Status Glow (Yellow)
-        local statusFrame = CreateFrame("Frame", "DragonUIEliteStatusGlow", UIParent)
+        local statusFrame = CreateFrame("Frame", "DragonUIEliteStatusGlow", PlayerFrame)
         statusFrame:SetFrameStrata("LOW")
         statusFrame:SetFrameLevel(998)
         statusFrame:SetSize(ELITE_GLOW_COORDINATES.size[1], ELITE_GLOW_COORDINATES.size[2])
@@ -861,7 +897,7 @@ local function CreatePlayerFrameTextures()
         dragonFrame.EliteStatusTexture = statusTexture
 
         -- Elite Combat Glow (Red with pulse)
-        local combatFrame = CreateFrame("Frame", "DragonUIEliteCombatGlow", UIParent)
+        local combatFrame = CreateFrame("Frame", "DragonUIEliteCombatGlow", PlayerFrame)
         combatFrame:SetFrameStrata("LOW")
         combatFrame:SetFrameLevel(900)
         combatFrame:SetSize(ELITE_GLOW_COORDINATES.size[1], ELITE_GLOW_COORDINATES.size[2])
@@ -922,37 +958,37 @@ local function CreatePlayerFrameTextures()
     end
 
     -- Create group indicator
-   if not dragonFrame.PlayerGroupIndicator then
-    local groupIndicator = CreateFrame("Frame", "DragonUIPlayerGroupIndicator", PlayerFrame)
-    
-    -- ✅ USAR TEXTURA uiunitframe como RetailUI
-    local bgTexture = groupIndicator:CreateTexture(nil, "BACKGROUND")
-    bgTexture:SetTexture(TEXTURES.BASE) -- Tu textura uiunitframe
-    bgTexture:SetTexCoord(0.927734375, 0.9970703125, 0.3125, 0.337890625) -- ✅ Coordenadas del GroupIndicator
-    bgTexture:SetAllPoints(groupIndicator)
-    
-    -- ✅ SIZING FIJO como en las coordenadas
-    groupIndicator:SetSize(71, 13)
-    groupIndicator:SetPoint("BOTTOMLEFT", PlayerFrame, "TOP", 30, -19.5)
-    
-    -- ✅ TEXTO CENTRADO como original
-    local text = groupIndicator:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-    text:SetPoint("CENTER", groupIndicator, "CENTER", 0, 0)
-    text:SetJustifyH("CENTER")
-    text:SetTextColor(1, 1, 1, 1)
-    text:SetFont("Fonts\\FRIZQT__.TTF", 9)
-    text:SetShadowOffset(1, -1)
-    text:SetShadowColor(0, 0, 0, 1)
+    if not dragonFrame.PlayerGroupIndicator then
+        local groupIndicator = CreateFrame("Frame", "DragonUIPlayerGroupIndicator", PlayerFrame)
 
-    groupIndicator.text = text
-    groupIndicator.backgroundTexture = bgTexture
-    groupIndicator:Hide()
+        -- ✅ USAR TEXTURA uiunitframe como RetailUI
+        local bgTexture = groupIndicator:CreateTexture(nil, "BACKGROUND")
+        bgTexture:SetTexture(TEXTURES.BASE) -- Tu textura uiunitframe
+        bgTexture:SetTexCoord(0.927734375, 0.9970703125, 0.3125, 0.337890625) -- ✅ Coordenadas del GroupIndicator
+        bgTexture:SetAllPoints(groupIndicator)
 
-    _G[PlayerFrame:GetName() .. 'GroupIndicator'] = groupIndicator
-    _G[PlayerFrame:GetName() .. 'GroupIndicatorText'] = text
-    _G[PlayerFrame:GetName() .. 'GroupIndicatorMiddle'] = bgTexture -- ✅ Como original
-    dragonFrame.PlayerGroupIndicator = groupIndicator
-end
+        -- ✅ SIZING FIJO como en las coordenadas
+        groupIndicator:SetSize(71, 13)
+        groupIndicator:SetPoint("BOTTOMLEFT", PlayerFrame, "TOP", 30, -19.5)
+
+        -- ✅ TEXTO CENTRADO como original
+        local text = groupIndicator:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+        text:SetPoint("CENTER", groupIndicator, "CENTER", 0, 0)
+        text:SetJustifyH("CENTER")
+        text:SetTextColor(1, 1, 1, 1)
+        text:SetFont("Fonts\\FRIZQT__.TTF", 9)
+        text:SetShadowOffset(1, -1)
+        text:SetShadowColor(0, 0, 0, 1)
+
+        groupIndicator.text = text
+        groupIndicator.backgroundTexture = bgTexture
+        groupIndicator:Hide()
+
+        _G[PlayerFrame:GetName() .. 'GroupIndicator'] = groupIndicator
+        _G[PlayerFrame:GetName() .. 'GroupIndicatorText'] = text
+        _G[PlayerFrame:GetName() .. 'GroupIndicatorMiddle'] = bgTexture -- ✅ Como original
+        dragonFrame.PlayerGroupIndicator = groupIndicator
+    end
 
     -- Create role icon
     if not dragonFrame.PlayerRoleIcon then
@@ -1118,22 +1154,22 @@ local function SetCombatFlashVisible(visible)
 
     if visible then
         combatPulseTimer = 0 -- Reset pulse timer
-        
+
         -- ✅ CAMBIAR DECORACIÓN A ICONO DE COMBATE (espadas cruzadas)
         dragonFrame.PlayerFrameDeco:SetTexCoord(0.9775390625, 0.9931640625, 0.259765625, 0.291015625)
         -- ✅ AJUSTAR TAMAÑO PARA EL ICONO DE COMBATE
         dragonFrame.PlayerFrameDeco:SetSize(16, 16) -- Más pequeño que el original (23x23)
         dragonFrame.PlayerFrameDeco:SetPoint('CENTER', PlayerPortrait, 'CENTER', 18, -20)
-        
+
     else
         -- ✅ RESTAURAR DECORACIÓN NORMAL
         dragonFrame.PlayerFrameDeco:SetTexCoord(0.953125, 0.9755859375, 0.259765625, 0.3046875)
         -- ✅ RESTAURAR TAMAÑO ORIGINAL
         dragonFrame.PlayerFrameDeco:SetSize(23, 23) -- Tamaño original
         dragonFrame.PlayerFrameDeco:SetPoint('CENTER', PlayerPortrait, 'CENTER', 16, -16.5)
-        
+
     end
-    
+
     SetEliteCombatFlashVisible(visible) -- Use unified system
 end
 
@@ -1197,17 +1233,40 @@ end
 
 -- Refresh frame configuration
 local function RefreshPlayerFrame()
+    -- ✅ APLICAR CONFIGURACIÓN INMEDIATAMENTE
     ApplyPlayerConfig()
+    
+    -- ✅ ACTUALIZAR CLASS COLOR
+    UpdatePlayerHealthBarColor()
+    
+    -- ✅ ACTUALIZAR DECORACIÓN DRAGON (importante para scale)
+    UpdatePlayerDragonDecoration()
+    
+    -- ✅ ACTUALIZAR SISTEMA DE TEXTOS
     if Module.textSystem then
         Module.textSystem.update()
     end
-    print("|cFF00FF00[DragonUI]|r PlayerFrame refreshed")
+    
+    print("|cFF00FF00[DragonUI]|r PlayerFrame refreshed via Ace3")
 end
 
 -- ============================================================================
 -- INITIALIZATION
 -- ============================================================================
-
+-- ✅ NUEVO: Hook para refresh automático de class color
+local function SetupPlayerClassColorHooks()
+    if not _G.DragonUI_PlayerHealthHookSetup then
+        -- ✅ SOLO UN HOOK SIMPLE - cuando Blizzard actualiza la health bar
+        hooksecurefunc("UnitFrameHealthBar_Update", function(statusbar, unit)
+            if statusbar == PlayerFrameHealthBar and unit == "player" then
+                UpdatePlayerHealthBarColor()
+            end
+        end)
+        
+        _G.DragonUI_PlayerHealthHookSetup = true
+        print("|cFF00FF00[DragonUI]|r Player class color hook installed")
+    end
+end
 -- Initialize the PlayerFrame module
 local function InitializePlayerFrame()
     if Module.initialized then
@@ -1241,13 +1300,16 @@ local function InitializePlayerFrame()
     -- Setup bar hooks for persistent colors
     if PlayerFrameHealthBar and PlayerFrameHealthBar.HookScript then
         PlayerFrameHealthBar:HookScript('OnValueChanged', function(self)
-            UpdateHealthBarColor(self, "player")
+            -- ✅ APLICAR CLASS COLOR EN CADA CAMBIO
+            UpdatePlayerHealthBarColor()
         end)
         PlayerFrameHealthBar:HookScript('OnShow', function(self)
-            UpdateHealthBarColor(self, "player")
+            -- ✅ APLICAR CLASS COLOR AL MOSTRAR
+            UpdatePlayerHealthBarColor()
         end)
         PlayerFrameHealthBar:HookScript('OnUpdate', function(self)
-            UpdateHealthBarColor(self, "player")
+            -- ✅ APLICAR CLASS COLOR EN UPDATES
+            UpdatePlayerHealthBarColor()
         end)
     end
 
@@ -1265,7 +1327,6 @@ local function InitializePlayerFrame()
             end)
         end
     end
-
     Module.initialized = true
     print("|cFF00FF00[DragonUI]|r PlayerFrame module initialized")
 end
@@ -1360,11 +1421,13 @@ local function SetupPlayerEvents()
             UpdateHealthBarColor(PlayerFrameHealthBar, "player")
         elseif POWER_EVENTS[event] then
             UpdateManaBarColor(PlayerFrameManaBar)
+            UpdatePowerBarTexture(PlayerFrameManaBar)
         end
     end)
 
     print("|cFF00FF00[DragonUI Player]|r Optimized event system configured")
 end
+
 
 -- ============================================================================
 -- MODULE STARTUP
@@ -1372,6 +1435,7 @@ end
 
 -- Initialize event system
 SetupPlayerEvents()
+SetupPlayerClassColorHooks()
 
 -- Expose public API
 addon.PlayerFrame = {
@@ -1382,7 +1446,8 @@ addon.PlayerFrame = {
         return Module.playerFrame
     end,
     ChangePlayerframe = ChangePlayerframe,
-    CreatePlayerFrameTextures = CreatePlayerFrameTextures
+    CreatePlayerFrameTextures = CreatePlayerFrameTextures,
+    UpdatePlayerHealthBarColor = UpdatePlayerHealthBarColor
 }
 
 print("|cFF00FF00[DragonUI]|r Player.lua LOADED")
