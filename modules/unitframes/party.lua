@@ -144,8 +144,8 @@ local BUFF_CONFIG = {
     buffSize = 16,          -- Size of buff icons
     debuffSize = 16,        -- Size of debuff icons
     iconSpacing = 2,        -- Space between icons
-    offsetX = 2,            -- Horizontal offset from frame
-    offsetY = 8,            -- Vertical offset above frame
+    offsetX = 43,            -- Horizontal offset from frame
+    offsetY = -92,            -- Vertical offset above frame
 }
 
 -- Buff frame storage

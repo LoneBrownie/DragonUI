@@ -36,5 +36,5 @@
      <Script file="editor_mode.lua"/> 
 
     <!-- Conflict Detection module -->
-    <!-- <Script file="compatibility.lua"/> -->
+    <Script file="compatibility.lua"/> 
 </Ui>
