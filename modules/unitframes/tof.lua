@@ -1,7 +1,8 @@
 local addon = select(2, ...)
 
 -- ============================================================================
--- DRAGONUI TARGET OF TARGET FRAME MODULE - WoW 3.3.5a
+-- DRAGONUI FOCUS OF TARGET FRAME MODULE - WoW 3.3.5a
+-- CLONADO EXACTO DE TOT.LUA PERO PARA FOCUS
 -- ============================================================================
 
 local Module = {
@@ -13,13 +14,13 @@ local Module = {
 }
 
 -- ============================================================================
--- CONFIGURATION & CONSTANTS
+-- CONFIGURATION & CONSTANTS (IGUAL QUE TOT)
 -- ============================================================================
 
--- Cache Blizzard frames
-local TargetFrameToT = _G.TargetFrameToT
+-- Cache Blizzard frames (FOCUS EN LUGAR DE TARGET)
+local FocusFrameToT = _G.FocusFrameToT
 
--- Texture paths (ToT específicas)
+-- Texture paths (IGUAL que ToT)
 local TEXTURES = {
     BACKGROUND = "Interface\\AddOns\\DragonUI\\Textures\\UI-HUD-UnitFrame-TargetofTarget-PortraitOn-BACKGROUND",
     BORDER = "Interface\\AddOns\\DragonUI\\Textures\\UI-HUD-UnitFrame-TargetofTarget-PortraitOn-BORDER",
@@ -27,14 +28,14 @@ local TEXTURES = {
     BOSS = "Interface\\AddOns\\DragonUI\\Textures\\uiunitframeboss2x"
 }
 
--- Boss classifications (coordenadas ToT más pequeñas)
+-- Boss classifications (IGUAL que ToT)
 local BOSS_COORDS = {
     elite = {0.001953125, 0.314453125, 0.322265625, 0.630859375, 60, 59, 3, 1},
     rare = {0.00390625, 0.31640625, 0.64453125, 0.953125, 60, 59, 3, 1},
     rareelite = {0.001953125, 0.388671875, 0.001953125, 0.31835937, 74, 61, 10, 1}
 }
 
--- Power types
+-- Power types (IGUAL que ToT)
 local POWER_MAP = {
     [0] = "Mana",
     [1] = "Rage",
@@ -43,41 +44,41 @@ local POWER_MAP = {
     [6] = "RunicPower"
 }
 
--- Frame elements storage
+-- Frame elements storage (IGUAL que ToT)
 local frameElements = {
     background = nil,
     border = nil,
     elite = nil
 }
 
--- Update throttling
+-- Update throttling (IGUAL que ToT)
 local updateCache = {
     lastHealthUpdate = 0,
     lastPowerUpdate = 0
 }
 
 -- ============================================================================
--- UTILITY FUNCTIONS
+-- UTILITY FUNCTIONS (IGUAL QUE TOT)
 -- ============================================================================
 
 local function GetConfig()
-    return addon:GetConfigValue("unitframe", "tot") or {}
+    return addon:GetConfigValue("unitframe", "fot") or {}
 end
 
 -- ============================================================================
--- BAR MANAGEMENT (IGUAL QUE TARGET/FOCUS)
+-- BAR MANAGEMENT (IGUAL QUE TOT PERO PARA FOCUS)
 -- ============================================================================
 
 local function SetupBarHooks()
-    -- Health bar hooks (igual que tu target.lua)
-    if not TargetFrameToTHealthBar.DragonUI_Setup then
-        local healthTexture = TargetFrameToTHealthBar:GetStatusBarTexture()
+    -- Health bar hooks (IGUAL que ToT pero para "focustarget")
+    if not FocusFrameToTHealthBar.DragonUI_Setup then
+        local healthTexture = FocusFrameToTHealthBar:GetStatusBarTexture()
         if healthTexture then
             healthTexture:SetDrawLayer("ARTWORK", 1)
         end
 
-        hooksecurefunc(TargetFrameToTHealthBar, "SetValue", function(self)
-            if not UnitExists("targettarget") then
+        hooksecurefunc(FocusFrameToTHealthBar, "SetValue", function(self)
+            if not UnitExists("focustarget") then
                 return
             end
 
@@ -108,8 +109,8 @@ local function SetupBarHooks()
 
             -- Update color
             local config = GetConfig()
-            if config.classcolor and UnitIsPlayer("targettarget") then
-                local _, class = UnitClass("targettarget")
+            if config.classcolor and UnitIsPlayer("focustarget") then
+                local _, class = UnitClass("focustarget")
                 local color = RAID_CLASS_COLORS[class]
                 if color then
                     texture:SetVertexColor(color.r, color.g, color.b)
@@ -121,18 +122,18 @@ local function SetupBarHooks()
             end
         end)
 
-        TargetFrameToTHealthBar.DragonUI_Setup = true
+        FocusFrameToTHealthBar.DragonUI_Setup = true
     end
 
-    -- Power bar hooks (igual que tu target.lua)
-    if not TargetFrameToTManaBar.DragonUI_Setup then
-        local powerTexture = TargetFrameToTManaBar:GetStatusBarTexture()
+    -- Power bar hooks (IGUAL que ToT pero para "focustarget")
+    if not FocusFrameToTManaBar.DragonUI_Setup then
+        local powerTexture = FocusFrameToTManaBar:GetStatusBarTexture()
         if powerTexture then
             powerTexture:SetDrawLayer("ARTWORK", 1)
         end
 
-        hooksecurefunc(TargetFrameToTManaBar, "SetValue", function(self)
-            if not UnitExists("targettarget") then
+        hooksecurefunc(FocusFrameToTManaBar, "SetValue", function(self)
+            if not UnitExists("focustarget") then
                 return
             end
 
@@ -148,7 +149,7 @@ local function SetupBarHooks()
             end
 
             -- Update texture based on power type
-            local powerType = UnitPowerType("targettarget")
+            local powerType = UnitPowerType("focustarget")
             local powerName = POWER_MAP[powerType] or "Mana"
             local texturePath = TEXTURES.BAR_PREFIX .. powerName
 
@@ -168,27 +169,27 @@ local function SetupBarHooks()
             texture:SetVertexColor(1, 1, 1)
         end)
 
-        TargetFrameToTManaBar.DragonUI_Setup = true
+        FocusFrameToTManaBar.DragonUI_Setup = true
     end
 end
 
 -- ============================================================================
--- CLASSIFICATION SYSTEM 
+-- CLASSIFICATION SYSTEM (IGUAL QUE TOT PERO PARA FOCUS)
 -- ============================================================================
 
 local function UpdateClassification()
-    if not UnitExists("targettarget") or not frameElements.elite then
+    if not UnitExists("focustarget") or not frameElements.elite then
         if frameElements.elite then
             frameElements.elite:Hide()
         end
         return
     end
 
-    local classification = UnitClassification("targettarget")
+    local classification = UnitClassification("focustarget")
     local coords = nil
 
     -- Check vehicle first
-    if UnitVehicleSeatCount and UnitVehicleSeatCount("targettarget") > 0 then
+    if UnitVehicleSeatCount and UnitVehicleSeatCount("focustarget") > 0 then
         frameElements.elite:Hide()
         return
     end
@@ -201,32 +202,32 @@ local function UpdateClassification()
     elseif classification == "rare" then
         coords = BOSS_COORDS.rare
     else
-        local name = UnitName("targettarget")
+        local name = UnitName("focustarget")
         if name and addon.unitframe and addon.unitframe.famous and addon.unitframe.famous[name] then
             coords = BOSS_COORDS.elite
         end
     end
 
     if coords then
-        frameElements.elite:SetTexture(TEXTURES.BOSS) -- ✅ AÑADIDO: SetTexture
+        frameElements.elite:SetTexture(TEXTURES.BOSS)
 
-        --  APLICAR FLIP HORIZONTAL A TODAS LAS DECORACIONES
+        -- APLICAR FLIP HORIZONTAL A TODAS LAS DECORACIONES
         local left, right, top, bottom = coords[1], coords[2], coords[3], coords[4]
-        frameElements.elite:SetTexCoord(right, left, top, bottom) -- ✅ FLIPPED: right, left en lugar de left, right
+        frameElements.elite:SetTexCoord(right, left, top, bottom) -- FLIPPED
 
-        --  USAR VALORES CORREGIDOS DEL DEBUG
-        frameElements.elite:SetSize(51, 51) -- En lugar de coords[5], coords[6]
-        frameElements.elite:SetPoint("CENTER", TargetFrameToTPortrait, "CENTER", -4, -2) -- En lugar de coords[7], coords[8]
-        frameElements.elite:SetDrawLayer("OVERLAY", 11) -- ✅ FORZAR DRAW LAYER
+        -- USAR VALORES CORREGIDOS DEL DEBUG
+        frameElements.elite:SetSize(51, 51)
+        frameElements.elite:SetPoint("CENTER", FocusFrameToTPortrait, "CENTER", -4, -2)
+        frameElements.elite:SetDrawLayer("OVERLAY", 11)
         frameElements.elite:Show()
-        frameElements.elite:SetAlpha(1) -- ✅ ASEGURAR VISIBILIDAD
+        frameElements.elite:SetAlpha(1)
     else
         frameElements.elite:Hide()
     end
 end
 
 -- ============================================================================
--- FRAME INITIALIZATION (IGUAL QUE TARGET/FOCUS)
+-- FRAME INITIALIZATION (IGUAL QUE TOT PERO PARA FOCUS)
 -- ============================================================================
 
 local function InitializeFrame()
@@ -234,22 +235,22 @@ local function InitializeFrame()
         return
     end
 
-    -- Verificar que ToT existe
-    if not TargetFrameToT then
-        print("|cFFFF0000[DragonUI]|r TargetFrameToT not available")
+    -- Verificar que FoT existe
+    if not FocusFrameToT then
+        print("|cFFFF0000[DragonUI]|r FocusFrameToT not available")
         return
     end
 
     -- Get configuration
     local config = GetConfig()
 
-    -- Position and scale with proper defaults
-    TargetFrameToT:ClearAllPoints()
-    TargetFrameToT:SetPoint(config.anchor or "BOTTOMRIGHT", TargetFrame, config.anchorParent or "BOTTOMRIGHT", config.x, config.y)
-    TargetFrameToT:SetScale(config.scale)
+    -- Position and scale (ANCLADO AL FOCUS FRAME)
+    FocusFrameToT:ClearAllPoints()
+    FocusFrameToT:SetPoint(config.anchor or "BOTTOMRIGHT", FocusFrame, config.anchorParent or "BOTTOMRIGHT", config.x or -8, config.y or -30)
+    FocusFrameToT:SetScale(config.scale or 1.0)
 
     -- Hide Blizzard elements
-    local toHide = {TargetFrameToTTextureFrameTexture, TargetFrameToTBackground}
+    local toHide = {FocusFrameToTTextureFrameTexture, FocusFrameToTBackground}
 
     for _, element in ipairs(toHide) do
         if element then
@@ -260,95 +261,96 @@ local function InitializeFrame()
 
     -- Create background texture
     if not frameElements.background then
-        frameElements.background = TargetFrameToT:CreateTexture("DragonUI_ToTBG", "BACKGROUND", nil, 0)
+        frameElements.background = FocusFrameToT:CreateTexture("DragonUI_FoTBG", "BACKGROUND", nil, 0)
         frameElements.background:SetTexture(TEXTURES.BACKGROUND)
-        frameElements.background:SetPoint('LEFT', TargetFrameToTPortrait, 'CENTER', -25 + 1, -10)
+        frameElements.background:SetPoint('LEFT', FocusFrameToTPortrait, 'CENTER', -25 + 1, -10)
     end
 
     -- Create border texture
     if not frameElements.border then
-        frameElements.border = TargetFrameToTHealthBar:CreateTexture("DragonUI_ToTBorder", "OVERLAY", nil, 1)
+        frameElements.border = FocusFrameToTHealthBar:CreateTexture("DragonUI_FoTBorder", "OVERLAY", nil, 1)
         frameElements.border:SetTexture(TEXTURES.BORDER)
-        frameElements.border:SetPoint('LEFT', TargetFrameToTPortrait, 'CENTER', -25 + 1, -10)
+        frameElements.border:SetPoint('LEFT', FocusFrameToTPortrait, 'CENTER', -25 + 1, -10)
         frameElements.border:Show()
         frameElements.border:SetAlpha(1)
     end
 
     -- Create elite decoration
     if not frameElements.elite then
-        local eliteFrame = CreateFrame("Frame", "DragonUI_ToTEliteFrame", TargetFrameToT)
+        local eliteFrame = CreateFrame("Frame", "DragonUI_FoTEliteFrame", FocusFrameToT)
         eliteFrame:SetFrameStrata("MEDIUM")
-        eliteFrame:SetAllPoints(TargetFrameToTPortrait)
+        eliteFrame:SetAllPoints(FocusFrameToTPortrait)
 
-        frameElements.elite = eliteFrame:CreateTexture("DragonUI_ToTElite", "OVERLAY", nil, 1)
+        frameElements.elite = eliteFrame:CreateTexture("DragonUI_FoTElite", "OVERLAY", nil, 1)
         frameElements.elite:SetTexture(TEXTURES.BOSS)
         frameElements.elite:Hide()
     end
-    -- Configure health bar
-    TargetFrameToTHealthBar:Hide()
-    TargetFrameToTHealthBar:ClearAllPoints()
-    TargetFrameToTHealthBar:SetParent(TargetFrameToT)
-    TargetFrameToTHealthBar:SetFrameStrata("LOW")
-    TargetFrameToTHealthBar:GetStatusBarTexture():SetDrawLayer("ARTWORK", 1)
-    TargetFrameToTHealthBar:GetStatusBarTexture():SetTexture(TEXTURES.BAR_PREFIX .. "Health")
-    TargetFrameToTHealthBar.SetStatusBarColor = function()
-    end -- noop
-    TargetFrameToTHealthBar:GetStatusBarTexture():SetVertexColor(1, 1, 1, 1)
-    TargetFrameToTHealthBar:SetSize(70.5, 10)
-    TargetFrameToTHealthBar:SetPoint('LEFT', TargetFrameToTPortrait, 'RIGHT', 1 + 1, 0)
-    TargetFrameToTHealthBar:Show()
 
-    -- Configure power bar
-    TargetFrameToTManaBar:Hide()
-    TargetFrameToTManaBar:ClearAllPoints()
-    TargetFrameToTManaBar:SetParent(TargetFrameToT)
-    TargetFrameToTManaBar:SetFrameStrata("LOW")
-    TargetFrameToTManaBar:GetStatusBarTexture():SetDrawLayer("ARTWORK", 1)
-    TargetFrameToTManaBar:GetStatusBarTexture():SetTexture(TEXTURES.BAR_PREFIX .. "Mana")
-    TargetFrameToTManaBar.SetStatusBarColor = function()
-    end -- noop
-    TargetFrameToTManaBar:GetStatusBarTexture():SetVertexColor(1, 1, 1, 1)
-    TargetFrameToTManaBar:SetSize(74, 7.5)
-    TargetFrameToTManaBar:SetPoint('LEFT', TargetFrameToTPortrait, 'RIGHT', 1 - 2 - 1.5 + 1, 2 - 10 - 1)
-    TargetFrameToTManaBar:Show()
+    -- Configure health bar (IGUAL que ToT)
+    FocusFrameToTHealthBar:Hide()
+    FocusFrameToTHealthBar:ClearAllPoints()
+    FocusFrameToTHealthBar:SetParent(FocusFrameToT)
+    FocusFrameToTHealthBar:SetFrameStrata("LOW")
+    FocusFrameToTHealthBar:GetStatusBarTexture():SetDrawLayer("ARTWORK", 1)
+    FocusFrameToTHealthBar:GetStatusBarTexture():SetTexture(TEXTURES.BAR_PREFIX .. "Health")
+    FocusFrameToTHealthBar.SetStatusBarColor = function() end -- noop
+    FocusFrameToTHealthBar:GetStatusBarTexture():SetVertexColor(1, 1, 1, 1)
+    FocusFrameToTHealthBar:SetSize(70.5, 10)
+    FocusFrameToTHealthBar:SetPoint('LEFT', FocusFrameToTPortrait, 'RIGHT', 1 + 1, 0)
+    FocusFrameToTHealthBar:Show()
 
-    -- Configure name text
-    if TargetFrameToTTextureFrameName then
-        TargetFrameToTTextureFrameName:ClearAllPoints()
-        TargetFrameToTTextureFrameName:SetPoint('LEFT', TargetFrameToTPortrait, 'RIGHT', 3, 13)
-        TargetFrameToTTextureFrameName:SetParent(TargetFrameToT)
-        TargetFrameToTTextureFrameName:Show()
-        local font, size, flags = TargetFrameToTTextureFrameName:GetFont()
+    -- Configure power bar (IGUAL que ToT)
+    FocusFrameToTManaBar:Hide()
+    FocusFrameToTManaBar:ClearAllPoints()
+    FocusFrameToTManaBar:SetParent(FocusFrameToT)
+    FocusFrameToTManaBar:SetFrameStrata("LOW")
+    FocusFrameToTManaBar:GetStatusBarTexture():SetDrawLayer("ARTWORK", 1)
+    FocusFrameToTManaBar:GetStatusBarTexture():SetTexture(TEXTURES.BAR_PREFIX .. "Mana")
+    FocusFrameToTManaBar.SetStatusBarColor = function() end -- noop
+    FocusFrameToTManaBar:GetStatusBarTexture():SetVertexColor(1, 1, 1, 1)
+    FocusFrameToTManaBar:SetSize(74, 7.5)
+    FocusFrameToTManaBar:SetPoint('LEFT', FocusFrameToTPortrait, 'RIGHT', 1 - 2 - 1.5 + 1, 2 - 10 - 1)
+    FocusFrameToTManaBar:Show()
+
+    -- Configure name text (IGUAL que ToT)
+    if FocusFrameToTTextureFrameName then
+        FocusFrameToTTextureFrameName:ClearAllPoints()
+        FocusFrameToTTextureFrameName:SetPoint('LEFT', FocusFrameToTPortrait, 'RIGHT', 3, 13)
+        FocusFrameToTTextureFrameName:SetParent(FocusFrameToT)
+        FocusFrameToTTextureFrameName:Show()
+        local font, size, flags = FocusFrameToTTextureFrameName:GetFont()
         if font and size then
-            TargetFrameToTTextureFrameName:SetFont(font, math.max(size, 10), flags)
+            FocusFrameToTTextureFrameName:SetFont(font, math.max(size, 10), flags)
         end
-        TargetFrameToTTextureFrameName:SetTextColor(1.0, 0.82, 0.0, 1.0)
-        TargetFrameToTTextureFrameName:SetDrawLayer("BORDER", 1)
+        FocusFrameToTTextureFrameName:SetTextColor(1.0, 0.82, 0.0, 1.0)
+        FocusFrameToTTextureFrameName:SetDrawLayer("BORDER", 1)
 
-        -- ✅ TRUNCADO AUTOMÁTICO COMO RETAILUI
-        TargetFrameToTTextureFrameName:SetWidth(65)
-        TargetFrameToTTextureFrameName:SetJustifyH("LEFT")
+        -- TRUNCADO AUTOMÁTICO COMO RETAILUI
+        FocusFrameToTTextureFrameName:SetWidth(65)
+        FocusFrameToTTextureFrameName:SetJustifyH("LEFT")
     end
 
     -- Force debuff positions if needed
-    if TargetFrameToTDebuff1 then
-        TargetFrameToTDebuff1:ClearAllPoints()
-        TargetFrameToTDebuff1:SetPoint("TOPLEFT", TargetFrameToT, "BOTTOMLEFT", 120, 35)
+    if FocusFrameToTDebuff1 then
+        FocusFrameToTDebuff1:ClearAllPoints()
+        FocusFrameToTDebuff1:SetPoint("TOPLEFT", FocusFrameToT, "BOTTOMLEFT", 120, 35)
     end
 
     -- Setup bar hooks
     SetupBarHooks()
+    
+    Module.configured = true
 end
 
 -- ============================================================================
--- EVENT HANDLING (IGUAL QUE TARGET/FOCUS)
+-- EVENT HANDLING (IGUAL QUE TOT PERO PARA FOCUS)
 -- ============================================================================
 
 local function OnEvent(self, event, ...)
     if event == "ADDON_LOADED" then
         local name = ...
         if name == "DragonUI" and not Module.initialized then
-            Module.totFrame = CreateFrame("Frame", "DragonUI_ToT_Anchor", UIParent)
+            Module.totFrame = CreateFrame("Frame", "DragonUI_FoT_Anchor", UIParent)
             Module.totFrame:SetSize(120, 47)
             Module.totFrame:SetPoint("TOPLEFT", UIParent, "TOPLEFT", 370, -80)
             Module.initialized = true
@@ -356,14 +358,12 @@ local function OnEvent(self, event, ...)
 
     elseif event == "PLAYER_ENTERING_WORLD" then
         InitializeFrame()
-        if UnitExists("targettarget") then
-
+        if UnitExists("focustarget") then
             UpdateClassification()
         end
 
-    elseif event == "PLAYER_TARGET_CHANGED" then
-        -- Target cambió, forzar update del ToT
-
+    elseif event == "PLAYER_FOCUS_CHANGED" then
+        -- Focus cambió, forzar update del FoT
         UpdateClassification()
         if Module.textSystem then
             Module.textSystem.update()
@@ -371,8 +371,7 @@ local function OnEvent(self, event, ...)
 
     elseif event == "UNIT_TARGET" then
         local unit = ...
-        if unit == "target" then -- El target del target cambió
-
+        if unit == "focus" then -- El target del focus cambió
             UpdateClassification()
             if Module.textSystem then
                 Module.textSystem.update()
@@ -381,13 +380,13 @@ local function OnEvent(self, event, ...)
 
     elseif event == "UNIT_CLASSIFICATION_CHANGED" then
         local unit = ...
-        if unit == "targettarget" then
+        if unit == "focustarget" then
             UpdateClassification()
         end
 
     elseif event == "UNIT_FACTION" then
         local unit = ...
-        if unit == "targettarget" then
+        if unit == "focustarget" then
             -- No tenemos name background como target, pero podrías agregarlo
         end
     end
@@ -398,15 +397,15 @@ if not Module.eventsFrame then
     Module.eventsFrame = CreateFrame("Frame")
     Module.eventsFrame:RegisterEvent("ADDON_LOADED")
     Module.eventsFrame:RegisterEvent("PLAYER_ENTERING_WORLD")
-    Module.eventsFrame:RegisterEvent("PLAYER_TARGET_CHANGED")
-    Module.eventsFrame:RegisterEvent("UNIT_TARGET") -- Crucial para ToT
+    Module.eventsFrame:RegisterEvent("PLAYER_FOCUS_CHANGED")
+    Module.eventsFrame:RegisterEvent("UNIT_TARGET") -- Crucial para FoT
     Module.eventsFrame:RegisterEvent("UNIT_CLASSIFICATION_CHANGED")
     Module.eventsFrame:RegisterEvent("UNIT_FACTION")
     Module.eventsFrame:SetScript("OnEvent", OnEvent)
 end
 
 -- ============================================================================
--- PUBLIC API (IGUAL QUE TARGET/FOCUS)
+-- PUBLIC API (IGUAL QUE TOT)
 -- ============================================================================
 
 local function RefreshFrame()
@@ -414,8 +413,7 @@ local function RefreshFrame()
         InitializeFrame()
     end
 
-    if UnitExists("targettarget") then
-
+    if UnitExists("focustarget") then
         UpdateClassification()
         if Module.textSystem then
             Module.textSystem.update()
@@ -425,36 +423,36 @@ end
 
 local function ResetFrame()
     -- Reset a valores por defecto de la DB
-    addon:SetConfigValue("unitframe", "tot", "x", 22)
-    addon:SetConfigValue("unitframe", "tot", "y", -15)
-    addon:SetConfigValue("unitframe", "tot", "scale", 1.0)
+    addon:SetConfigValue("unitframe", "fot", "x", -8)
+    addon:SetConfigValue("unitframe", "fot", "y", -30)
+    addon:SetConfigValue("unitframe", "fot", "scale", 1.0)
 
     -- Aplicar inmediatamente
     local config = GetConfig()
-    TargetFrameToT:ClearAllPoints()
-    TargetFrameToT:SetPoint(config.anchor or "BOTTOMRIGHT", TargetFrame, config.anchorParent or "BOTTOMRIGHT", config.x, config.y)
-    TargetFrameToT:SetScale(config.scale)
+    FocusFrameToT:ClearAllPoints()
+    FocusFrameToT:SetPoint(config.anchor or "BOTTOMRIGHT", FocusFrame, config.anchorParent or "BOTTOMRIGHT", config.x, config.y)
+    FocusFrameToT:SetScale(config.scale)
 end
 
 -- Export API (igual que target/focus)
-addon.TargetOfTarget = {
+addon.TargetOfFocus = {
     Refresh = RefreshFrame,
-    RefreshToTFrame = RefreshFrame,
+    RefreshToFFrame = RefreshFrame,
     Reset = ResetFrame,
     anchor = function()
         return Module.totFrame
     end,
-    ChangeToTFrame = RefreshFrame
+    ChangeToFFrame = RefreshFrame
 }
 
 -- Legacy compatibility
 addon.unitframe = addon.unitframe or {}
-addon.unitframe.ChangeToT = RefreshFrame
-addon.unitframe.ReApplyToTFrame = RefreshFrame
-addon.unitframe.StyleToTFrame = InitializeFrame
+addon.unitframe.ChangeFocusToT = RefreshFrame
+addon.unitframe.ReApplyFocusToTFrame = RefreshFrame
+addon.unitframe.StyleFocusToTFrame = InitializeFrame
 
-function addon:RefreshToTFrame()
+function addon:RefreshToFFrame()
     RefreshFrame()
 end
 
-print("|cFF00FF00[DragonUI]|r Target of Target module loaded and optimized v1.0")
+print("|cFF00FF00[DragonUI]|r Focus of Target module loaded and optimized v1.0")

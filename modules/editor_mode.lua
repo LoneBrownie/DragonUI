@@ -156,7 +156,9 @@ local moduleConfig = {
     -- Unit Frames
     ["PlayerFrame"] = { dbPath = {"unitframe", "player"}, xKey = "x", yKey = "y", refreshFunc = "RefreshUnitFrames", displayName = "Player Frame", unitframe = true },
     ["TargetFrame"] = { dbPath = {"unitframe", "target"}, xKey = "x", yKey = "y", refreshFunc = "RefreshUnitFrames", displayName = "Target Frame", unitframe = true },
+    ["TargetFrameToT"] = { dbPath = {"unitframe", "tot"}, xKey = "x", yKey = "y", refreshFunc = "RefreshToTFrame", displayName = "Target of Target", unitframe = true },
     ["FocusFrame"] = { dbPath = {"unitframe", "focus"}, xKey = "x", yKey = "y", refreshFunc = "RefreshUnitFrames", displayName = "Focus Frame", unitframe = true },
+    ["FocusFrameToT"] = { dbPath = {"unitframe", "fot"}, xKey = "x", yKey = "y", refreshFunc = "RefreshToFFrame", displayName = "Focus Target Frame", unitframe = true },
     ["PetFrame"] = { dbPath = {"unitframe", "pet"}, xKey = "x", yKey = "y", refreshFunc = "RefreshUnitFrames", displayName = "Pet Frame", unitframe = true },
 
     -- =========================================================================
@@ -187,7 +189,7 @@ local moduleConfig = {
         actionbar = true
     },
 
-     ["DragonUIPartyMoveFrame"] = {
+     ["PartyMemberFrame1"] = {
         dbPath = {"unitframe", "party"},
         xKey = "x",
         yKey = "y",
@@ -285,22 +287,36 @@ local function makeFrameMovable(frame, config)
 
         if config.actionbar then
             -- === LÓGICA ESPECÍFICA PARA BARRAS DE ACCIÓN ===
+            -- ✅ PREVENIR SALTO: Obtener coordenadas exactas después del movimiento
+            local currentX, currentY = frame:GetLeft(), frame:GetBottom()
+            
             setDbValue(config.dbPath, "override", true)
-            setDbValue(config.dbPath, config.xKey, finalX)
-            setDbValue(config.dbPath, config.yKey, finalY)
+            setDbValue(config.dbPath, config.xKey, currentX)
+            setDbValue(config.dbPath, config.yKey, currentY)
            
+            -- ✅ EVITAR REFRESH INMEDIATO QUE CAUSA SALTO
             if addon[config.refreshFunc] then
-                addon[config.refreshFunc]()
+                -- Usar un timer corto para permitir que el frame se estabilice
+                C_Timer.After(0.05, function()
+                    addon[config.refreshFunc]()
+                end)
             end
         
         elseif config.castbar then
             -- === LÓGICA ESPECÍFICA PARA CASTBARS ===
-            setDbValue(config.dbPath, "override", true)
-            setDbValue(config.dbPath, config.xKey, finalX)
-            setDbValue(config.dbPath, config.yKey, finalY)
+            -- ✅ PREVENIR SALTO: Obtener coordenadas exactas después del movimiento
+            local currentX, currentY = frame:GetLeft(), frame:GetBottom()
             
+            setDbValue(config.dbPath, "override", true)
+            setDbValue(config.dbPath, config.xKey, currentX)
+            setDbValue(config.dbPath, config.yKey, currentY)
+            
+            -- ✅ EVITAR REFRESH INMEDIATO QUE CAUSA SALTO
             if addon[config.refreshFunc] then
-                addon[config.refreshFunc]()
+                -- Usar un timer corto para permitir que el frame se estabilice
+                C_Timer.After(0.05, function()
+                    addon[config.refreshFunc]()
+                end)
             end
 
        elseif config.partyframe then
@@ -345,7 +361,12 @@ local function makeFrameMovable(frame, config)
                     setDbValue(config.dbPath, config.xKey, xOfs or finalX)
                     setDbValue(config.dbPath, config.yKey, yOfs or finalY)
                     
-                    if addon.RefreshUnitFrames then
+                    -- Llamar función específica según el frame
+                    if frame == TargetFrameToT and addon.TargetOfTarget and addon.TargetOfTarget.RefreshToTFrame then
+                        addon.TargetOfTarget.RefreshToTFrame()
+                    elseif frame == FocusFrameToT and addon.TargetOfFocus and addon.TargetOfFocus.RefreshToFFrame then
+                        addon.TargetOfFocus.RefreshToFFrame()
+                    elseif addon.RefreshUnitFrames then
                         addon.RefreshUnitFrames()
                     end
                 end
@@ -368,6 +389,12 @@ local function makeFrameMovable(frame, config)
         if isDragging and frame then
             -- ✅ Mantener el frame "libre" durante el arrastre
             frame:SetUserPlaced(false);
+            
+            -- ✅ PREVENIR QUE OTRAS FUNCIONES REPOSICIONEN EL FRAME
+            if config.actionbar or config.castbar then
+                -- Desactivar temporalmente eventos que pueden causar reposicionamiento
+                frame:SetScript("OnEvent", nil)
+            end
         end
     end);
 
@@ -388,6 +415,13 @@ function EditorMode:Show()
     isEditorActive = true;
     local frameCount = 0;
 
+    -- ✅ DEBUG: Verificar estado de módulos ToT/ToF
+    print("|cFFFFFF00[DragonUI Debug]|r Checking ToT/ToF modules...")
+    print("addon.TargetOfTarget exists:", addon.TargetOfTarget and "YES" or "NO")
+    print("addon.TargetOfFocus exists:", addon.TargetOfFocus and "YES" or "NO")
+    print("_G.TargetFrameToT exists:", _G.TargetFrameToT and "YES" or "NO") 
+    print("_G.FocusFrameToT exists:", _G.FocusFrameToT and "YES" or "NO")
+
     -- ✅ Mostrar la rejilla y el botón de salida
     createGridOverlay();
     createExitButton(); -- Asegura que el botón exista
@@ -403,6 +437,41 @@ function EditorMode:Show()
     if addon.pUiMainBar then addon.pUiMainBar:Show(); end
     if MultiBarLeft then MultiBarLeft:Show(); end
     if MultiBarRight then MultiBarRight:Show(); end
+
+    -- ✅ FORZAR VISIBILIDAD DE TOT/TOF CON VERIFICACIÓN E INICIALIZACIÓN
+    -- Primero intentar forzar inicialización de los módulos
+    if addon.TargetOfTarget and addon.TargetOfTarget.RefreshToTFrame then
+        addon.TargetOfTarget.RefreshToTFrame()
+    elseif addon.RefreshToTFrame then
+        addon:RefreshToTFrame()
+    end
+    
+    if addon.TargetOfFocus and addon.TargetOfFocus.RefreshToFFrame then
+        addon.TargetOfFocus.RefreshToFFrame()
+    elseif addon.RefreshToFFrame then
+        addon:RefreshToFFrame()
+    end
+    
+    -- Intentar acceso directo a funciones legacy
+    if addon.unitframe then
+        if addon.unitframe.StyleToTFrame then addon.unitframe.StyleToTFrame() end
+        if addon.unitframe.StyleFocusToTFrame then addon.unitframe.StyleFocusToTFrame() end
+    end
+    
+    -- Ahora verificar y mostrar los frames
+    if _G.TargetFrameToT then 
+        _G.TargetFrameToT:Show(); 
+        print("|cFF00FF00[DragonUI]|r TargetFrameToT shown for editor")
+    else
+        print("|cFFFF0000[DragonUI]|r TargetFrameToT not found after initialization!")
+    end
+    
+    if _G.FocusFrameToT then 
+        _G.FocusFrameToT:Show(); 
+        print("|cFF00FF00[DragonUI]|r FocusFrameToT shown for editor")
+    else
+        print("|cFFFF0000[DragonUI]|r FocusFrameToT not found after initialization!")
+    end
 -- ✅ CORRECCIÓN: Forzar la visibilidad de TODOS los componentes de las castbars.
     -- Esto asegura que se muestren correctamente incluso si fueron ocultadas por el ciclo de vida normal del addon.
     if _G["DragonUIPlayerCastbar"] then _G["DragonUIPlayerCastbar"]:Show() end
@@ -425,13 +494,10 @@ function EditorMode:Show()
     -- ✅ Lógica para los Party Frames (CORREGIDO)
     if GetNumPartyMembers() == 0 then
         -- No estamos en grupo, mostrar frames falsos
-        if addon.unitframe and addon.unitframe.ForceInitPartyFrames then
-            addon.unitframe.ForceInitPartyFrames()
-        end
-        if _G["DragonUIPartyMoveFrame"] then
-            _G["DragonUIPartyMoveFrame"]:Show()
-            for i = 1, 4 do
-                if _G["PartyMemberFrame"..i] then _G["PartyMemberFrame"..i]:Show() end
+        for i = 1, 4 do
+            if _G["PartyMemberFrame"..i] then 
+                _G["PartyMemberFrame"..i]:Show()
+                print("|cFF00FF00[DragonUI]|r PartyMemberFrame"..i.." shown for editor")
             end
         end
     end
@@ -442,7 +508,7 @@ function EditorMode:Show()
         if config.actionbar then
             frame = getActionBarFrame(frameName)
         elseif config.partyframe then
-            frame = _G[frameName] or (addon.unitframe and addon.unitframe.PartyMoveFrame)
+            frame = _G[frameName] -- PartyMemberFrame1 debería existir
         elseif config.castbar then
             frame = _G[frameName]
         else
@@ -454,7 +520,10 @@ function EditorMode:Show()
             if editableFrames[frame] then
                 editableFrames[frame].overlay:Show();
                 frameCount = frameCount + 1;
+                print("|cFF00FF00[DragonUI]|r Frame configured:", frameName, "- Total:", frameCount)
             end
+        else
+            print("|cFFFF0000[DragonUI]|r Frame not found:", frameName)
         end
     end
 
@@ -483,7 +552,9 @@ function EditorMode:Hide()
     
     -- ✅ Restaurar visibilidad normal de TODOS los frames
     if TargetFrame and not UnitExists("target") then TargetFrame:Hide(); end
+    if _G.TargetFrameToT and not UnitExists("targettarget") then _G.TargetFrameToT:Hide(); end
     if FocusFrame and not UnitExists("focus") then FocusFrame:Hide(); end
+    if _G.FocusFrameToT and not UnitExists("focustarget") then _G.FocusFrameToT:Hide(); end
     if PetFrame and not UnitExists("pet") then PetFrame:Hide(); end
     if StanceBarFrame and not GetNumShapeshiftForms() > 0 then StanceBarFrame:Hide(); end
     if PetActionBarFrame and not HasPetUI() then PetActionBarFrame:Hide(); end
@@ -516,8 +587,10 @@ function EditorMode:Hide()
 
     -- ✅ Ocultar los party frames si no estamos en grupo
     if GetNumPartyMembers() == 0 then
-        if _G["DragonUIPartyMoveFrame"] then
-            _G["DragonUIPartyMoveFrame"]:Hide()
+        for i = 1, 4 do
+            if _G["PartyMemberFrame"..i] then
+                _G["PartyMemberFrame"..i]:Hide()
+            end
         end
     end
 

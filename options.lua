@@ -3026,8 +3026,8 @@ function addon:CreateOptionsTable()
                                 end,
                                 set = function(info, value)
                                     addon.db.profile.unitframe.tot.scale = value
-                                    if addon.RefreshUnitFrames then
-                                        addon.RefreshUnitFrames()
+                                    if addon.TargetOfTarget and addon.TargetOfTarget.RefreshToTFrame then
+                                        addon.TargetOfTarget.RefreshToTFrame()
                                     end
                                 end,
                                 order = 1
@@ -3041,8 +3041,8 @@ function addon:CreateOptionsTable()
                                 end,
                                 set = function(info, value)
                                     addon.db.profile.unitframe.tot.classcolor = value
-                                    if addon.RefreshUnitFrames then
-                                        addon.RefreshUnitFrames()
+                                    if addon.TargetOfTarget and addon.TargetOfTarget.RefreshToTFrame then
+                                        addon.TargetOfTarget.RefreshToTFrame()
                                     end
                                 end,
                                 order = 2
@@ -3059,8 +3059,8 @@ function addon:CreateOptionsTable()
                                 end,
                                 set = function(info, value)
                                     addon.db.profile.unitframe.tot.x = value
-                                    if addon.RefreshUnitFrames then
-                                        addon.RefreshUnitFrames()
+                                    if addon.TargetOfTarget and addon.TargetOfTarget.RefreshToTFrame then
+                                        addon.TargetOfTarget.RefreshToTFrame()
                                     end
                                 end,
                                 order = 3
@@ -3077,8 +3077,8 @@ function addon:CreateOptionsTable()
                                 end,
                                 set = function(info, value)
                                     addon.db.profile.unitframe.tot.y = value
-                                    if addon.RefreshUnitFrames then
-                                        addon.RefreshUnitFrames()
+                                    if addon.TargetOfTarget and addon.TargetOfTarget.RefreshToTFrame then
+                                        addon.TargetOfTarget.RefreshToTFrame()
                                     end
                                 end,
                                 order = 4
@@ -3103,8 +3103,8 @@ function addon:CreateOptionsTable()
                                 end,
                                 set = function(info, value)
                                     addon.db.profile.unitframe.fot.scale = value
-                                    if addon.RefreshUnitFrames then
-                                        addon.RefreshUnitFrames()
+                                    if addon.TargetOfFocus and addon.TargetOfFocus.RefreshToFFrame then
+                                        addon.TargetOfFocus.RefreshToFFrame()
                                     end
                                 end,
                                 order = 1
@@ -3118,8 +3118,8 @@ function addon:CreateOptionsTable()
                                 end,
                                 set = function(info, value)
                                     addon.db.profile.unitframe.fot.classcolor = value
-                                    if addon.RefreshUnitFrames then
-                                        addon.RefreshUnitFrames()
+                                    if addon.TargetOfFocus and addon.TargetOfFocus.RefreshToFFrame then
+                                        addon.TargetOfFocus.RefreshToFFrame()
                                     end
                                 end,
                                 order = 2
@@ -3136,8 +3136,8 @@ function addon:CreateOptionsTable()
                                 end,
                                 set = function(info, value)
                                     addon.db.profile.unitframe.fot.x = value
-                                    if addon.RefreshUnitFrames then
-                                        addon.RefreshUnitFrames()
+                                    if addon.TargetOfFocus and addon.TargetOfFocus.RefreshToFFrame then
+                                        addon.TargetOfFocus.RefreshToFFrame()
                                     end
                                 end,
                                 order = 3
@@ -3154,8 +3154,8 @@ function addon:CreateOptionsTable()
                                 end,
                                 set = function(info, value)
                                     addon.db.profile.unitframe.fot.y = value
-                                    if addon.RefreshUnitFrames then
-                                        addon.RefreshUnitFrames()
+                                    if addon.TargetOfFocus and addon.TargetOfFocus.RefreshToFFrame then
+                                        addon.TargetOfFocus.RefreshToFFrame()
                                     end
                                 end,
                                 order = 4

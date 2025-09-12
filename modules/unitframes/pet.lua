@@ -323,7 +323,7 @@ local function ReplaceBlizzardPetFrame()
     local happiness = _G[petFrame:GetName() .. 'Happiness']
     if happiness then
         happiness:ClearAllPoints()
-        happiness:SetPoint("LEFT", petFrame, "RIGHT", 1, -2)
+        happiness:SetPoint("LEFT", petFrame, "RIGHT", -10, -5)
     end
     
     -- ===============================================================
