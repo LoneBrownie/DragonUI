@@ -16,7 +16,7 @@
     <!-- <Script file="minimap_map.lua"/> -->
     <!-- <Script file="minimap_time.lua"/> -->
     <!-- <Script file="minimap_auras.lua"/> -->
-    <!-- <Script file="minimap_init.lua"/> -->
+     <Script file="BuffFrame.lua"/> 
     <Script file="minimap.lua"/>    
 
 

@@ -148,6 +148,15 @@ local defaults = {
             y = 0
         },
 
+        -- ✅ BUFFS SETTINGS (NUEVO)
+        buffs = {
+            enabled = true,
+            anchor = "TOPRIGHT",
+            posX = -260,
+            posY = -20,
+            show_toggle_button = true
+        },
+
 
         -- CASTBAR SETTINGS
         castbar = {

@@ -1302,6 +1302,110 @@ function addon:CreateOptionsTable()
                 }
             },
 
+            buffs = {
+                type = 'group',
+                name = "Buff Frame",
+                order = 11,
+                args = {
+                    enabled = {
+                        type = 'toggle',
+                        name = "Enable Buff Frame",
+                        desc = "Enable/disable the custom buff frame with toggle button",
+                        get = function()
+                            return addon.db.profile.buffs.enabled
+                        end,
+                        set = function(info, value)
+                            addon.db.profile.buffs.enabled = value
+                            if addon.BuffFrameModule then
+                                addon.BuffFrameModule:Toggle(value)
+                            end
+                        end,
+                        order = 1
+                    },
+                    show_toggle_button = {
+                        type = 'toggle',
+                        name = "Show Toggle Button",
+                        desc = "Show button to hide/show buffs",
+                        get = function()
+                            return addon.db.profile.buffs.show_toggle_button
+                        end,
+                        set = function(info, value)
+                            addon.db.profile.buffs.show_toggle_button = value
+                            if addon.BuffFrameModule then
+                                addon.BuffFrameModule:UpdatePosition()
+                            end
+                        end,
+                        order = 2,
+                        disabled = function()
+                            return not addon.db.profile.buffs.enabled
+                        end
+                    },
+                    position_header = {
+                        type = 'header',
+                        name = "Position",
+                        order = 3
+                    },
+                    x = {
+                        type = 'range',
+                        name = "X Position",
+                        desc = "Horizontal position",
+                        min = -500,
+                        max = 500,
+                        step = 1,
+                        get = function()
+                            return addon.db.profile.buffs.posX
+                        end,
+                        set = function(info, value)
+                            addon.db.profile.buffs.posX = value
+                            if addon.BuffFrameModule then
+                                addon.BuffFrameModule:UpdatePosition()
+                            end
+                        end,
+                        order = 4,
+                        disabled = function()
+                            return not addon.db.profile.buffs.enabled
+                        end
+                    },
+                    y = {
+                        type = 'range',
+                        name = "Y Position",
+                        desc = "Vertical position",
+                        min = -500,
+                        max = 500,
+                        step = 1,
+                        get = function()
+                            return addon.db.profile.buffs.posY
+                        end,
+                        set = function(info, value)
+                            addon.db.profile.buffs.posY = value
+                            if addon.BuffFrameModule then
+                                addon.BuffFrameModule:UpdatePosition()
+                            end
+                        end,
+                        order = 5,
+                        disabled = function()
+                            return not addon.db.profile.buffs.enabled
+                        end
+                    },
+                    reset_position = {
+                        type = 'execute',
+                        name = "Reset Position",
+                        desc = "Reset buff frame to default position",
+                        func = function()
+                            addon.db.profile.buffs.posX = -260
+                            addon.db.profile.buffs.posY = -20
+                            if addon.BuffFrameModule then
+                                addon.BuffFrameModule:UpdatePosition()
+                            end
+                        end,
+                        order = 6,
+                        disabled = function()
+                            return not addon.db.profile.buffs.enabled
+                        end
+                    }
+                }
+            },
+
             minimap = {
                 name = "Minimap",
                 type = "group",
