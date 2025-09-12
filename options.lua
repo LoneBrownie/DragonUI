@@ -950,10 +950,18 @@ function addon:CreateOptionsTable()
                                 end,
                                 set = function(info, value)
                                     addon.db.profile.additional.size = value
-                                    if addon.RefreshStance then addon.RefreshStance() end
-                                    if addon.RefreshPetbar then addon.RefreshPetbar() end
-                                    if addon.RefreshVehicle then addon.RefreshVehicle() end
-                                    if addon.RefreshMulticast then addon.RefreshMulticast() end
+                                    if addon.RefreshStance then
+                                        addon.RefreshStance()
+                                    end
+                                    if addon.RefreshPetbar then
+                                        addon.RefreshPetbar()
+                                    end
+                                    if addon.RefreshVehicle then
+                                        addon.RefreshVehicle()
+                                    end
+                                    if addon.RefreshMulticast then
+                                        addon.RefreshMulticast()
+                                    end
                                 end,
                                 order = 1,
                                 width = "half"
@@ -970,10 +978,18 @@ function addon:CreateOptionsTable()
                                 end,
                                 set = function(info, value)
                                     addon.db.profile.additional.spacing = value
-                                    if addon.RefreshStance then addon.RefreshStance() end
-                                    if addon.RefreshPetbar then addon.RefreshPetbar() end
-                                    if addon.RefreshVehicle then addon.RefreshVehicle() end
-                                    if addon.RefreshMulticast then addon.RefreshMulticast() end
+                                    if addon.RefreshStance then
+                                        addon.RefreshStance()
+                                    end
+                                    if addon.RefreshPetbar then
+                                        addon.RefreshPetbar()
+                                    end
+                                    if addon.RefreshVehicle then
+                                        addon.RefreshVehicle()
+                                    end
+                                    if addon.RefreshMulticast then
+                                        addon.RefreshMulticast()
+                                    end
                                 end,
                                 order = 2,
                                 width = "half"
@@ -1287,24 +1303,24 @@ function addon:CreateOptionsTable()
             },
 
             minimap = {
-                type = 'group',
                 name = "Minimap",
+                type = "group",
                 order = 10,
                 args = {
+                    -- ✅ CONFIGURACIONES BÁSICAS DEL MINIMAP
                     scale = {
-                        type = 'range',
-                        name = "Minimap Scale",
-                        desc = "Minimap scale (don't increase too much)",
+                        type = "range",
+                        name = "Scale",
                         min = 0.5,
-                        max = 2.0,
-                        step = 0.05,
+                        max = 2,
+                        step = 0.1,
                         get = function()
-                            return addon.db.profile.map.scale
+                            return addon.db.profile.minimap.scale
                         end,
-                        set = function(info, value)
-                            addon.db.profile.map.scale = value
-                            if addon.RefreshMinimap then
-                                addon.RefreshMinimap()
+                        set = function(_, val)
+                            addon.db.profile.minimap.scale = val
+                            if addon.MinimapModule then
+                                addon.MinimapModule:UpdateSettings()
                             end
                         end,
                         order = 1
@@ -1317,91 +1333,117 @@ function addon:CreateOptionsTable()
                         max = 1,
                         step = 0.1,
                         get = function()
-                            return addon.db.profile.map.border_alpha
+                            return addon.db.profile.minimap.border_alpha
                         end,
                         set = function(info, value)
-                            addon.db.profile.map.border_alpha = value
-                            if addon.RefreshMinimap then
-                                addon.RefreshMinimap()
+                            addon.db.profile.minimap.border_alpha = value
+                            if MinimapBorderTop then
+                                MinimapBorderTop:SetAlpha(value)
                             end
                         end,
                         order = 2
                     },
-                    blip_skin = {
-                        type = 'toggle',
-                        name = "New Blip Style",
-                        desc = "New style for object icons",
+                    tracking_icons = {
+                        type = "toggle",
+                        name = "Tracking Icons",
+                        desc = "Show current tracking icons (old style)",
                         get = function()
-                            return addon.db.profile.map.blip_skin
+                            return addon.db.profile.minimap.tracking_icons
                         end,
-                        set = function(info, value)
-                            addon.db.profile.map.blip_skin = value
-                            if addon.RefreshMinimap then
-                                addon.RefreshMinimap()
+                        set = function(_, val)
+                            addon.db.profile.minimap.tracking_icons = val
+                            if addon.MinimapModule then
+                                addon.MinimapModule:UpdateTrackingIcon()
                             end
                         end,
                         order = 3
                     },
-                    player_arrow_size = {
-                        type = 'range',
-                        name = "Player Arrow Size",
-                        desc = "Player arrow on minimap center",
-                        min = 20,
-                        max = 80,
-                        step = 1,
+                    zoom_buttons = {
+                        type = 'toggle',
+                        name = "Zoom Buttons",
+                        desc = "Show zoom buttons (+/-)",
                         get = function()
-                            return addon.db.profile.map.player_arrow_size
+                            return addon.db.profile.minimap.zoom_buttons
                         end,
                         set = function(info, value)
-                            addon.db.profile.map.player_arrow_size = value
-                            if addon.RefreshMinimap then
-                                addon.RefreshMinimap()
+                            addon.db.profile.minimap.zoom_buttons = value
+                            if MinimapZoomIn and MinimapZoomOut then
+                                if value then
+                                    MinimapZoomIn:Show()
+                                    MinimapZoomOut:Show()
+                                else
+                                    MinimapZoomIn:Hide()
+                                    MinimapZoomOut:Hide()
+                                end
                             end
                         end,
                         order = 4
                     },
-                    tracking_icons = {
+
+                    -- ✅ SECCIÓN TIEMPO Y CALENDARIO INTEGRADA
+                    time_header = {
+                        type = 'header',
+                        name = "Time & Calendar",
+                        order = 4.5
+                    },
+                    clock = {
                         type = 'toggle',
-                        name = "Tracking Icons",
-                        desc = "Show current tracking icons (old style)",
+                        name = "Show Clock",
+                        desc = "Show/hide the minimap clock",
                         get = function()
-                            return addon.db.profile.map.tracking_icons
+                            return addon.db.profile.minimap.clock
                         end,
                         set = function(info, value)
-                            addon.db.profile.map.tracking_icons = value
-                            if addon.RefreshMinimap then
-                                addon.RefreshMinimap()
+                            addon.db.profile.minimap.clock = value
+                            if addon.MinimapModule then
+                                addon.MinimapModule:UpdateSettings()
                             end
                         end,
+                        order = 4.6
+                    },
+                    calendar = {
+                        type = 'toggle',
+                        name = "Show Calendar",
+                        desc = "Show/hide the calendar frame",
+                        get = function()
+                            return addon.db.profile.minimap.calendar
+                        end,
+                        set = function(info, value)
+                            addon.db.profile.minimap.calendar = value
+                            if GameTimeFrame then
+                                if value then
+                                    GameTimeFrame:Show()
+                                else
+                                    GameTimeFrame:Hide()
+                                end
+                            end
+                        end,
+                        order = 4.7
+                    },
+                    clock_font_size = {
+                        type = 'range',
+                        name = "Clock Font Size",
+                        desc = "Font size for the clock numbers on the minimap",
+                        min = 8,
+                        max = 20,
+                        step = 1,
+                        get = function()
+                            return addon.db.profile.minimap.clock_font_size
+                        end,
+                        set = function(info, value)
+                            addon.db.profile.minimap.clock_font_size = value
+                            if addon.MinimapModule then
+                                addon.MinimapModule:UpdateSettings()
+                            end
+                        end,
+                        order = 4.8
+                    },
+
+                    -- ✅ OTRAS CONFIGURACIONES DEL MINIMAP
+                    display_header = {
+                        type = 'header',
+                        name = "Display Settings",
                         order = 5
-                    },
-                    skin_button = {
-                        type = 'toggle',
-                        name = "Skin Buttons",
-                        desc = "Circle skin for addon buttons (requires /reload)",
-                        get = function()
-                            return addon.db.profile.map.skin_button
-                        end,
-                        set = function(info, val)
-                            addon.db.profile.map.skin_button = val
-                        end,
-                        order = 7
-                    },
-                    fade_button = {
-                        type = 'toggle',
-                        name = "Fade Buttons",
-                        desc = "Fading for addon buttons",
-                        get = function()
-                            return addon.db.profile.map.fade_button
-                        end,
-                        set = function(info, val)
-                            addon.db.profile.map.fade_button = val
-                            -- Apply fade changes immediately
-                            if addon.RefreshMinimapButtonFade then
-                                addon.RefreshMinimapButtonFade()
-                            end
-                        end,
-                        order = 8
                     },
                     zonetext_font_size = {
                         type = 'range',
@@ -1411,220 +1453,76 @@ function addon:CreateOptionsTable()
                         max = 20,
                         step = 1,
                         get = function()
-                            return addon.db.profile.map.zonetext_font_size
+                            return addon.db.profile.minimap.zonetext_font_size
                         end,
                         set = function(info, value)
-                            addon.db.profile.map.zonetext_font_size = value
-                            if addon.RefreshMinimap then
-                                addon.RefreshMinimap()
+                            addon.db.profile.minimap.zonetext_font_size = value
+                            if MinimapZoneText then
+                                local font, _, flags = MinimapZoneText:GetFont()
+                                MinimapZoneText:SetFont(font, value, flags)
                             end
                         end,
-                        order = 10
-                    },
-                    zoom_in_out = {
-                        type = 'toggle',
-                        name = "Zoom Buttons",
-                        desc = "Show zoom buttons (+/-)",
-                        get = function()
-                            return addon.db.profile.map.zoom_in_out
-                        end,
-                        set = function(info, value)
-                            addon.db.profile.map.zoom_in_out = value
-                            if addon.RefreshMinimap then
-                                addon.RefreshMinimap()
-                            end
-                        end,
-                        order = 10
+                        order = 5.1
                     },
 
-                    -- AURAS POSITION
-                    auras_header = {
+                    -- ✅ POSICIONAMIENTO
+                    position_header = {
                         type = 'header',
-                        name = "Minimap Auras Position",
-                        order = 10.1
+                        name = "Position",
+                        order = 6
                     },
-                    auras_x_offset = {
+                    x = {
                         type = 'range',
-                        name = "Auras Horizontal Offset",
-                        desc = "Adjusts the horizontal position of the buffs/debuffs block next to the minimap.",
-                        min = -500, -- More space to the left
-                        max = 500, -- ✅ Aumentado para más flexibilidad
+                        name = "X Position",
+                        desc = "Horizontal position",
+                        min = -500,
+                        max = 500,
                         step = 1,
                         get = function()
-                            -- ✅ CORRECCIÓN: Inicializar la tabla completa si no existe
-                            if not addon.db.profile.map.auras then
-                                addon.db.profile.map.auras = {
-                                    x_offset = -70,
-                                    y_offset = 23
-                                }
-                            end
-                            return addon.db.profile.map.auras.x_offset or -70
+                            return addon.db.profile.minimap.x
                         end,
                         set = function(info, value)
-                            addon.db.profile.map.auras.x_offset = value
-                            if addon.RefreshAuraPosition then
-                                addon.RefreshAuraPosition()
+                            addon.db.profile.minimap.x = value
+                            if addon.MinimapModule then
+                                addon.MinimapModule:UpdateSettings()
                             end
                         end,
-                        order = 10.2
+                        order = 7
                     },
-                    auras_y_offset = {
+                    y = {
                         type = 'range',
-                        name = "Auras Vertical Offset",
-                        desc = "Adjusts the vertical position of the buffs/debuffs block next to the minimap.",
-                        min = -500, -- ✅ Aumentado para más flexibilidad
-                        max = 500, -- ✅ Aumentado para más flexibilidad
+                        name = "Y Position", 
+                        desc = "Vertical position",
+                        min = -500,
+                        max = 500,
                         step = 1,
                         get = function()
-                            -- ✅ CORRECCIÓN: Inicializar la tabla completa si no existe
-                            if not addon.db.profile.map.auras then
-                                addon.db.profile.map.auras = {
-                                    x_offset = -70,
-                                    y_offset = 23
-                                }
-                            end
-                            return addon.db.profile.map.auras.y_offset or 23
+                            return addon.db.profile.minimap.y
                         end,
                         set = function(info, value)
-                            addon.db.profile.map.auras.y_offset = value
-                            if addon.RefreshAuraPosition then
-                                addon.RefreshAuraPosition()
+                            addon.db.profile.minimap.y = value
+                            if addon.MinimapModule then
+                                addon.MinimapModule:UpdateSettings()
                             end
                         end,
-                        order = 10.3
+                        order = 8
                     },
-
-                    auras_reset = {
+                    position_reset = {
                         type = 'execute',
-                        name = "Reset Auras Position",
-                        desc = "Reset auras position to default values (-80, 0)",
+                        name = "Reset Position",
+                        desc = "Reset minimap to default position",
                         func = function()
-                            -- Ensure the 'auras' table exists
-                            if not addon.db.profile.map.auras then
-                                addon.db.profile.map.auras = {}
-                            end
-                            -- Reset to defaults
-                            addon.db.profile.map.auras.x_offset = -70
-                            addon.db.profile.map.auras.y_offset = 23
-                            -- Refresh the position
-                            if addon.RefreshAuraPosition then
-                                addon.RefreshAuraPosition()
+                            addon.db.profile.minimap.x = -7
+                            addon.db.profile.minimap.y = 0
+                            if addon.MinimapModule then
+                                addon.MinimapModule:UpdateSettings()
                             end
                         end,
-                        order = 10.4
-                    },
-
-                    -- MAIL ICON POSITION
-                    mail_header = {
-                        type = 'header',
-                        name = "Mail Icon Position",
-                        order = 11
-                    },
-                    mail_icon_x = {
-                        type = 'range',
-                        name = "Mail Icon X Position",
-                        desc = "Horizontal position of the mail notification icon relative to minimap\n• Negative values = more to the left\n• Positive values = more to the right",
-                        min = -100,
-                        max = 100,
-                        step = 1,
-                        get = function()
-                            return addon.db.profile.map.mail_icon_x
-                        end,
-                        set = function(info, value)
-                            addon.db.profile.map.mail_icon_x = value
-                            if addon.RefreshMinimap then
-                                addon.RefreshMinimap()
-                            end
-                        end,
-                        order = 12
-                    },
-                    mail_icon_y = {
-                        type = 'range',
-                        name = "Mail Icon Y Position",
-                        desc = "Vertical position of the mail notification icon relative to minimap\n• Negative values = more down\n• Positive values = more up",
-                        min = -100,
-                        max = 100,
-                        step = 1,
-                        get = function()
-                            return addon.db.profile.map.mail_icon_y
-                        end,
-                        set = function(info, value)
-                            addon.db.profile.map.mail_icon_y = value
-                            if addon.RefreshMinimap then
-                                addon.RefreshMinimap()
-                            end
-                        end,
-                        order = 13
-                    },
-                    mail_reset = {
-                        type = 'execute',
-                        name = "Reset Mail Icon Position",
-                        desc = "Reset mail icon to default position (-4, -5)",
-                        func = function()
-                            addon.db.profile.map.mail_icon_x = -4
-                            addon.db.profile.map.mail_icon_y = -5
-                            if addon.RefreshMinimap then
-                                addon.RefreshMinimap()
-                            end
-                        end,
-                        order = 14
+                        order = 9
                     }
                 }
             },
 
-            times = {
-                type = 'group',
-                name = "Time & Calendar",
-                order = 11,
-                args = {
-                    clock = {
-                        type = 'toggle',
-                        name = "Show Clock",
-                        get = function()
-                            return addon.db.profile.times.clock
-                        end,
-                        set = function(info, value)
-                            addon.db.profile.times.clock = value
-                            if addon.RefreshMinimapTime then
-                                addon.RefreshMinimapTime()
-                            end
-                        end,
-                        order = 1
-                    },
-                    calendar = {
-                        type = 'toggle',
-                        name = "Show Calendar",
-                        get = function()
-                            return addon.db.profile.times.calendar
-                        end,
-                        set = function(info, value)
-                            addon.db.profile.times.calendar = value
-                            if addon.RefreshMinimapTime then
-                                addon.RefreshMinimapTime()
-                            end
-                        end,
-                        order = 2
-                    },
-                    clock_font_size = {
-                        type = 'range',
-                        name = "Clock Font Size",
-                        desc = "Clock numbers size",
-                        min = 8,
-                        max = 20,
-                        step = 1,
-                        get = function()
-                            return addon.db.profile.times.clock_font_size
-                        end,
-                        set = function(info, value)
-                            addon.db.profile.times.clock_font_size = value
-                            if addon.RefreshMinimapTime then
-                                addon.RefreshMinimapTime()
-                            end
-                        end,
-                        order = 3
-                    }
-                }
-            },
 
             castbars = {
                 type = 'group',

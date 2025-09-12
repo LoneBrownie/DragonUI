@@ -4,30 +4,30 @@ local addon = select(2, ...);
 local defaults = {
     profile = {
         -- ACTIONBAR SETTINGS
-       mainbars = {
+        mainbars = {
             -- ✅ Cada barra ahora tiene su propia configuración de posición y override.
             player = {
                 override = false,
                 y_position_offset = 25, -- Offset vertical para el modo automático.
                 x = 0,
-                y = 0,
+                y = 0
             },
             left = {
                 override = false,
                 x = 0,
-                y = 0,
+                y = 0
             },
             right = {
                 override = false,
                 x = 0,
-                y = 0,
+                y = 0
             },
-            
+
             -- La escala sigue siendo global para las barras.
             scale_actionbar = 0.9,
             scale_rightbar = 0.9,
             scale_leftbar = 0.9,
-            scale_vehicle = 1,
+            scale_vehicle = 1
         },
 
         micromenu = {
@@ -129,42 +129,35 @@ local defaults = {
         },
 
         -- MINIMAP SETTINGS
-        map = {
+        minimap = {
             scale = 1,
             border_alpha = 1,
+            tracking_icons = true,
             blip_skin = true,
+            zoom_buttons = true,
+            calendar = true,
+            clock = true,                    
+            clock_font_size = 12,          
             player_arrow_size = 40,
-            tracking_icons = false,
-            skin_button = true,
-            fade_button = false,
             zonetext_font_size = 12,
-            zoom_in_out = false,
-            quest_tracker_x = -115,
-            quest_tracker_y = -250,
-            auras = {
-                x_offset = -70, -- Default horizontal position for minimap auras
-                y_offset = 23 -- Default vertical position for minimap auras
-            },
-            -- MAIL ICON SETTINGS
             mail_icon_x = -4,
-            mail_icon_y = -5
+            mail_icon_y = -5,
+            point = "TOPRIGHT",
+            relativePoint = "TOPRIGHT",
+            x = -7,
+            y = 0
         },
 
-        times = {
-            clock = true,
-            calendar = true,
-            clock_font_size = 11
-        },
 
         -- CASTBAR SETTINGS
         castbar = {
             enabled = true,
             scale = 1,
-            anchorFrame = "UIParent",      -- Anclar al frame principal de la UI
-            anchor = "BOTTOM",             -- Usar el punto de anclaje inferior central de la barra
-            anchorParent = "BOTTOM",       -- Anclarlo al punto inferior central de la pantalla
-            x_position = 0,                -- Desplazamiento horizontal (0 para centrado)
-            y_position = 230,              -- Desplazamiento vertical hacia arriba
+            anchorFrame = "UIParent", -- Anclar al frame principal de la UI
+            anchor = "BOTTOM", -- Usar el punto de anclaje inferior central de la barra
+            anchorParent = "BOTTOM", -- Anclarlo al punto inferior central de la pantalla
+            x_position = 0, -- Desplazamiento horizontal (0 para centrado)
+            y_position = 230, -- Desplazamiento vertical hacia arriba
             text_mode = "simple", -- "simple" (centered spell name only) or "detailed" (name + time)
             precision_time = 1,
             precision_max = 1,
@@ -233,13 +226,14 @@ local defaults = {
         },
 
         -- UNIT FRAMES SETTINGS
-         unitframe = {
+        unitframe = {
             player = {
                 enabled = true,
+                breakUpLargeNumbers = true,
                 scale = 1.0,
-                override = false,  -- ✅ CLAVE: Por defecto NO override
-                x = -19,          -- ✅ Posición por defecto
-                y = -4,           -- ✅ Posición por defecto  
+                override = false, -- ✅ CLAVE: Por defecto NO override
+                x = -19, -- ✅ Posición por defecto
+                y = -4, -- ✅ Posición por defecto  
                 anchor = "TOPLEFT",
                 anchorParent = "TOPLEFT",
                 classcolor = false,
@@ -249,10 +243,10 @@ local defaults = {
             },
             target = {
                 classcolor = false,
-                breakUpLargeNumbers = true, 
-                textFormat = 'both', 
-                showHealthTextAlways = false, 
-                showManaTextAlways = false, 
+                breakUpLargeNumbers = true,
+                textFormat = 'both',
+                showHealthTextAlways = false,
+                showManaTextAlways = false,
                 enableNumericThreat = true,
                 enableThreatGlow = true,
                 scale = 1.0,

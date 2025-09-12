@@ -6,6 +6,8 @@
 ## SavedVariables: DragonUIDB
 ## OptionalDeps: Blizzard_TimeManager, Blizzard_PartyUI
 
+Atlas.lua
+
 libs\LibStub\LibStub.lua
 libs\CallbackHandler-1.0\CallbackHandler-1.0.xml
 libs\AceAddon-3.0\AceAddon-3.0.xml
