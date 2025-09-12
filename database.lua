@@ -264,7 +264,7 @@ local defaults = {
             },
             focus = {
                 classcolor = false,
-                breakUpLargeNumbers = false, -- Changed to false - no commas by default
+                breakUpLargeNumbers = true, -- Changed to false - no commas by default
                 textFormat = 'both', -- Changed to 'numeric' - Current Value Only by default
                 showHealthTextAlways = false, -- true = always visible, false = only on hover
                 showManaTextAlways = false, -- true = always visible, false = only on hover
@@ -282,11 +282,11 @@ local defaults = {
                 showManaTextAlways = false,
                 enableThreatGlow = false,
                 scale = 1.0,
-                override = false,
+                override = true,
                 anchor = 'TOPRIGHT',
                 anchorParent = 'BOTTOMRIGHT',
-                x = -1259,
-                y = 752
+                x = -1275,
+                y = 750
             },
             party = {
                 enabled = true,
@@ -308,7 +308,7 @@ local defaults = {
                 classcolor = false,
                 scale = 1.0,
                 x = -30,
-                y = -15,
+                y = -20,
                 textFormat = 'numeric',
                 breakUpLargeNumbers = false,
                 showHealthTextAlways = false,
@@ -321,8 +321,8 @@ local defaults = {
             fot = {
                 classcolor = false,
                 scale = 1.0,
-                x = -8,
-                y = -15,
+                x = -20,
+                y = -20,
                 textFormat = 'numeric',
                 breakUpLargeNumbers = false,
                 showHealthTextAlways = false,
