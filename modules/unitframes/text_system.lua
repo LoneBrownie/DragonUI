@@ -117,7 +117,14 @@ function TextSystem.CreateDualTextElements(parentFrame, barFrame, prefix, layer,
         if fontPath and originalSize then
             rightText:SetFont(fontPath, originalSize + 1, flags)  -- ✅ FUENTE MÁS GRANDE
         end
-        rightText:SetPoint("RIGHT", barFrame, "RIGHT", -6, 0)
+        
+        -- ✅ POSICIÓN ESPECIAL PARA TARGET MANA TEXT
+        if prefix == "TargetFrameMana" then
+            rightText:SetPoint("RIGHT", barFrame, "RIGHT", -13, 0) -- ✅ MÁS A LA IZQUIERDA
+        else
+            rightText:SetPoint("RIGHT", barFrame, "RIGHT", -6, 0) -- ✅ POSICIÓN NORMAL
+        end
+        
         rightText:SetJustifyH("RIGHT")
         parentFrame[prefix .. "TextRight"] = rightText
         elements.right = rightText
@@ -229,7 +236,8 @@ end
 
 -- Función para actualizar texto de health/mana de cualquier unitframe
 function TextSystem.UpdateFrameText(frameType, unit, parentFrame, healthBar, manaBar, prefix)
-    if not UnitExists(unit) then
+    -- ✅ VERIFICAR SI LA UNIDAD EXISTE Y ESTÁ VIVA
+    if not UnitExists(unit) or UnitIsDeadOrGhost(unit) then
         return TextSystem.ClearFrameText(parentFrame, prefix)
     end
     

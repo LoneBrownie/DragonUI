@@ -421,11 +421,11 @@ local function StylePartyFrames()
             end
 
             -- ✅ Name styling
-            local name = _G[frame:GetName() .. 'Name']
+           local name = _G[frame:GetName() .. 'Name']
             if name then
                 name:SetFont("Fonts\\FRIZQT__.TTF", 10)
-                name:SetShadowColor(0, 0, 0, 1)
                 name:SetShadowOffset(1, -1)
+                name:SetTextColor(1, 0.82, 0, 1) -- ✅ AMARILLO COMO EL RESTO
 
                 if not InCombatLockdown() then
                     name:ClearAllPoints()
@@ -493,7 +493,7 @@ local function StylePartyFrames()
                 local masterLooterIcon = _G[frame:GetName() .. 'MasterIcon']
                 local pvpIcon = _G[frame:GetName() .. 'PVPIcon']
                 local statusIcon = _G[frame:GetName() .. 'StatusIcon']
-                local blizzardRoleIcon = _G[frame:GetName() .. 'RoleIcon'] -- ✅ AÑADIR
+                local blizzardRoleIcon = _G[frame:GetName() .. 'RoleIcon']
                 local guideIcon = _G[frame:GetName() .. 'GuideIcon']
                 -- Mover textos sin crear taint (solo cambiar parent)
                 if name then
@@ -520,7 +520,7 @@ local function StylePartyFrames()
                     pvpIcon:SetParent(borderFrame)
                     pvpIcon:SetDrawLayer('OVERLAY', 11)
                 end
-                if statusIcon then
+                if statusIcon then 
                     statusIcon:SetParent(borderFrame)
                     statusIcon:SetDrawLayer('OVERLAY', 11)
                 end
@@ -563,6 +563,100 @@ local function StylePartyFrames()
     end
 end
 
+-- ===============================================================
+-- DISCONNECTED PLAYERS
+-- ===============================================================
+local function UpdateDisconnectedState(frame)
+    if not frame then
+        return
+    end
+
+    local unit = "party" .. frame:GetID()
+    if not UnitExists(unit) then
+        return
+    end
+
+    local isConnected = UnitIsConnected(unit)
+    local healthbar = _G[frame:GetName() .. 'HealthBar']
+    local manabar = _G[frame:GetName() .. 'ManaBar']
+    local portrait = _G[frame:GetName() .. 'Portrait']
+    local name = _G[frame:GetName() .. 'Name']
+
+    if not isConnected then
+        -- ✅ MIEMBRO DESCONECTADO - APLICAR EFECTOS GRISES
+        if healthbar then
+            healthbar:SetAlpha(0.3)
+            healthbar:SetStatusBarColor(0.5, 0.5, 0.5, 1)
+        end
+        
+        if manabar then
+            manabar:SetAlpha(0.3)
+            manabar:SetStatusBarColor(0.5, 0.5, 0.5, 1)
+        end
+        
+        if portrait then
+            portrait:SetVertexColor(0.5, 0.5, 0.5, 1)
+        end
+        
+        if name then
+            name:SetTextColor(0.6, 0.6, 0.6, 1)
+        end
+
+        -- Reposicionar iconos para que no se pierdan
+        local leaderIcon = _G[frame:GetName() .. 'LeaderIcon']
+        if leaderIcon then
+            leaderIcon:ClearAllPoints()
+            leaderIcon:SetPoint('TOPLEFT', 42, 9)
+            leaderIcon:SetSize(16, 16)
+        end
+
+        local masterLooterIcon = _G[frame:GetName() .. 'MasterIcon']
+        if masterLooterIcon then
+            masterLooterIcon:ClearAllPoints()
+            masterLooterIcon:SetPoint('TOPLEFT', 58, 20)
+            masterLooterIcon:SetSize(16, 16)
+        end
+        
+    else
+        -- ✅ MIEMBRO CONECTADO - DESHACER EXACTAMENTE LO QUE SE HIZO AL DESCONECTAR
+        
+        -- ✅ RESTAURAR TRANSPARENCIAS (sin taint)
+        if healthbar then
+            healthbar:SetAlpha(1.0) -- ✅ Opacidad normal
+            -- ✅ RESTAURAR COLOR CORRECTO (class color o blanco)
+            local frameIndex = frame:GetID()
+            UpdatePartyHealthBarColor(frameIndex) -- ✅ SOLO actualiza color, no recrea frame
+        end
+        
+        if manabar then
+            manabar:SetAlpha(1.0) -- ✅ Opacidad normal
+            manabar:SetStatusBarColor(1, 1, 1, 1) -- ✅ Blanco como debe ser
+        end
+        
+        if portrait then
+            portrait:SetVertexColor(1, 1, 1, 1) -- ✅ Color normal
+        end
+        
+        if name then
+            name:SetTextColor(1, 0.82, 0, 1) -- ✅ Amarillo normal
+        end
+        
+        -- ✅ REPOSICIONAR ICONOS (sin recrear frames)
+        local leaderIcon = _G[frame:GetName() .. 'LeaderIcon']
+        if leaderIcon then
+            leaderIcon:ClearAllPoints()
+            leaderIcon:SetPoint('TOPLEFT', 42, 9)
+            leaderIcon:SetSize(16, 16)
+        end
+
+        local masterLooterIcon = _G[frame:GetName() .. 'MasterIcon']
+        if masterLooterIcon then
+            masterLooterIcon:ClearAllPoints()
+            masterLooterIcon:SetPoint('TOPLEFT', 58, 20)
+            masterLooterIcon:SetSize(16, 16)
+        end
+    end
+end
 -- ===============================================================
 -- TEXT AND COLOR UPDATE FUNCTIONS
 -- ===============================================================
@@ -695,6 +789,8 @@ local function SetupPartyHooks()
 
             -- Update power bar texture
             UpdateManaBarTexture(frame)
+            -- Desconected state
+            UpdateDisconnectedState(frame)
         end
     end)
 
@@ -775,6 +871,17 @@ end
 -- ✅ Initialize everything in correct order
 StylePartyFrames() -- First: visual properties only
 SetupPartyHooks() -- Second: safe hooks only
+local connectionFrame = CreateFrame("Frame")
+connectionFrame:RegisterEvent("PARTY_MEMBER_DISABLE")
+connectionFrame:RegisterEvent("PARTY_MEMBER_ENABLE")
+connectionFrame:SetScript("OnEvent", function(self, event)
+    for i = 1, MAX_PARTY_MEMBERS do
+        local frame = _G['PartyMemberFrame' .. i]
+        if frame then
+            UpdateDisconnectedState(frame)
+        end
+    end
+end)
 
 
 -- ===============================================================
