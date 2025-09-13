@@ -141,6 +141,7 @@ local defaults = {
             zonetext_font_size = 12,
             mail_icon_x = -4,
             mail_icon_y = -5,
+            addon_button_skin = true,      -- ✅ NUEVO: Aplicar skin personalizado a iconos de addons
             point = "TOPRIGHT",
             relativePoint = "TOPRIGHT",
             x = -7,

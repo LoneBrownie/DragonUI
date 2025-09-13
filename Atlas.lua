@@ -21,6 +21,7 @@ local LFGRoleAsset = { path = addonPath .. 'Textures\\PlayerFrame\\LFGRoleIcons.
 local QuestTrackerAsset = { path = addonPath .. 'Textures\\UI\\QuestTracker.BLP', width = 1024, height = 512 }
 local GuildBannerAsset = { path = addonPath .. 'Textures\\Minimap\\GuildBanner.BLP', width = 256, 256 }
 
+
 local atlasTextures = {
     ['Minimap-GuildBanner-Normal'] = {
         asset = GuildBannerAsset, texcoord = { 1, 68, 76, 145 }
@@ -690,10 +691,7 @@ local atlasTextures = {
         asset = BattlefieldAsset, texcoord = { 127, 182, 5, 58 }
     },
 
-    -- ✅ CUSTOM MINIMAP BUTTON BORDER (del minimap_old_atlas.lua) 
-    ['Minimap-Button-Border'] = {
-        asset = MinimapAsset, texcoord = { 441, 480, 402, 440 }
-    }
+
 }
 
 function SetAtlasTexture(texture, textureName)

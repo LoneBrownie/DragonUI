@@ -1484,6 +1484,22 @@ function addon:CreateOptionsTable()
                         order = 4
                     },
 
+                    addon_button_skin = {
+                        type = 'toggle',
+                        name = "Addon Button Skin",
+                        desc = "Apply DragonUI border styling to addon icons (e.g., bag addons)",
+                        get = function()
+                            return addon.db.profile.minimap.addon_button_skin
+                        end,
+                        set = function(info, value)
+                            addon.db.profile.minimap.addon_button_skin = value
+                            if addon.RefreshMinimap then
+                                addon:RefreshMinimap()
+                            end
+                        end,
+                        order = 5
+                    },
+
                     player_arrow_size = {
                         type = 'range',
                         name = "Player Arrow Size",
@@ -1500,7 +1516,7 @@ function addon:CreateOptionsTable()
                                 addon.MinimapModule:UpdateSettings()
                             end
                         end,
-                        order = 5.2
+                        order = 6
                     },
 
                     -- ✅ SECCIÓN TIEMPO Y CALENDARIO INTEGRADA

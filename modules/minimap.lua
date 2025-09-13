@@ -342,9 +342,83 @@ local function CreateMinimapBorderFrame(width, height)
     return minimapBorderFrame
 end
 
--- ✅ BORDER REMOVAL: Eliminar borders de iconos de addons (del minimapa_old.lua)
-local function RemoveAllMinimapIconBorders()
+-- ✅ ADDON ICON SKINNING: Aplicar borders personalizados a iconos de addons (del minimap_core.lua)
+local WHITE_LIST = {
+    'GameTimeFrame',
+    'MinimapBorder',
+    'MinimapBorderTop',
+    'MiniMapMailFrame',
+    'MiniMapBattlefieldFrame',
+    'MiniMapTrackingFrame',
+    'MiniMapLFGFrame',
+    'MinimapZoomIn',
+    'MinimapZoomOut',
+    'MiniMapWorldMapButton',
+    'MinimapBackdrop',
+    'MinimapNorthTag',
+    'MinimapZoneTextButton',
+    'TimeManagerClockButton',
+    'FeedbackUIButton',
+    'HelpMicroButton',
+    'MiniMapInstanceDifficulty',
+    'GuildInstanceDifficulty',
+    'MiniMapChallengeMode',
+}
+
+local function IsFrameWhitelisted(frameName)
+    for _, name in ipairs(WHITE_LIST) do
+        if name == frameName then
+            return true
+        end
+    end
+    return false
+end
+
+-- Función para aplicar skin personalizado a iconos de addons
+local function ApplyAddonIconSkin(button)
+    if not button or button:GetObjectType() ~= "Button" then
+        return
+    end
     
+    local name = button:GetName()
+    if not name or IsFrameWhitelisted(name) then
+        return
+    end
+    
+    -- Remover texturas de Blizzard existentes
+    local regions = { button:GetRegions() }
+    for _, region in ipairs(regions) do
+        if region and region:GetObjectType() == "Texture" then
+            local texture = region:GetTexture()
+            if texture and (
+                string.find(texture, "Border") or 
+                string.find(texture, "Background") or
+                string.find(texture, "Overlay")
+            ) then
+                region:SetTexture(nil)
+            end
+        end
+    end
+    
+    -- Aplicar border personalizado usando la textura directa
+    if not button.dragonuiBorder then
+        button.dragonuiBorder = button:CreateTexture(nil, "OVERLAY")
+        button.dragonuiBorder:SetAllPoints(button)
+        button.dragonuiBorder:SetTexture("Interface\\AddOns\\DragonUI\\assets\\border_buttons.tga")
+    end
+    
+    -- Configurar highlight
+    if not button.dragonuiHighlight then
+        button.dragonuiHighlight = button:CreateTexture(nil, "HIGHLIGHT")
+        button.dragonuiHighlight:SetAllPoints(button)
+        button.dragonuiHighlight:SetVertexColor(1, 1, 1, 0.3)
+        button.dragonuiHighlight:SetTexture("Interface\\AddOns\\DragonUI\\assets\\border_buttons.tga")
+        button:SetHighlightTexture(button.dragonuiHighlight)
+    end
+end
+
+-- ✅ BORDER REMOVAL: Eliminar borders de iconos de addons y aplicar skin personalizado
+local function RemoveAllMinimapIconBorders()
     
     -- PVP/Battlefield borders
     if MiniMapBattlefieldIcon then 
@@ -354,47 +428,40 @@ local function RemoveAllMinimapIconBorders()
         MiniMapBattlefieldBorder:Hide() 
     end
     
-    
-    
     -- LFG border
     if MiniMapLFGFrameBorder then
         MiniMapLFGFrameBorder:SetTexture(nil)
     end
     
-    -- ✅ HOOK DINÁMICO: Eliminar borders de iconos de addons (tu addon de bags)
+    -- ✅ APLICAR SKIN PERSONALIZADO A TODOS LOS ICONOS DE ADDONS
+    local function ApplySkinsToAllButtons()
+        -- Verificar si el skinning está habilitado en la configuración
+        local skinEnabled = addon.db and addon.db.profile and addon.db.profile.minimap and 
+                           addon.db.profile.minimap.addon_button_skin
+        
+        if not skinEnabled then
+            return
+        end
+        
+        for i = 1, Minimap:GetNumChildren() do
+            local child = select(i, Minimap:GetChildren())
+            if child and child:GetObjectType() == "Button" then
+                ApplyAddonIconSkin(child)
+            end
+        end
+    end
+    
+    -- Aplicar inmediatamente
+    ApplySkinsToAllButtons()
+    
+    -- ✅ HOOK DINÁMICO: Revisar periódicamente nuevos iconos de addons
     local borderCheckFrame = CreateFrame("Frame")
     borderCheckFrame.elapsed = 0
     borderCheckFrame:SetScript("OnUpdate", function(self, elapsed)
         self.elapsed = self.elapsed + elapsed
-        if self.elapsed >= 2.0 then -- Revisar cada 2 segundos
+        if self.elapsed >= 3.0 then -- Revisar cada 3 segundos
             self.elapsed = 0
-            
-            -- Buscar todos los children del Minimap que puedan ser iconos de addons
-            for i = 1, Minimap:GetNumChildren() do
-                local child = select(i, Minimap:GetChildren())
-                if child and child:GetObjectType() == "Button" then
-                    -- Buscar borders/overlays en el icono del addon
-                    for j = 1, child:GetNumRegions() do
-                        local region = select(j, child:GetRegions())
-                        if region and region:GetObjectType() == "Texture" then
-                            local texturePath = region:GetTexture()
-                            -- Si la textura parece ser un border de Blizzard, elimínala
-                            if texturePath and (
-                                string.find(texturePath, "Border") or 
-                                string.find(texturePath, "Overlay") or
-                                string.find(texturePath, "Ring")
-                            ) then
-                                region:SetTexture(nil)
-                            end
-                        end
-                    end
-                    
-                    -- También revisar texturas específicas que suelen ser borders
-                    if child.Border then child.Border:SetTexture(nil) end
-                    if child.Overlay then child.Overlay:SetTexture(nil) end
-                    if child.Ring then child.Ring:SetTexture(nil) end
-                end
-            end
+            ApplySkinsToAllButtons()
         end
     end)
 end
@@ -858,6 +925,8 @@ function addon:RefreshMinimap()
     MinimapModule:UpdateSettings()
     -- Also update tracking icon when settings change
     MinimapModule:UpdateTrackingIcon()
+    -- ✅ NUEVO: Refrescar skinning de iconos de addons
+    RemoveAllMinimapIconBorders()
 end
 
 -- =================================================================
