@@ -6,6 +6,11 @@
 -- ✅ Import DragonUI atlas function for tracking icons
 local atlas = addon.minimap_SetAtlas;
 
+-- ✅ Ensure _noop function exists
+if not addon._noop then
+    addon._noop = function() return end
+end
+
 -- #################################################################
 -- ##                    DragonUI Minimap Module                  ##
 -- ##              Unified minimap system (1 file)               ##
@@ -344,80 +349,89 @@ end
 
 -- ✅ ADDON ICON SKINNING: Aplicar borders personalizados a iconos de addons (del minimap_core.lua)
 local WHITE_LIST = {
-    'GameTimeFrame',
-    'MinimapBorder',
-    'MinimapBorderTop',
-    'MiniMapMailFrame',
-    'MiniMapBattlefieldFrame',
-    'MiniMapTrackingFrame',
-    'MiniMapLFGFrame',
-    'MinimapZoomIn',
-    'MinimapZoomOut',
-    'MiniMapWorldMapButton',
-    'MinimapBackdrop',
-    'MinimapNorthTag',
-    'MinimapZoneTextButton',
-    'TimeManagerClockButton',
-    'FeedbackUIButton',
-    'HelpMicroButton',
-    'MiniMapInstanceDifficulty',
-    'GuildInstanceDifficulty',
-    'MiniMapChallengeMode',
+    'MiniMapBattlefieldFrame','MiniMapTrackingButton','MiniMapMailFrame','HelpOpenTicketButton',
+    'GatherMatePin','HandyNotesPin','TimeManagerClockButton','Archy','GatherNote','MinimMap',
+    'Spy_MapNoteList_mini','ZGVMarker','poiWorldMapPOIFrame','WorldMapPOIFrame','QuestMapPOI',
+    'GameTimeFrame'
 }
 
 local function IsFrameWhitelisted(frameName)
-    for _, name in ipairs(WHITE_LIST) do
-        if name == frameName then
+    if not frameName then return false end
+    
+    for _, whitelistName in pairs(WHITE_LIST) do
+        if frameName:match(whitelistName) then
             return true
         end
     end
     return false
 end
 
--- Función para aplicar skin personalizado a iconos de addons
+-- Funciones de fade para hover effect
+local function fadein(self) 
+    UIFrameFadeIn(self, 0.2, self:GetAlpha(), 1.0) 
+end
+
+local function fadeout(self) 
+    UIFrameFadeOut(self, 0.2, self:GetAlpha(), 0.2) 
+end
+
+-- Función para aplicar skin personalizado a iconos de addons (COPIA EXACTA del oldminimapcore.lua)
 local function ApplyAddonIconSkin(button)
-    if not button or button:GetObjectType() ~= "Button" then
+    if not button or button:GetObjectType() ~= 'Button' then
         return
     end
     
-    local name = button:GetName()
-    if not name or IsFrameWhitelisted(name) then
+    local frameName = button:GetName()
+    if IsFrameWhitelisted(frameName) then
         return
     end
     
-    -- Remover texturas de Blizzard existentes
-    local regions = { button:GetRegions() }
-    for _, region in ipairs(regions) do
-        if region and region:GetObjectType() == "Texture" then
-            local texture = region:GetTexture()
-            if texture and (
-                string.find(texture, "Border") or 
-                string.find(texture, "Background") or
-                string.find(texture, "Overlay")
-            ) then
+    -- Procesar texturas EXACTO como oldminimapcore.lua
+    for index = 1, button:GetNumRegions() do
+        local region = select(index, button:GetRegions())
+        if region:GetObjectType() == 'Texture' then
+            local name = region:GetTexture()
+            if name and (name:find('Border') or name:find('Background') or name:find('AlphaMask')) then
                 region:SetTexture(nil)
+            else
+                region:ClearAllPoints()
+                region:SetPoint('TOPLEFT', button, 'TOPLEFT', 2, -2)
+                region:SetPoint('BOTTOMRIGHT', button, 'BOTTOMRIGHT', -2, 2)
+                region:SetTexCoord(0.1, 0.9, 0.1, 0.9)
+                region:SetDrawLayer('ARTWORK')
+                if frameName == 'PS_MinimapButton' then
+                    region.SetPoint = addon._noop
+                end
             end
         end
     end
     
-    -- Aplicar border personalizado usando la textura directa
-    if not button.dragonuiBorder then
-        button.dragonuiBorder = button:CreateTexture(nil, "OVERLAY")
-        button.dragonuiBorder:SetAllPoints(button)
-        button.dragonuiBorder:SetTexture("Interface\\AddOns\\DragonUI\\assets\\border_buttons.tga")
-    end
+    -- Limpiar texturas del botón EXACTO como oldminimapcore.lua
+    button:SetPushedTexture(nil)
+    button:SetHighlightTexture(nil)
+    button:SetDisabledTexture(nil)
+    button:SetSize(22, 22)
     
-    -- Configurar highlight
-    if not button.dragonuiHighlight then
-        button.dragonuiHighlight = button:CreateTexture(nil, "HIGHLIGHT")
-        button.dragonuiHighlight:SetAllPoints(button)
-        button.dragonuiHighlight:SetVertexColor(1, 1, 1, 0.3)
-        button.dragonuiHighlight:SetTexture("Interface\\AddOns\\DragonUI\\assets\\border_buttons.tga")
-        button:SetHighlightTexture(button.dragonuiHighlight)
+    -- Aplicar border EXACTO como oldminimapcore.lua
+    button.circle = button:CreateTexture(nil, 'OVERLAY')
+    button.circle:SetSize(22, 22)
+    button.circle:SetPoint('CENTER', button)
+    button.circle:SetTexture("Interface\\AddOns\\DragonUI\\assets\\border_buttons.tga")
+    
+    -- Sistema de fade EXACTO como oldminimapcore.lua
+    local fadeEnabled = addon.db and addon.db.profile and addon.db.profile.minimap and 
+                       addon.db.profile.minimap.addon_button_fade
+    
+    if fadeEnabled then
+        button:SetAlpha(0.2)
+        button:HookScript('OnEnter', fadein)
+        button:HookScript('OnLeave', fadeout)
+    else
+        button:SetAlpha(1)
     end
 end
 
--- ✅ BORDER REMOVAL: Eliminar borders de iconos de addons y aplicar skin personalizado
+-- ✅ BORDER REMOVAL: Aplicar skin a iconos (SIMPLE como oldminimapcore.lua)
 local function RemoveAllMinimapIconBorders()
     
     -- PVP/Battlefield borders
@@ -433,9 +447,9 @@ local function RemoveAllMinimapIconBorders()
         MiniMapLFGFrameBorder:SetTexture(nil)
     end
     
-    -- ✅ APLICAR SKIN PERSONALIZADO A TODOS LOS ICONOS DE ADDONS
+    -- ✅ APLICAR SKIN SIMPLE A TODOS LOS BOTONES
     local function ApplySkinsToAllButtons()
-        -- Verificar si el skinning está habilitado en la configuración
+        -- Verificar si el skinning está habilitado
         local skinEnabled = addon.db and addon.db.profile and addon.db.profile.minimap and 
                            addon.db.profile.minimap.addon_button_skin
         
@@ -453,17 +467,6 @@ local function RemoveAllMinimapIconBorders()
     
     -- Aplicar inmediatamente
     ApplySkinsToAllButtons()
-    
-    -- ✅ HOOK DINÁMICO: Revisar periódicamente nuevos iconos de addons
-    local borderCheckFrame = CreateFrame("Frame")
-    borderCheckFrame.elapsed = 0
-    borderCheckFrame:SetScript("OnUpdate", function(self, elapsed)
-        self.elapsed = self.elapsed + elapsed
-        if self.elapsed >= 3.0 then -- Revisar cada 3 segundos
-            self.elapsed = 0
-            ApplySkinsToAllButtons()
-        end
-    end)
 end
 
 -- ✅ PVP STYLING: Estilizar frame PVP con faction detection (del minimapa_old.lua)
@@ -927,6 +930,32 @@ function addon:RefreshMinimap()
     MinimapModule:UpdateTrackingIcon()
     -- ✅ NUEVO: Refrescar skinning de iconos de addons
     RemoveAllMinimapIconBorders()
+end
+
+-- ✅ NUEVA FUNCIÓN: Limpiar skinning de todos los botones
+local function CleanAllMinimapButtons()
+    for i = 1, Minimap:GetNumChildren() do
+        local child = select(i, Minimap:GetChildren())
+        if child and child:GetObjectType() == "Button" and child.circle then
+            -- Limpiar el border del oldminimapcore.lua style
+            child.circle:Hide()
+            child.circle = nil
+        end
+    end
+end
+
+-- ✅ FUNCIÓN PARA DEBUGGING
+function addon:DebugMinimapButtons()
+    print("|cFFFFFF00[DragonUI Debug]|r Minimap buttons:")
+    for i = 1, Minimap:GetNumChildren() do
+        local child = select(i, Minimap:GetChildren())
+        if child and child:GetObjectType() == "Button" then
+            local name = child:GetName() or "Unnamed"
+            local hasBorder = child.circle and "YES" or "NO"
+            local width, height = child:GetSize()
+            print(string.format("  - %s: %dx%d, Border: %s", name, width, height, hasBorder))
+        end
+    end
 end
 
 -- =================================================================

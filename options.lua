@@ -1500,6 +1500,25 @@ function addon:CreateOptionsTable()
                         order = 5
                     },
 
+                    addon_button_fade = {
+                        type = 'toggle',
+                        name = "Addon Button Fade",
+                        desc = "Addon icons fade out when not hovered (requires Addon Button Skin)",
+                        disabled = function()
+                            return not addon.db.profile.minimap.addon_button_skin
+                        end,
+                        get = function()
+                            return addon.db.profile.minimap.addon_button_fade
+                        end,
+                        set = function(info, value)
+                            addon.db.profile.minimap.addon_button_fade = value
+                            if addon.RefreshMinimap then
+                                addon:RefreshMinimap()
+                            end
+                        end,
+                        order = 5.5
+                    },
+
                     player_arrow_size = {
                         type = 'range',
                         name = "Player Arrow Size",

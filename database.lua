@@ -142,6 +142,7 @@ local defaults = {
             mail_icon_x = -4,
             mail_icon_y = -5,
             addon_button_skin = true,      -- ✅ NUEVO: Aplicar skin personalizado a iconos de addons
+            addon_button_fade = false,     -- ✅ NUEVO: Fade effect para iconos de addons
             point = "TOPRIGHT",
             relativePoint = "TOPRIGHT",
             x = -7,
