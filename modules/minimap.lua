@@ -127,7 +127,7 @@ local function ReplaceBlizzardFrame(frame)
     local minimapMailFrame = MiniMapMailFrame
     minimapMailFrame:ClearAllPoints()
     minimapMailFrame:SetPoint("TOP", minimapTracking, "BOTTOM", 0, -3)
-    minimapMailFrame:SetSize(24, 18)
+    minimapMailFrame:SetSize(22, 16)
     minimapMailFrame:SetHitRectInsets(0, 0, 0, 0)
 
     local minimapMailIconTexture = MiniMapMailIcon
@@ -515,6 +515,9 @@ local function StylePVPBattlefieldFrame()
             end
         elseif button == "RightButton" then
             ToggleDropDownMenu(1, nil, MiniMapBattlefieldDropDown, "MiniMapBattlefieldFrame", 0, -5)
+        else
+            -- ✅ SIMPLE: Usar la misma función que el botón PVP del micromenu
+            TogglePVPFrame()
         end
     end)
 end
