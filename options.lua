@@ -1497,7 +1497,7 @@ function addon:CreateOptionsTable()
                                 addon:RefreshMinimap()
                             end
                         end,
-                        order = 5
+                        order = 5.1
                     },
 
                     addon_button_fade = {
@@ -1516,7 +1516,7 @@ function addon:CreateOptionsTable()
                                 addon:RefreshMinimap()
                             end
                         end,
-                        order = 5.5
+                        order = 5.1
                     },
 
                     player_arrow_size = {
