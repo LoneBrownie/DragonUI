@@ -676,8 +676,6 @@ local atlasTextures = {
     ['ActionMainBar-GapCenter'] = {
         asset = ActionBarVerticalAsset, texcoord = { 143, 152, 22, 34 }
     },
-
-    -- ✅ PVP/Battlefield textures (del minimap_old_atlas.lua)
     ['Minimap-PVP-alliance-Normal'] = {
         asset = BattlefieldAsset, texcoord = { 72, 126, 5, 58 }
     },
