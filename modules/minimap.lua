@@ -1,9 +1,7 @@
 --[[
     DragonUI Minimap Module - Adaptado de RetailUI
     Código base por Dmitriy (RetailUI) adaptado para DragonUI
-]]
-
-local addon = select(2, ...);
+]] local addon = select(2, ...);
 
 -- ✅ Import DragonUI atlas function for tracking icons
 local atlas = addon.minimap_SetAtlas;
@@ -19,6 +17,10 @@ addon.MinimapModule = MinimapModule;
 
 MinimapModule.minimapFrame = nil
 MinimapModule.borderFrame = nil
+
+local MINIMAP_TEXTURES = {
+    BORDER = "Interface\\AddOns\\DragonUI\\Textures\\Minimap\\MinimapBorder" -- ✅ RUTA CORRECTA
+}
 
 -- ✅ VERIFICAR FUNCIÓN ATLAS AL INICIO
 local function GetAtlasFunction()
@@ -68,17 +70,17 @@ local function ReplaceBlizzardFrame(frame)
     minimapZoneButton:ClearAllPoints()
     minimapZoneButton:SetPoint("LEFT", minimapBorderTop, "LEFT", 7, 1)
     minimapZoneButton:SetWidth(108)
-    
+
     minimapZoneButton:EnableMouse(true)
-	minimapZoneButton:SetScript("OnMouseUp", function(self, button)
-    if button == "LeftButton" then
-		if WorldMapFrame:IsShown() then
-		    HideUIPanel(WorldMapFrame)
-		 else
-			ShowUIPanel(WorldMapFrame)
-		 end
-	end
-end)
+    minimapZoneButton:SetScript("OnMouseUp", function(self, button)
+        if button == "LeftButton" then
+            if WorldMapFrame:IsShown() then
+                HideUIPanel(WorldMapFrame)
+            else
+                ShowUIPanel(WorldMapFrame)
+            end
+        end
+    end)
 
     local minimapZoneText = MinimapZoneText
     minimapZoneText:SetAllPoints(minimapZoneButton)
@@ -132,7 +134,7 @@ end)
 
     minimapTrackingButton:SetSize(17, 15)
     minimapTrackingButton:SetHitRectInsets(0, 0, 0, 0)
-    
+
     -- ✅ Enable right-click functionality
     minimapTrackingButton:RegisterForClicks("LeftButtonUp", "RightButtonUp")
 
@@ -159,7 +161,7 @@ end)
     minimapFrame:ClearAllPoints()
     minimapFrame:SetPoint("CENTER", minimapCluster, "CENTER", 0, -30)
     minimapFrame:SetSize(175, 175)
-    
+
     -- ✅ Enable mouse wheel zooming on minimap
     minimapFrame:EnableMouseWheel(true)
     minimapFrame:SetScript("OnMouseWheel", function(self, delta)
@@ -177,7 +179,10 @@ end)
     minimapBackdropTexture:SetPoint("CENTER", minimapFrame, "CENTER", 0, 3)
 
     local minimapBorderTexture = MinimapBorder
-    SetAtlasTexture(minimapBorderTexture, 'Minimap-Border')
+    minimapBorderTexture:SetTexture(MINIMAP_TEXTURES.BORDER)
+    minimapBorderTexture:SetSize(256, 256) -- Ajustar tamaño
+    minimapBorderTexture:ClearAllPoints()
+    minimapBorderTexture:SetPoint("CENTER", minimapFrame, "CENTER", 0, 0)
 
     local zoomInButton = MinimapZoomIn
     zoomInButton:ClearAllPoints()
@@ -224,8 +229,7 @@ end)
     disabledTexture = zoomOutButton:GetDisabledTexture()
     disabledTexture:SetAllPoints(zoomOutButton)
     SetAtlasTexture(disabledTexture, 'Minimap-ZoomOut-Pushed')
-    
-    
+
     -- ✅ Add right-click functionality to clear tracking
     minimapTrackingButton:SetScript("OnClick", function(self, button)
         if button == "RightButton" then
@@ -239,7 +243,7 @@ end)
             ToggleDropDownMenu(1, nil, MiniMapTrackingDropDown, "MiniMapTrackingButton")
         end
     end)
-    
+
     -- ✅ CONTROLAR MANUALMENTE EL MOVIMIENTO DEL BOTÓN
     minimapTrackingButton:SetScript("OnMouseDown", function(self, button)
         if button == "LeftButton" then
@@ -251,7 +255,7 @@ end)
             end
         end
     end)
-    
+
     minimapTrackingButton:SetScript("OnMouseUp", function(self, button)
         if button == "LeftButton" then
             -- Restaurar posición original cuando sueltas
@@ -261,7 +265,7 @@ end)
             end
         end
     end)
-    
+
     -- ✅ HOOK PARA RESETEAR POSICIÓN DEL ICONO DESPUÉS DE CLICKS
     local function ResetTrackingIconPosition()
         if MiniMapTrackingIcon and MiniMapTrackingIcon:GetAlpha() > 0 then
@@ -269,7 +273,7 @@ end)
             MiniMapTrackingIcon:SetPoint('CENTER', MiniMapTracking, 'CENTER', 0, 0)
         end
     end
-    
+
     -- Hook al cierre del dropdown
     hooksecurefunc("CloseDropDownMenus", ResetTrackingIconPosition)
 end
@@ -302,13 +306,9 @@ local function RemoveBlizzardFrames()
         MiniMapWorldMapButton:SetScript("OnEnter", nil)
         MiniMapWorldMapButton:SetScript("OnLeave", nil)
     end
-    
-    local blizzFrames = {
-        MiniMapTrackingIcon,
-        MiniMapTrackingIconOverlay,
-        MiniMapMailBorder,
-        MiniMapTrackingButtonBorder
-    }
+
+    local blizzFrames =
+        {MiniMapTrackingIcon, MiniMapTrackingIconOverlay, MiniMapMailBorder, MiniMapTrackingButtonBorder}
 
     for _, frame in pairs(blizzFrames) do
         frame:SetAlpha(0)
@@ -339,25 +339,26 @@ local allowedRaidDifficulty
 -- ✅ TRACKING UPDATE FUNCTION - Using exact logic from minimap_map.lua with atlas textures
 function MinimapModule:UpdateTrackingIcon()
     local texture = GetTrackingTexture()
-    
-    local useOldStyle = addon.db and addon.db.profile and addon.db.profile.minimap and addon.db.profile.minimap.tracking_icons
-    
+
+    local useOldStyle = addon.db and addon.db.profile and addon.db.profile.minimap and
+                            addon.db.profile.minimap.tracking_icons
+
     -- ✅ VERIFICACIÓN DE SEGURIDAD
     if not addon or not addon.db then
         return
     end
-    
+
     if useOldStyle == nil then
         useOldStyle = false
     end
-    
+
     -- ✅ VERIFICACIÓN ADICIONAL: Asegurar que los frames existen
     if not MiniMapTrackingIcon or not MiniMapTrackingButton then
         return
     end
-    
+
     print("  - FINAL MODE:", useOldStyle and "OLD STYLE" or "MODERN STYLE")
-    
+
     if useOldStyle then
         print("  - Using OLD STYLE tracking")
         if texture == 'Interface\\Minimap\\Tracking\\None' then
@@ -365,18 +366,18 @@ function MinimapModule:UpdateTrackingIcon()
             -- OLD STYLE + No tracking = Mostrar icono de lupa por defecto
             MiniMapTrackingIcon:SetTexture('')
             MiniMapTrackingIcon:SetAlpha(0)
-            
+
             -- Mostrar el botón moderno como "icono de lupa" por defecto
             local normalTexture = MiniMapTrackingButton:GetNormalTexture()
             if normalTexture then
                 SetAtlasTexture(normalTexture, 'Minimap-Tracking-Normal')
             end
-            
+
             local pushedTexture = MiniMapTrackingButton:GetPushedTexture()
             if pushedTexture then
                 SetAtlasTexture(pushedTexture, 'Minimap-Tracking-Pushed')
             end
-            
+
             local highlightTexture = MiniMapTrackingButton:GetHighlightTexture()
             if highlightTexture then
                 SetAtlasTexture(highlightTexture, 'Minimap-Tracking-Highlight')
@@ -390,7 +391,7 @@ function MinimapModule:UpdateTrackingIcon()
             MiniMapTrackingIcon:SetAlpha(1)
             MiniMapTrackingIcon:ClearAllPoints()
             MiniMapTrackingIcon:SetPoint('CENTER', MiniMapTracking, 'CENTER', 0, 0)
-            
+
             -- Limpiar texturas del botón para que no interfieran con el icono específico
             MiniMapTrackingButton:SetNormalTexture('')
             MiniMapTrackingButton:SetPushedTexture('')
@@ -402,30 +403,30 @@ function MinimapModule:UpdateTrackingIcon()
     else
         print("  - Using MODERN STYLE tracking")
         -- ✅ MODERN STYLE: Siempre mostrar botón moderno (RetailUI style)
-        
+
         -- Limpiar el icono clásico para que no interfiera
         MiniMapTrackingIcon:SetTexture('')
         MiniMapTrackingIcon:SetAlpha(0)
-        
+
         -- Usar las texturas de RetailUI que ya funcionan (las que están en ReplaceBlizzardFrame)
         local normalTexture = MiniMapTrackingButton:GetNormalTexture()
         if normalTexture then
             SetAtlasTexture(normalTexture, 'Minimap-Tracking-Normal')
         end
-        
+
         local pushedTexture = MiniMapTrackingButton:GetPushedTexture()
         if pushedTexture then
             SetAtlasTexture(pushedTexture, 'Minimap-Tracking-Pushed')
         end
-        
+
         local highlightTexture = MiniMapTrackingButton:GetHighlightTexture()
         if highlightTexture then
             SetAtlasTexture(highlightTexture, 'Minimap-Tracking-Highlight')
         end
-        
+
         print("    - Modern binoculars button applied")
     end
-    
+
     -- Siempre ocultar overlay
     if MiniMapTrackingIconOverlay then
         MiniMapTrackingIconOverlay:SetAlpha(0)
@@ -496,7 +497,7 @@ function MinimapModule:Initialize()
     -- Create a simple frame instead of CreateUIFrame
     self.minimapFrame = CreateFrame('Frame', 'DragonUIMinimapFrame', UIParent)
     self.minimapFrame:SetSize(230, 230)
-    
+
     -- ✅ USAR COORDENADAS DE LA DATABASE POR DEFECTO
     local x = addon.db and addon.db.profile and addon.db.profile.minimap and addon.db.profile.minimap.x or -7
     local y = addon.db and addon.db.profile and addon.db.profile.minimap and addon.db.profile.minimap.y or 0
@@ -507,18 +508,18 @@ function MinimapModule:Initialize()
 
     RemoveBlizzardFrames()
     ReplaceBlizzardFrame(self.minimapFrame)
-    
+
     -- ✅ AÑADIR ESTA LÍNEA PARA APLICAR TODAS LAS CONFIGURACIONES AL INICIO
     self:UpdateSettings()
-    
+
     -- Hook tracking changes to update icon automatically
     MiniMapTrackingButton:HookScript("OnEvent", function()
         self:UpdateTrackingIcon()
     end)
-    
+
     -- Initial tracking icon update
     self:UpdateTrackingIcon()
-    
+
     print("|cFF00FF00[DragonUI]|r Minimap module initialized")
 end
 
@@ -528,27 +529,28 @@ function MinimapModule:UpdateSettings()
     if self.minimapFrame then
         local x = addon.db and addon.db.profile and addon.db.profile.minimap and addon.db.profile.minimap.x or -7
         local y = addon.db and addon.db.profile and addon.db.profile.minimap and addon.db.profile.minimap.y or 0
-        local scale = addon.db and addon.db.profile and addon.db.profile.minimap and addon.db.profile.minimap.scale or 1.0
-        
+        local scale = addon.db and addon.db.profile and addon.db.profile.minimap and addon.db.profile.minimap.scale or
+                          1.0
+
         self.minimapFrame:ClearAllPoints()
         self.minimapFrame:SetPoint("TOPRIGHT", UIParent, "TOPRIGHT", x, y)
-        
+
         -- ✅ ESCALAR ELEMENTOS INDIVIDUALES EN LUGAR DEL FRAME PADRE
-        
+
         -- Escalar el MinimapCluster completo
         if MinimapCluster then
             MinimapCluster:SetScale(scale)
         end
-        
+
         -- ✅ TAMBIÉN ESCALAR EL BORDER FRAME
         if self.borderFrame then
             self.borderFrame:SetScale(scale)
         end
-        
+
         -- ✅ APLICAR CONFIGURACIONES ADICIONALES
         self:ApplyAllSettings()
     end
-    
+
     -- ✅ ACTUALIZAR TRACKING ICON TAMBIÉN
     self:UpdateTrackingIcon()
 end
@@ -557,18 +559,18 @@ local function GetClockTextFrame()
     if not TimeManagerClockButton then
         return nil
     end
-    
+
     -- Intentar múltiples métodos para encontrar el texto del reloj
     local clockText = TimeManagerClockButton.text
     if clockText then
         return clockText
     end
-    
+
     clockText = TimeManagerClockButton:GetFontString()
     if clockText then
         return clockText
     end
-    
+
     -- Buscar en los children
     for i = 1, TimeManagerClockButton:GetNumChildren() do
         local child = select(i, TimeManagerClockButton:GetChildren())
@@ -576,7 +578,7 @@ local function GetClockTextFrame()
             return child
         end
     end
-    
+
     -- Buscar en las regiones
     for i = 1, TimeManagerClockButton:GetNumRegions() do
         local region = select(i, TimeManagerClockButton:GetRegions())
@@ -584,7 +586,7 @@ local function GetClockTextFrame()
             return region
         end
     end
-    
+
     return nil
 end
 
@@ -593,14 +595,14 @@ function MinimapModule:ApplyAllSettings()
     if not addon.db or not addon.db.profile or not addon.db.profile.minimap then
         return
     end
-    
+
     local settings = addon.db.profile.minimap
-    
+
     -- ✅ APLICAR BORDER ALPHA
     if MinimapBorderTop and settings.border_alpha then
         MinimapBorderTop:SetAlpha(settings.border_alpha)
     end
-    
+
     -- ✅ APLICAR ZOOM BUTTONS VISIBILITY
     if settings.zoom_buttons ~= nil then
         if MinimapZoomIn and MinimapZoomOut then
@@ -613,7 +615,7 @@ function MinimapModule:ApplyAllSettings()
             end
         end
     end
-    
+
     -- ✅ APLICAR CALENDAR VISIBILITY
     if settings.calendar ~= nil then
         if GameTimeFrame then
@@ -624,7 +626,7 @@ function MinimapModule:ApplyAllSettings()
             end
         end
     end
-    
+
     -- ✅ APLICAR CLOCK VISIBILITY
     if settings.clock ~= nil then
         if TimeManagerClockButton then
@@ -635,7 +637,7 @@ function MinimapModule:ApplyAllSettings()
             end
         end
     end
-    
+
     -- ✅ APLICAR CLOCK FONT SIZE (MEJORADO)
     if settings.clock_font_size and TimeManagerClockButton then
         local clockText = GetClockTextFrame()
@@ -647,7 +649,7 @@ function MinimapModule:ApplyAllSettings()
             print("|cffFF6600[DragonUI]|r Warning: Clock text frame not found for font size")
         end
     end
-    
+
     -- ✅ APLICAR ZONE TEXT FONT SIZE
     if settings.zonetext_font_size and MinimapZoneText then
         local font, _, flags = MinimapZoneText:GetFont()
@@ -661,11 +663,11 @@ function MinimapModule:ShowEditorTest()
         self.minimapFrame:SetMovable(true)
         self.minimapFrame:EnableMouse(true)
         self.minimapFrame:RegisterForDrag("LeftButton")
-        
+
         self.minimapFrame:SetScript("OnDragStart", function(frame)
             frame:StartMoving()
         end)
-        
+
         self.minimapFrame:SetScript("OnDragStop", function(frame)
             frame:StopMovingOrSizing()
             -- Guardar posición
@@ -677,7 +679,7 @@ function MinimapModule:ShowEditorTest()
                 addon.db.profile.minimap.y = y
             end
         end)
-        
+
         print("|cFF00FF00[DragonUI]|r Minimap now draggable")
     end
 end
@@ -689,7 +691,7 @@ function MinimapModule:HideEditorTest(savePosition)
         self.minimapFrame:EnableMouse(false)
         self.minimapFrame:SetScript("OnDragStart", nil)
         self.minimapFrame:SetScript("OnDragStop", nil)
-        
+
         if savePosition then
             self:UpdateSettings()
             print("|cFF00FF00[DragonUI]|r Minimap position saved")
