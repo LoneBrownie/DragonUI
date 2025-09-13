@@ -358,9 +358,11 @@ local WHITE_LIST = {
 local function IsFrameWhitelisted(frameName)
     if not frameName then return false end
     
-    for _, whitelistName in pairs(WHITE_LIST) do
-        if frameName:match(whitelistName) then
-            return true
+    for i, buttons in pairs(WHITE_LIST) do
+        if frameName ~= nil then
+            if frameName:match(buttons) then 
+                return true 
+            end
         end
     end
     return false
@@ -368,11 +370,11 @@ end
 
 -- Funciones de fade para hover effect
 local function fadein(self) 
-    UIFrameFadeIn(self, 0.2, self:GetAlpha(), 1.0) 
+    securecall(UIFrameFadeIn, self, 0.2, self:GetAlpha(), 1.0) 
 end
 
 local function fadeout(self) 
-    UIFrameFadeOut(self, 0.2, self:GetAlpha(), 0.2) 
+    securecall(UIFrameFadeOut, self, 0.2, self:GetAlpha(), 0.2) 
 end
 
 -- Función para aplicar skin personalizado a iconos de addons (COPIA EXACTA del oldminimapcore.lua)
@@ -382,6 +384,7 @@ local function ApplyAddonIconSkin(button)
     end
     
     local frameName = button:GetName()
+    -- ✅ USAR LA VERIFICACIÓN EXACTA DEL OLDMINIMAPCORE.LUA
     if IsFrameWhitelisted(frameName) then
         return
     end
@@ -399,6 +402,8 @@ local function ApplyAddonIconSkin(button)
                 region:SetPoint('BOTTOMRIGHT', button, 'BOTTOMRIGHT', -2, 2)
                 region:SetTexCoord(0.1, 0.9, 0.1, 0.9)
                 region:SetDrawLayer('ARTWORK')
+                -- ✅ FORZAR TAMAÑO DEL ICONO PARA QUE COINCIDA CON EL TEXCOORD
+                region:SetSize(18, 18)
                 if frameName == 'PS_MinimapButton' then
                     region.SetPoint = addon._noop
                 end
@@ -410,17 +415,21 @@ local function ApplyAddonIconSkin(button)
     button:SetPushedTexture(nil)
     button:SetHighlightTexture(nil)
     button:SetDisabledTexture(nil)
-    button:SetSize(22, 22)
+    button:SetSize(21, 21)
     
     -- Aplicar border EXACTO como oldminimapcore.lua
     button.circle = button:CreateTexture(nil, 'OVERLAY')
-    button.circle:SetSize(22, 22)
+    button.circle:SetSize(23, 23)
     button.circle:SetPoint('CENTER', button)
     button.circle:SetTexture("Interface\\AddOns\\DragonUI\\assets\\border_buttons.tga")
     
-    -- Sistema de fade EXACTO como oldminimapcore.lua
-    local fadeEnabled = addon.db and addon.db.profile and addon.db.profile.minimap and 
-                       addon.db.profile.minimap.addon_button_fade
+    -- ✅ VERIFICACIÓN SEGURA DE CONFIGURACIÓN
+    local fadeEnabled = false
+    
+    -- Primero verificar DragonUI database (principal)
+    if addon.db and addon.db.profile and addon.db.profile.minimap then
+        fadeEnabled = addon.db.profile.minimap.addon_button_fade or false
+    end
     
     if fadeEnabled then
         button:SetAlpha(0.2)
@@ -430,6 +439,8 @@ local function ApplyAddonIconSkin(button)
         button:SetAlpha(1)
     end
 end
+
+
 
 -- ✅ BORDER REMOVAL: Aplicar skin a iconos (SIMPLE como oldminimapcore.lua)
 local function RemoveAllMinimapIconBorders()
