@@ -19,12 +19,12 @@ MinimapModule.minimapFrame = nil
 MinimapModule.borderFrame = nil
 
 local DEFAULT_MINIMAP_WIDTH = Minimap:GetWidth() * 1.36
-    local DEFAULT_MINIMAP_HEIGHT = Minimap:GetHeight() * 1.36
-    local blipScale = 1.12
-    local BORDER_SIZE = 71*2 * 2^0.5
+local DEFAULT_MINIMAP_HEIGHT = Minimap:GetHeight() * 1.36
+local blipScale = 1.12
+local BORDER_SIZE = 71 * 2 * 2 ^ 0.5
 
 local MINIMAP_TEXTURES = {
-    BORDER = "Interface\\AddOns\\DragonUI\\assets\\uiminimapborder" -- ✅ RUTA CORRECTA
+    BORDER = "Interface\\AddOns\\DragonUI\\assets\\uiminimapborder"
 }
 
 -- ✅ VERIFICAR FUNCIÓN ATLAS AL INICIO
@@ -162,16 +162,47 @@ local function ReplaceBlizzardFrame(frame)
 
     minimapTrackingButton:SetPushedTexture(pushedTexture)
 
-
     local minimapFrame = Minimap
     minimapFrame:ClearAllPoints()
     minimapFrame:SetPoint("CENTER", minimapCluster, "CENTER", 0, -30)
-    minimapFrame:SetWidth(DEFAULT_MINIMAP_WIDTH/blipScale)
-    minimapFrame:SetHeight(DEFAULT_MINIMAP_HEIGHT/blipScale)
+    minimapFrame:SetWidth(DEFAULT_MINIMAP_WIDTH / blipScale)
+    minimapFrame:SetHeight(DEFAULT_MINIMAP_HEIGHT / blipScale)
     minimapFrame:SetScale(blipScale)
     minimapFrame:SetMaskTexture("Interface\\AddOns\\DragonUI\\assets\\uiminimapmask.tga")
 
-    -- ✅ Enable mouse wheel zooming on minimap
+    -- POI (Point of Interest) Custom Textures
+    minimapFrame:SetStaticPOIArrowTexture("Interface\\AddOns\\DragonUI\\assets\\poi-static")
+    minimapFrame:SetCorpsePOIArrowTexture("Interface\\AddOns\\DragonUI\\assets\\poi-corpse")
+    minimapFrame:SetPOIArrowTexture("Interface\\AddOns\\DragonUI\\assets\\poi-guard")
+    minimapFrame:SetPlayerTexture("Interface\\AddOns\\DragonUI\\assets\\poi-player")
+
+    -- Player arrow size (configurable)
+    local playerArrowSize = addon.db and addon.db.profile and addon.db.profile.minimap and
+                                addon.db.profile.minimap.player_arrow_size or 16
+    minimapFrame:SetPlayerTextureHeight(playerArrowSize)
+    minimapFrame:SetPlayerTextureWidth(playerArrowSize)
+
+    -- Blip texture (always use DragonUI modern icons)
+    minimapFrame:SetBlipTexture("Interface\\AddOns\\DragonUI\\assets\\objecticons")
+    local MINIMAP_POINTS = {}
+    for i = 1, Minimap:GetNumPoints() do
+        MINIMAP_POINTS[i] = {Minimap:GetPoint(i)}
+    end
+
+    for _, regions in ipairs {Minimap:GetChildren()} do
+        if regions ~= WatchFrame and regions ~= _G.WatchFrame then
+            regions:SetScale(1 / blipScale)
+        end
+    end
+
+    for _, points in ipairs(MINIMAP_POINTS) do
+        Minimap:SetPoint(points[1], points[2], points[3], points[4] / blipScale, points[5] / blipScale)
+    end
+    function GetMinimapShape()
+        return "ROUND"
+    end
+
+    -- Enable mouse wheel zooming on minimap
     minimapFrame:EnableMouseWheel(true)
     minimapFrame:SetScript("OnMouseWheel", function(self, delta)
         if delta > 0 then
@@ -191,7 +222,7 @@ local function ReplaceBlizzardFrame(frame)
     minimapBorderTexture:Hide()
     if not Minimap.Circle then
         Minimap.Circle = MinimapBackdrop:CreateTexture(nil, 'ARTWORK')
-        
+
         Minimap.Circle:SetSize(BORDER_SIZE, BORDER_SIZE)
         Minimap.Circle:SetPoint('CENTER', Minimap, 'CENTER')
         Minimap.Circle:SetTexture("Interface\\AddOns\\DragonUI\\assets\\uiminimapborder.tga")
@@ -562,6 +593,16 @@ function MinimapModule:UpdateSettings()
 
         -- ✅ APLICAR CONFIGURACIONES ADICIONALES
         self:ApplyAllSettings()
+    end
+
+    -- Update blip texture (always use DragonUI modern icons)
+    Minimap:SetBlipTexture("Interface\\AddOns\\DragonUI\\assets\\objecticons")
+
+    -- Update player arrow size
+    local playerArrowSize = addon.db.profile.minimap.player_arrow_size
+    if playerArrowSize then
+        Minimap:SetPlayerTextureHeight(playerArrowSize)
+        Minimap:SetPlayerTextureWidth(playerArrowSize)
     end
 
     -- ✅ ACTUALIZAR TRACKING ICON TAMBIÉN

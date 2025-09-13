@@ -1484,6 +1484,25 @@ function addon:CreateOptionsTable()
                         order = 4
                     },
 
+                    player_arrow_size = {
+                        type = 'range',
+                        name = "Player Arrow Size",
+                        desc = "Size of the player arrow on the minimap",
+                        min = 8,
+                        max = 50,
+                        step = 1,
+                        get = function()
+                            return addon.db.profile.minimap.player_arrow_size
+                        end,
+                        set = function(info, value)
+                            addon.db.profile.minimap.player_arrow_size = value
+                            if addon.MinimapModule then
+                                addon.MinimapModule:UpdateSettings()
+                            end
+                        end,
+                        order = 5.2
+                    },
+
                     -- ✅ SECCIÓN TIEMPO Y CALENDARIO INTEGRADA
                     time_header = {
                         type = 'header',
@@ -1595,7 +1614,7 @@ function addon:CreateOptionsTable()
                     },
                     y = {
                         type = 'range',
-                        name = "Y Position", 
+                        name = "Y Position",
                         desc = "Vertical position",
                         min = -500,
                         max = 500,
@@ -1626,7 +1645,6 @@ function addon:CreateOptionsTable()
                     }
                 }
             },
-
 
             castbars = {
                 type = 'group',

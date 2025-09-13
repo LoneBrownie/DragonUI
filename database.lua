@@ -133,7 +133,6 @@ local defaults = {
             scale = 1,
             border_alpha = 1,
             tracking_icons = true,
-            blip_skin = true,
             zoom_buttons = true,
             calendar = true,
             clock = true,                    
