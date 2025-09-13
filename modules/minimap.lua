@@ -342,6 +342,102 @@ local function CreateMinimapBorderFrame(width, height)
     return minimapBorderFrame
 end
 
+-- ✅ BORDER REMOVAL: Eliminar borders de iconos de addons (del minimapa_old.lua)
+local function RemoveAllMinimapIconBorders()
+    
+    
+    -- PVP/Battlefield borders
+    if MiniMapBattlefieldIcon then 
+        MiniMapBattlefieldIcon:Hide() 
+    end
+    if MiniMapBattlefieldBorder then 
+        MiniMapBattlefieldBorder:Hide() 
+    end
+    
+    
+    
+    -- LFG border
+    if MiniMapLFGFrameBorder then
+        MiniMapLFGFrameBorder:SetTexture(nil)
+    end
+    
+    -- ✅ HOOK DINÁMICO: Eliminar borders de iconos de addons (tu addon de bags)
+    local borderCheckFrame = CreateFrame("Frame")
+    borderCheckFrame.elapsed = 0
+    borderCheckFrame:SetScript("OnUpdate", function(self, elapsed)
+        self.elapsed = self.elapsed + elapsed
+        if self.elapsed >= 2.0 then -- Revisar cada 2 segundos
+            self.elapsed = 0
+            
+            -- Buscar todos los children del Minimap que puedan ser iconos de addons
+            for i = 1, Minimap:GetNumChildren() do
+                local child = select(i, Minimap:GetChildren())
+                if child and child:GetObjectType() == "Button" then
+                    -- Buscar borders/overlays en el icono del addon
+                    for j = 1, child:GetNumRegions() do
+                        local region = select(j, child:GetRegions())
+                        if region and region:GetObjectType() == "Texture" then
+                            local texturePath = region:GetTexture()
+                            -- Si la textura parece ser un border de Blizzard, elimínala
+                            if texturePath and (
+                                string.find(texturePath, "Border") or 
+                                string.find(texturePath, "Overlay") or
+                                string.find(texturePath, "Ring")
+                            ) then
+                                region:SetTexture(nil)
+                            end
+                        end
+                    end
+                    
+                    -- También revisar texturas específicas que suelen ser borders
+                    if child.Border then child.Border:SetTexture(nil) end
+                    if child.Overlay then child.Overlay:SetTexture(nil) end
+                    if child.Ring then child.Ring:SetTexture(nil) end
+                end
+            end
+        end
+    end)
+end
+
+-- ✅ PVP STYLING: Estilizar frame PVP con faction detection (del minimapa_old.lua)
+local function StylePVPBattlefieldFrame()
+    if not MiniMapBattlefieldFrame then return end
+    
+    -- Configurar el frame PVP como en minimapa_old.lua
+    MiniMapBattlefieldFrame:SetSize(44, 44)
+    MiniMapBattlefieldFrame:ClearAllPoints()
+    MiniMapBattlefieldFrame:SetPoint('BOTTOMLEFT', Minimap, 0, 18)
+    MiniMapBattlefieldFrame:SetNormalTexture('')
+    MiniMapBattlefieldFrame:SetPushedTexture('')
+
+    -- Detectar facción del jugador y aplicar texturas apropiadas
+    local faction = string.lower(UnitFactionGroup('player'))
+    
+    -- Aplicar texturas usando SetAtlasTexture
+    if MiniMapBattlefieldFrame:GetNormalTexture() then
+        SetAtlasTexture(MiniMapBattlefieldFrame:GetNormalTexture(), 'Minimap-PVP-' .. faction .. '-Normal')
+    end
+    if MiniMapBattlefieldFrame:GetPushedTexture() then
+        SetAtlasTexture(MiniMapBattlefieldFrame:GetPushedTexture(), 'Minimap-PVP-' .. faction .. '-Pushed')
+    end
+
+    -- Configurar script de click como en minimapa_old.lua
+    MiniMapBattlefieldFrame:SetScript('OnClick', function(self, button)
+        GameTooltip:Hide()
+        if MiniMapBattlefieldFrame.status == "active" then
+            if button == "RightButton" then
+                ToggleDropDownMenu(1, nil, MiniMapBattlefieldDropDown, "MiniMapBattlefieldFrame", 0, -5)
+            elseif IsShiftKeyDown() then
+                ToggleBattlefieldMinimap()
+            else
+                ToggleWorldStateScoreFrame()
+            end
+        elseif button == "RightButton" then
+            ToggleDropDownMenu(1, nil, MiniMapBattlefieldDropDown, "MiniMapBattlefieldFrame", 0, -5)
+        end
+    end)
+end
+
 local function RemoveBlizzardFrames()
     if MiniMapWorldMapButton then
         MiniMapWorldMapButton:Hide()
@@ -357,6 +453,10 @@ local function RemoveBlizzardFrames()
     for _, frame in pairs(blizzFrames) do
         frame:SetAlpha(0)
     end
+    
+    -- ✅ LLAMAR A LAS NUEVAS FUNCIONES
+    RemoveAllMinimapIconBorders()
+    StylePVPBattlefieldFrame()
 end
 
 local function Minimap_UpdateRotationSetting()

@@ -16,6 +16,7 @@ local BagSlotsAsset = { path = addonPath .. 'Textures\\UI\\BagSlots.blp', width 
 local BagSlotsKeyAsset = { path = addonPath .. 'Textures\\UI\\BagSlotsKey.blp', width = 128, height = 128 }
 local MicroMenuAsset = { path = addonPath .. 'Textures\\UI\\MicroMenu.blp', width = 512, height = 512 }
 local CalendarAsset = { path = addonPath .. 'Textures\\Minimap\\Calendar.blp', width = 256, height = 256 }
+local BattlefieldAsset = { path = addonPath .. 'assets\\uibattlefieldicon.tga', width = 256, height = 64 }
 local LFGRoleAsset = { path = addonPath .. 'Textures\\PlayerFrame\\LFGRoleIcons.blp', width = 256, height = 256 }
 local QuestTrackerAsset = { path = addonPath .. 'Textures\\UI\\QuestTracker.BLP', width = 1024, height = 512 }
 local GuildBannerAsset = { path = addonPath .. 'Textures\\Minimap\\GuildBanner.BLP', width = 256, 256 }
@@ -673,6 +674,25 @@ local atlasTextures = {
     },
     ['ActionMainBar-GapCenter'] = {
         asset = ActionBarVerticalAsset, texcoord = { 143, 152, 22, 34 }
+    },
+
+    -- ✅ PVP/Battlefield textures (del minimap_old_atlas.lua)
+    ['Minimap-PVP-alliance-Normal'] = {
+        asset = BattlefieldAsset, texcoord = { 72, 126, 5, 58 }
+    },
+    ['Minimap-PVP-alliance-Pushed'] = {
+        asset = BattlefieldAsset, texcoord = { 17, 71, 5, 58 }
+    },
+    ['Minimap-PVP-horde-Normal'] = {
+        asset = BattlefieldAsset, texcoord = { 181, 235, 5, 58 }
+    },
+    ['Minimap-PVP-horde-Pushed'] = {
+        asset = BattlefieldAsset, texcoord = { 127, 182, 5, 58 }
+    },
+
+    -- ✅ CUSTOM MINIMAP BUTTON BORDER (del minimap_old_atlas.lua) 
+    ['Minimap-Button-Border'] = {
+        asset = MinimapAsset, texcoord = { 441, 480, 402, 440 }
     }
 }
 
