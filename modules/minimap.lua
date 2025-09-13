@@ -19,7 +19,7 @@ MinimapModule.minimapFrame = nil
 MinimapModule.borderFrame = nil
 
 local MINIMAP_TEXTURES = {
-    BORDER = "Interface\\AddOns\\DragonUI\\Textures\\Minimap\\MinimapBorder" -- ✅ RUTA CORRECTA
+    BORDER = "Interface\\AddOns\\DragonUI\\assets\\uiminimapborder" -- ✅ RUTA CORRECTA
 }
 
 -- ✅ VERIFICAR FUNCIÓN ATLAS AL INICIO
@@ -161,6 +161,7 @@ local function ReplaceBlizzardFrame(frame)
     minimapFrame:ClearAllPoints()
     minimapFrame:SetPoint("CENTER", minimapCluster, "CENTER", 0, -30)
     minimapFrame:SetSize(175, 175)
+    minimapFrame:SetMaskTexture("Interface\\AddOns\\DragonUI\\assets\\uiminimapmask.tga")
 
     -- ✅ Enable mouse wheel zooming on minimap
     minimapFrame:EnableMouseWheel(true)
@@ -179,10 +180,13 @@ local function ReplaceBlizzardFrame(frame)
     minimapBackdropTexture:SetPoint("CENTER", minimapFrame, "CENTER", 0, 3)
 
     local minimapBorderTexture = MinimapBorder
-    minimapBorderTexture:SetTexture(MINIMAP_TEXTURES.BORDER)
-    minimapBorderTexture:SetSize(256, 256) -- Ajustar tamaño
-    minimapBorderTexture:ClearAllPoints()
-    minimapBorderTexture:SetPoint("CENTER", minimapFrame, "CENTER", 0, 0)
+    minimapBorderTexture:Hide()
+    if not Minimap.Circle then
+        Minimap.Circle = MinimapBackdrop:CreateTexture(nil, 'ARTWORK')
+        Minimap.Circle:SetSize(200, 200)  -- Ajustar tamaño
+        Minimap.Circle:SetPoint('CENTER', Minimap, 'CENTER')
+        Minimap.Circle:SetTexture("Interface\\AddOns\\DragonUI\\assets\\uiminimapborder.tga")
+    end
 
     local zoomInButton = MinimapZoomIn
     zoomInButton:ClearAllPoints()
