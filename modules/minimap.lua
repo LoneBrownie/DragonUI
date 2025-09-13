@@ -18,6 +18,11 @@ addon.MinimapModule = MinimapModule;
 MinimapModule.minimapFrame = nil
 MinimapModule.borderFrame = nil
 
+local DEFAULT_MINIMAP_WIDTH = Minimap:GetWidth() * 1.36
+    local DEFAULT_MINIMAP_HEIGHT = Minimap:GetHeight() * 1.36
+    local blipScale = 1.12
+    local BORDER_SIZE = 71*2 * 2^0.5
+
 local MINIMAP_TEXTURES = {
     BORDER = "Interface\\AddOns\\DragonUI\\assets\\uiminimapborder" -- ✅ RUTA CORRECTA
 }
@@ -157,10 +162,13 @@ local function ReplaceBlizzardFrame(frame)
 
     minimapTrackingButton:SetPushedTexture(pushedTexture)
 
+
     local minimapFrame = Minimap
     minimapFrame:ClearAllPoints()
     minimapFrame:SetPoint("CENTER", minimapCluster, "CENTER", 0, -30)
-    minimapFrame:SetSize(175, 175)
+    minimapFrame:SetWidth(DEFAULT_MINIMAP_WIDTH/blipScale)
+    minimapFrame:SetHeight(DEFAULT_MINIMAP_HEIGHT/blipScale)
+    minimapFrame:SetScale(blipScale)
     minimapFrame:SetMaskTexture("Interface\\AddOns\\DragonUI\\assets\\uiminimapmask.tga")
 
     -- ✅ Enable mouse wheel zooming on minimap
@@ -183,7 +191,8 @@ local function ReplaceBlizzardFrame(frame)
     minimapBorderTexture:Hide()
     if not Minimap.Circle then
         Minimap.Circle = MinimapBackdrop:CreateTexture(nil, 'ARTWORK')
-        Minimap.Circle:SetSize(200, 200)  -- Ajustar tamaño
+        
+        Minimap.Circle:SetSize(BORDER_SIZE, BORDER_SIZE)
         Minimap.Circle:SetPoint('CENTER', Minimap, 'CENTER')
         Minimap.Circle:SetTexture("Interface\\AddOns\\DragonUI\\assets\\uiminimapborder.tga")
     end
