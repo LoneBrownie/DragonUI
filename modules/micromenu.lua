@@ -440,53 +440,20 @@ local function SetupPVPButton(button)
 end
 
 local function SetupCharacterButton(button)
-    local microTexture = 'Interface\\AddOns\\DragonUI\\Textures\\Micromenu\\uimicromenu2x'
-    local dx, dy = -1, 1
-    local offX, offY = button:GetPushedTextOffset()
-    local sizeX, sizeY = button:GetSize()
+    -- PASO 1: Usar el portrait nativo de Blizzard (como RetailUI)
+    local portraitTexture = MicroButtonPortrait  
+    portraitTexture:ClearAllPoints()
+    portraitTexture:SetPoint('CENTER', button, 'CENTER', 0, 0)  -- Sin offset
+    portraitTexture:SetSize(18, 23)  -- Tamaño ajustable
+    portraitTexture:SetAlpha(1)  -- Visible siempre
     
-    -- Create portrait texture
-    if not button.DragonUIPortrait then
-        button.DragonUIPortrait = button:CreateTexture('DragonUIPortrait', 'ARTWORK')
-    end
-    local portrait = button.DragonUIPortrait
-    local portraitSize = 22
-    portrait:SetSize(portraitSize, portraitSize)
-    portrait:SetPoint('CENTER', 0.5, -0.5)
-    SetPortraitTexture(portrait, 'player')
-    
-    -- Create circular highlight overlay
-    if not button.DragonUIPortraitHighlight then
-        button.DragonUIPortraitHighlight = button:CreateTexture('DragonUIPortraitHighlight', 'OVERLAY')
-    end
-    local highlightOverlay = button.DragonUIPortraitHighlight
-    highlightOverlay:SetSize(portraitSize, portraitSize)
-    highlightOverlay:SetPoint('CENTER', 0.5, -0.5)
-    SetPortraitTexture(highlightOverlay, 'player')
-    highlightOverlay:SetVertexColor(1.5, 1.5, 1.5, 0.4)
-    highlightOverlay:SetBlendMode('ADD')
-    highlightOverlay:Hide()
-    
-    -- Setup mouseover events
-    local originalOnEnter = button:GetScript('OnEnter')
-    local originalOnLeave = button:GetScript('OnLeave')
-    
-    button:SetScript('OnEnter', function(self)
-        if originalOnEnter then originalOnEnter(self) end
-        if self.DragonUIPortraitHighlight then
-            self.DragonUIPortraitHighlight:Show()
-        end
-    end)
-    
-    button:SetScript('OnLeave', function(self)
-        if originalOnLeave then originalOnLeave(self) end
-        if self.DragonUIPortraitHighlight then
-            self.DragonUIPortraitHighlight:Hide()
-        end
-    end)
-    
-    -- Add background
+    -- PASO 2: Solo background (como otros botones)
     if not button.DragonUIBackground then
+        local microTexture = 'Interface\\AddOns\\DragonUI\\Textures\\Micromenu\\uimicromenu2x'
+        local dx, dy = -1, 1
+        local offX, offY = button:GetPushedTextOffset()
+        local sizeX, sizeY = button:GetSize()
+        
         local bg = button:CreateTexture('DragonUIBackground', 'BACKGROUND')
         bg:SetTexture(microTexture)
         bg:SetSize(sizeX, sizeY + 1)
@@ -502,35 +469,20 @@ local function SetupCharacterButton(button)
         bgPushed:Hide()
         button.DragonUIBackgroundPushed = bgPushed
         
+        -- PASO 3: Estado simple (como RetailUI)
         button.dragonUIState = { pushed = false }
-        
         button.HandleDragonUIState = function()
             local state = button.dragonUIState
             if state.pushed then
-                local subtleOffX, subtleOffY = offX * 0.3, offY * 0.3
-                portrait:SetPoint('CENTER', 0.5 + subtleOffX, -0.5 + subtleOffY)
-                portrait:SetAlpha(0.7)
-                highlightOverlay:SetPoint('CENTER', 0.5 + subtleOffX, -0.5 + subtleOffY)
                 bg:Hide()
                 bgPushed:Show()
             else
-                portrait:SetPoint('CENTER', 0.5, -0.5)
-                portrait:SetAlpha(1.0)
-                highlightOverlay:SetPoint('CENTER', 0.5, -0.5)
                 bg:Show()
                 bgPushed:Hide()
             end
         end
         
-        -- Register events
-        button:RegisterEvent('UNIT_PORTRAIT_UPDATE')
-        button:SetScript('OnEvent', function(self, event, unit)
-            if event == 'UNIT_PORTRAIT_UPDATE' and unit == 'player' then
-                SetPortraitTexture(self.DragonUIPortrait, 'player')
-                SetPortraitTexture(self.DragonUIPortraitHighlight, 'player')
-            end
-        end)
-        
+        -- PASO 4: Timer simple (sin tocar el portrait)
         button.dragonUITimer = 0
         button.dragonUILastState = false
         button:SetScript('OnUpdate', function(self, elapsed)
@@ -548,6 +500,7 @@ local function SetupCharacterButton(button)
         
         button.HandleDragonUIState()
     end
+    
 end
 
 -- ============================================================================
@@ -1158,16 +1111,7 @@ end)
 LFDSearchStatus:SetParent(MinimapBackdrop)
 LFDSearchStatus:SetClearPoint('TOPRIGHT', MinimapBackdrop, 'TOPLEFT')
 
--- Character portrait fixes
-hooksecurefunc('CharacterMicroButton_SetPushed',function()
-    MicroButtonPortrait:SetTexCoord(0,0,0,0);
-    MicroButtonPortrait:SetAlpha(0);
-end)
 
-hooksecurefunc('CharacterMicroButton_SetNormal',function()
-    MicroButtonPortrait:SetTexCoord(0,0,0,0);
-    MicroButtonPortrait:SetAlpha(0);
-end)
 
 -- LFD Status reanchor
 local function ReanchorLFDStatus()
