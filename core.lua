@@ -44,6 +44,75 @@ function addon.core:OnInitialize()
 	
 	LibStub("AceConfig-3.0"):RegisterOptionsTable("DragonUI", addon.options);
 	LibStub("AceConfigDialog-3.0"):AddToBlizOptions("DragonUI", "DragonUI");
+
+	-- Setup custom window size that's resistant to refreshes
+local AceConfigDialog = LibStub("AceConfigDialog-3.0")
+if AceConfigDialog then
+    -- Track if user has manually resized the window
+    local userHasResized = false
+    local defaultWidth, defaultHeight = 900, 600
+    
+    -- Hook into the status table system that manages window state
+    local function setupDragonUIWindowSize()
+        local configFrame = AceConfigDialog.OpenFrames["DragonUI"]
+        if configFrame and configFrame.frame then
+            -- Check if user has manually resized (status table contains user's size)
+            local statusWidth = configFrame.status.width
+            local statusHeight = configFrame.status.height
+            
+            -- If status has size and it's different from our default, user has resized
+            if statusWidth and statusHeight then
+                if statusWidth ~= defaultWidth or statusHeight ~= defaultHeight then
+                    userHasResized = true
+                end
+            end
+            
+            -- Only apply our custom size if user hasn't manually resized
+            if not userHasResized then
+                configFrame.frame:SetWidth(defaultWidth)
+                configFrame.frame:SetHeight(defaultHeight)
+                configFrame.frame:ClearAllPoints()
+                configFrame.frame:SetPoint("CENTER", UIParent, "CENTER", 0, 0)
+                
+                -- Update AceGUI's internal size tracking
+                configFrame.status.width = defaultWidth
+                configFrame.status.height = defaultHeight
+            else
+                -- User has resized, just maintain their size and center position
+                configFrame.frame:ClearAllPoints()
+                configFrame.frame:SetPoint("CENTER", UIParent, "CENTER", 0, 0)
+            end
+        end
+    end
+    
+    -- Hook the status table application (runs on every refresh)
+    local originalSetStatusTable = AceConfigDialog.SetStatusTable
+    AceConfigDialog.SetStatusTable = function(self, appName, statusTable)
+        local result = originalSetStatusTable(self, appName, statusTable)
+        
+        if appName == "DragonUI" then
+            -- Apply our custom size after status is set
+            setupDragonUIWindowSize()
+        end
+        
+        return result
+    end
+    
+    -- Hook the initial Open to set size immediately
+    local originalOpen = AceConfigDialog.Open
+    AceConfigDialog.Open = function(self, appName, ...)
+        local result = originalOpen(self, appName, ...)
+        
+        if appName == "DragonUI" then
+            -- Reset user resize flag on new window opening
+            userHasResized = false
+            -- Apply size IMMEDIATELY without delay
+            setupDragonUIWindowSize()
+        end
+        
+        return result
+    end
+end
 	
 	-- Apply current profile configuration immediately
 	-- This ensures the profile is loaded when the addon starts

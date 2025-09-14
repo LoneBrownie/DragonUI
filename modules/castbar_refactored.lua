@@ -91,38 +91,32 @@ local GRACE_PERIOD_AFTER_SUCCESS = 0.15;
 
 addon.castbarStates = {
     player = {
-        casting = false,
-        isChanneling = false,
-        spellStartTime = 0,
-        spellDuration = 0,
+        castingEx = false,        -- Flags como RetailUI
+        channelingEx = false,
+        startTime = 0,           -- Tiempo absoluto GetTime()
+        endTime = 0,             -- Tiempo absoluto GetTime()
         holdTime = 0,
         currentSpellName = "",
-        currentValue = 0,
-        maxValue = 0,
         castSucceeded = false,
         graceTime = 0,
         selfInterrupt = false 
     },
     target = {
-        casting = false,
-        isChanneling = false,
-        spellStartTime = 0,
-        spellDuration = 0,
+        castingEx = false,
+        channelingEx = false,
+        startTime = 0,
+        endTime = 0,
         holdTime = 0,
         currentSpellName = "",
-        currentValue = 0,
-        maxValue = 0,
         selfInterrupt = false 
     },
     focus = {
-        casting = false,
-        isChanneling = false,
-        spellStartTime = 0,
-        spellDuration = 0,
+        castingEx = false,
+        channelingEx = false,
+        startTime = 0,
+        endTime = 0,
         holdTime = 0,
         currentSpellName = "",
-        currentValue = 0,
-        maxValue = 0,
         selfInterrupt = false 
     }
 };
@@ -793,7 +787,7 @@ end
 -- FUNCIÓN DE FINALIZACIÓN UNIFICADA
 -- =================================================================
 
--- Función unificada para finalizar spells
+-- Actualizar función de finalización
 local function FinishSpell(castbarType)
     local frameData = frames[castbarType];
     local state = addon.castbarStates[castbarType];
@@ -801,58 +795,76 @@ local function FinishSpell(castbarType)
 
     if castbarType ~= "player" then
         cfg = cfg[castbarType];
-        if not cfg then
-            return
-        end
+        if not cfg then return end
     end
 
     -- Establecer valor final
-    if state.maxValue then
-        frameData.castbar:SetValue(state.maxValue);
-        state.currentValue = state.maxValue;
-        -- CORREGIDO: Asegurar que la textura se muestre completamente al finalizar
-        if frameData.castbar.UpdateTextureClipping then
-            frameData.castbar:UpdateTextureClipping(1.0, state.isChanneling);
-        end
-        UpdateCastTimeText(castbarType);
+    frameData.castbar:SetValue(1.0);
+    if frameData.castbar.UpdateTextureClipping then
+        frameData.castbar:UpdateTextureClipping(1.0, state.channelingEx);
     end
 
-    -- Ocultar spark y mostrar flash
-    if frameData.spark then
-        frameData.spark:Hide()
-    end
-    if frameData.shield then
-        frameData.shield:Hide()
-    end
+    -- Ocultar elementos
+    if frameData.spark then frameData.spark:Hide() end
+    if frameData.shield then frameData.shield:Hide() end
+    HideAllChannelTicks(frameData.ticks, 15);
 
-    -- Ocultar todos los ticks
-    if frameData.ticks then
-        for i = 1, #frameData.ticks do
-            if frameData.ticks[i] then
-                frameData.ticks[i]:Hide()
-            end
-        end
-    end
+    -- Mostrar flash
+    if frameData.flash then frameData.flash:Show() end
 
-    -- Mostrar flash de completado
-    if frameData.flash then
-        frameData.flash:Show()
-    end
-
-    -- Resetear estado de casting
-    state.casting = false;
-    state.isChanneling = false;
-
-    -- Establecer tiempo de hold
+    -- Resetear estado
+    state.castingEx = false;
+    state.channelingEx = false;
     state.holdTime = cfg.holdTime or 0.3;
 end
+
 
 -- =================================================================
 -- FUNCIONES UPDATE UNIFICADAS
 -- =================================================================
+-- Función de actualización de tiempo como RetailUI
+local function UpdateCastTimeTextRetailUI(castbarType, remainingTime, totalTime)
+    local frameData = frames[castbarType];
+    local cfg = addon.db.profile.castbar;
+    
+    if castbarType ~= "player" then
+        cfg = cfg[castbarType];
+        if not cfg then return end
+    end
 
+    local state = addon.castbarStates[castbarType];
+    local seconds = math.max(0, remainingTime);
+    local secondsMax = totalTime;
 
--- Función unificada para manejar parada/interrupción de cast
+    -- Formatear texto de tiempo
+    local timeText = string.format('%.' .. (cfg.precision_time or 1) .. 'f', seconds);
+    local fullText;
+
+    if cfg.precision_max and cfg.precision_max > 0 then
+        local maxText = string.format('%.' .. cfg.precision_max .. 'f', secondsMax);
+        fullText = timeText .. ' / ' .. maxText;
+    else
+        fullText = timeText .. 's';
+    end
+
+    -- Aplicar texto
+    if castbarType == "player" then
+        local textMode = cfg.text_mode or "simple";
+        if textMode ~= "simple" and frameData.timeValue and frameData.timeMax then
+            frameData.timeValue:SetText(timeText);
+            frameData.timeMax:SetText(' / ' .. string.format('%.' .. (cfg.precision_max or 1) .. 'f', secondsMax));
+        end
+    else
+        if frameData.castTimeText then
+            frameData.castTimeText:SetText(fullText)
+        end
+        if frameData.castTimeTextCompact then
+            frameData.castTimeTextCompact:SetText(fullText)
+        end
+    end
+end
+
+-- Función unificada para manejar parada/interrupción COMO RETAILUI
 local function HandleCastStop(castbarType, event, forceInterrupted)
     local state = addon.castbarStates[castbarType];
     local frameData = frames[castbarType];
@@ -862,35 +874,31 @@ local function HandleCastStop(castbarType, event, forceInterrupted)
         cfg = cfg[castbarType];
     end
 
-    if not state.casting and not state.isChanneling then
+    if not state.castingEx and not state.channelingEx then
         return
     end
 
-    -- ✅ NUEVA LÓGICA: Distinguir entre STOP natural vs INTERRUPTED real
     if forceInterrupted then
-        -- Solo mostrar "Interrupted" cuando es realmente una interrupción
-        if frameData.shield then
-            frameData.shield:Hide()
-        end
+        -- Interrupción real
+        if frameData.shield then frameData.shield:Hide() end
         HideAllChannelTicks(frameData.ticks, 15);
 
         frameData.castbar:SetStatusBarTexture(TEXTURES.interrupted);
         frameData.castbar:SetStatusBarColor(1, 0, 0, 1);
         ForceStatusBarTextureLayer(frameData.castbar);
 
-        frameData.castbar:SetValue(state.maxValue);
-
+        frameData.castbar:SetValue(1.0);
         if frameData.castbar.UpdateTextureClipping then
             frameData.castbar:UpdateTextureClipping(1.0, false);
         end
 
         SetCastText(castbarType, "Interrupted");
 
-        state.casting = false;
-        state.isChanneling = false;
+        state.castingEx = false;
+        state.channelingEx = false;
         state.holdTime = cfg.holdTimeInterrupt or 0.8;
     else
-        -- ✅ PARA STOP: Completar normalmente sin mensaje de interrupción
+        -- Completado normalmente
         if castbarType == "player" then
             state.castSucceeded = true;
         else
@@ -898,6 +906,7 @@ local function HandleCastStop(castbarType, event, forceInterrupted)
         end
     end
 end
+
 
 -- Función de actualización principal unificada
 local function UpdateCastbar(castbarType, self, elapsed)
@@ -911,117 +920,39 @@ local function UpdateCastbar(castbarType, self, elapsed)
             return
         end
 
-        -- FIXED: Check if target/focus still exists - if not, immediately hide castbar
+        -- Check if target/focus still exists
         local unit = castbarType;
         if not UnitExists(unit) then
-            if state.casting or state.isChanneling then
-                -- Target/focus died or disappeared during casting - hide castbar immediately
+            if state.castingEx or state.channelingEx then
+                -- Target/focus died - hide castbar immediately
                 self:Hide();
-                if frameData.background then
-                    frameData.background:Hide()
-                end
-                if frameData.textBackground then
-                    frameData.textBackground:Hide()
-                end
-                if frameData.flash then
-                    frameData.flash:Hide()
-                end
-                if frameData.spark then
-                    frameData.spark:Hide()
-                end
-                if frameData.shield then
-                    frameData.shield:Hide()
-                end
-                if frameData.icon then
-                    frameData.icon:Hide()
-                end
+                if frameData.background then frameData.background:Hide() end
+                if frameData.textBackground then frameData.textBackground:Hide() end
+                if frameData.flash then frameData.flash:Hide() end
+                if frameData.spark then frameData.spark:Hide() end
+                if frameData.shield then frameData.shield:Hide() end
+                if frameData.icon then frameData.icon:Hide() end
 
                 -- Reset state
-                state.casting = false;
-                state.isChanneling = false;
+                state.castingEx = false;
+                state.channelingEx = false;
                 state.holdTime = 0;
-                state.maxValue = 0;
-                state.currentValue = 0;
+                state.startTime = 0;
+                state.endTime = 0;
             end
             return;
         end
     elseif not cfg or not cfg.enabled then
         return;
-    else
-        -- FIXED: For player castbar, check if target exists when casting target spells
-        if (state.casting or state.isChanneling) and state.currentSpellName then
-            -- Common target spells that should be interrupted if target dies
-            local targetSpells = {
-                ["Fireball"] = true,
-                ["Frostbolt"] = true,
-                ["Shadow Bolt"] = true,
-                ["Lightning Bolt"] = true,
-                ["Heal"] = true,
-                ["Greater Heal"] = true,
-                ["Flash Heal"] = true,
-                ["Smite"] = true,
-                ["Mind Blast"] = true,
-                ["Aimed Shot"] = true,
-                ["Steady Shot"] = true,
-                ["Hunter's Mark"] = true,
-                ["Polymorph"] = true,
-                ["Banish"] = true,
-                ["Fear"] = true,
-                ["Curse of Agony"] = true,
-                ["Immolate"] = true,
-                ["Corruption"] = true
-            };
-
-            -- If casting a target spell and target doesn't exist, cancel the cast
-            if targetSpells[state.currentSpellName] and not UnitExists("target") then
-                -- Target died during player casting - hide castbar immediately
-                self:Hide();
-                if frameData.background then
-                    frameData.background:Hide()
-                end
-                if frameData.textBackground then
-                    frameData.textBackground:Hide()
-                end
-                if frameData.flash then
-                    frameData.flash:Hide()
-                end
-                if frameData.spark then
-                    frameData.spark:Hide()
-                end
-                if frameData.shield then
-                    frameData.shield:Hide()
-                end
-                if frameData.icon then
-                    frameData.icon:Hide()
-                end
-
-                -- Reset state
-                state.casting = false;
-                state.isChanneling = false;
-                state.holdTime = 0;
-                state.maxValue = 0;
-                state.currentValue = 0;
-                state.castSucceeded = false;
-                state.graceTime = 0;
-                return;
-            end
-        end
     end
 
     -- Manejar período de gracia para casts exitosos (solo player)
-    if castbarType == "player" and state.castSucceeded and (state.casting or state.isChanneling) then
+    if castbarType == "player" and state.castSucceeded and (state.castingEx or state.channelingEx) then
         -- Forzar barra al 100% para feedback visual
-        if state.isChanneling then
-            state.currentValue = 0;
-        else
-            state.currentValue = state.maxValue;
-        end
-
-        self:SetValue(state.maxValue);
+        self:SetValue(1.0);
         if self.UpdateTextureClipping then
-            self:UpdateTextureClipping(1.0, state.isChanneling);
+            self:UpdateTextureClipping(1.0, state.channelingEx);
         end
-        UpdateCastTimeText(castbarType);
 
         -- Actualizar spark a posición final
         if frameData.spark and frameData.spark:IsShown() then
@@ -1038,31 +969,21 @@ local function UpdateCastbar(castbarType, self, elapsed)
         return;
     end
 
-    -- Manejar tiempo de hold (barra permanece visible después de que termine el cast)
+    -- Manejar tiempo de hold
     if state.holdTime > 0 then
         state.holdTime = state.holdTime - elapsed;
         if state.holdTime <= 0 then
             -- Ocultar todo
             self:Hide();
-            if frameData.background then
-                frameData.background:Hide()
-            end
-            if frameData.textBackground then
-                frameData.textBackground:Hide()
-            end
-            if frameData.flash then
-                frameData.flash:Hide()
-            end
-            if frameData.spark then
-                frameData.spark:Hide()
-            end
-            if frameData.shield then
-                frameData.shield:Hide()
-            end
+            if frameData.background then frameData.background:Hide() end
+            if frameData.textBackground then frameData.textBackground:Hide() end
+            if frameData.flash then frameData.flash:Hide() end
+            if frameData.spark then frameData.spark:Hide() end
+            if frameData.shield then frameData.shield:Hide() end
 
             -- Resetear estados
-            state.casting = false;
-            state.isChanneling = false;
+            state.castingEx = false;
+            state.channelingEx = false;
             if castbarType == "player" then
                 state.castSucceeded = false;
                 state.graceTime = 0;
@@ -1071,65 +992,36 @@ local function UpdateCastbar(castbarType, self, elapsed)
         return;
     end
 
-    -- Usar valores perfectos de Blizzard para casts y channels
-    if state.casting or state.isChanneling then
+    -- ✅ LÓGICA PRINCIPAL COMO RETAILUI: Basada en GetTime()
+    if state.castingEx or state.channelingEx then
+        local currentTime = GetTime();
+        local value = 0;
+        local remainingTime = 0;
         
-        -- No sincronizar con Blizzard durante período de gracia
-        local shouldSync = true;
-        if castbarType == "player" and state.castSucceeded then
-            shouldSync = false;
+        if state.castingEx then
+            -- Para casting: progreso de 0 a 1
+            remainingTime = math.min(currentTime, state.endTime) - state.startTime;
+            value = remainingTime / (state.endTime - state.startTime);
+            value = math.max(0, math.min(1, value));
+        elseif state.channelingEx then
+            -- Para channeling: tiempo restante
+            remainingTime = state.endTime - currentTime;
+            value = remainingTime / (state.endTime - state.startTime);
+            value = math.max(0, math.min(1, value));
         end
 
-         if shouldSync then
-            -- Intentar sincronizar con castbar de Blizzard primero  
-            local syncSucceeded = SyncWithBlizzardCastbar(castbarType, self);
-
-            -- CORRECCIÓN: Eliminar la condición "or castbarType == 'player'"
-            -- para que el jugador use la sincronización y solo use el fallback si esta falla.
-            if not syncSucceeded then
-                -- Fallback a cálculo manual
-                if state.casting and not state.isChanneling then
-                    state.currentValue = state.currentValue + elapsed;
-                    if state.currentValue >= state.maxValue then
-                        state.currentValue = state.maxValue;
-                    end
-                elseif state.isChanneling then
-                    state.currentValue = state.currentValue - elapsed;
-                    if state.currentValue <= 0 then
-                        state.currentValue = 0;
-                    end
-                end
-
-                -- Aplicar valores manuales
-                self:SetValue(state.currentValue);
-                -- CORREGIDO: Calcular progreso correcto para channels vs casting
-                local progress;
-                if state.isChanneling then
-                    -- Para channels: mostrar como progreso de consumo (de 1 a 0)
-                    progress = state.currentValue / state.maxValue;
-                else
-                    -- Para casting: mostrar como progreso de construcción (de 0 a 1)
-                    progress = state.currentValue / state.maxValue;
-                end
-                if self.UpdateTextureClipping then
-                    self:UpdateTextureClipping(progress, state.isChanneling);
-                end
-                UpdateCastTimeText(castbarType);
-            end
+        -- Aplicar valores
+        self:SetValue(value);
+        if self.UpdateTextureClipping then
+            self:UpdateTextureClipping(value, state.channelingEx);
         end
+
+        -- Actualizar texto de tiempo usando remainingTime
+        UpdateCastTimeTextRetailUI(castbarType, remainingTime, state.endTime - state.startTime);
 
         -- Actualizar posición del spark
-        if (state.casting or state.isChanneling) and frameData.spark and frameData.spark:IsShown() then
-            -- CORREGIDO: Usar el mismo progreso que la barra para mantener sincronización
-            local progress;
-            if state.isChanneling then
-                -- Para channels: spark sigue el progreso de la barra (de 1 a 0)
-                progress = state.currentValue / state.maxValue;
-            else
-                -- Para casting: spark va de izquierda a derecha (de 0 a 1)
-                progress = state.currentValue / state.maxValue;
-            end
-            local actualWidth = self:GetWidth() * progress;
+        if frameData.spark and frameData.spark:IsShown() then
+            local actualWidth = self:GetWidth() * value;
             frameData.spark:ClearAllPoints();
             frameData.spark:SetPoint('CENTER', self, 'LEFT', actualWidth, 0);
         end
@@ -1171,8 +1063,7 @@ end
 
 -- Función unificada para manejar inicio de cast
 local function HandleCastStart(castbarType, unit)
-    local name, subText, text, iconTex, startTime, endTime, isTradeSkill, castID, notInterruptible = UnitCastingInfo(
-        unit);
+    local name, subText, text, iconTex, startTime, endTime, isTradeSkill, castID, notInterruptible = UnitCastingInfo(unit);
     if not name then
         return
     end
@@ -1182,8 +1073,9 @@ local function HandleCastStart(castbarType, unit)
     local state = addon.castbarStates[castbarType];
     local frameData = frames[castbarType];
 
-    state.casting = true;
-    state.isChanneling = false;
+    -- ✅ PATRÓN RETAILUI: Establecer flags y tiempos absolutos
+    state.castingEx = true;
+    state.channelingEx = false;
     state.holdTime = 0;
     state.currentSpellName = name;
 
@@ -1193,22 +1085,16 @@ local function HandleCastStart(castbarType, unit)
         state.graceTime = 0;
     end
 
-    -- Parsing de tiempo unificado
+    -- ✅ COMO RETAILUI: Usar GetTime() y establecer tiempos absolutos
+    local currentTime = GetTime();
     local startTimeSeconds, endTimeSeconds, spellDuration = ParseCastTimes(startTime, endTime);
+    
+    state.startTime = currentTime;
+    state.endTime = currentTime + spellDuration;
 
-    -- Ajuste para formatos de tiempo poco razonables
-    if spellDuration > 3600 or spellDuration < 0 then
-        spellDuration = endTime - startTime;
-        if spellDuration > 3600 or spellDuration < 0 then
-            spellDuration = 3.0; -- fallback por defecto
-        end
-    end
-
-    state.currentValue = 0;
-    state.maxValue = spellDuration;
-
-    frameData.castbar:SetMinMaxValues(0, state.maxValue);
-    frameData.castbar:SetValue(state.currentValue);
+    -- Configurar barra para valor 0-1
+    frameData.castbar:SetMinMaxValues(0, 1);
+    frameData.castbar:SetValue(0);
 
     -- Mostrar castbar
     frameData.castbar:Show();
@@ -1216,7 +1102,6 @@ local function HandleCastStart(castbarType, unit)
         frameData.background:Show();
     end
     frameData.spark:Show();
-
     frameData.flash:Hide();
 
     -- Ocultar ticks de canal de hechizos anteriores
@@ -1226,9 +1111,7 @@ local function HandleCastStart(castbarType, unit)
     frameData.castbar:SetStatusBarTexture(TEXTURES.standard);
     frameData.castbar:SetStatusBarColor(1, 0.7, 0, 1);
     ForceStatusBarTextureLayer(frameData.castbar);
-
-    -- CORREGIDO: Llamar UpdateTextureClipping ahora que está arreglado para WoW 3.3.5a
-    frameData.castbar:UpdateTextureClipping(0.0, false); -- Casting normal, empezar vacío
+    frameData.castbar:UpdateTextureClipping(0.0, false);
 
     -- Configurar texto e icono
     SetCastText(castbarType, name);
@@ -1239,7 +1122,7 @@ local function HandleCastStart(castbarType, unit)
     end
 
     if frameData.icon and cfg.showIcon then
-        frameData.icon:SetTexture(nil); -- Limpiar textura primero
+        frameData.icon:SetTexture(nil);
         local improvedIcon = GetSpellIconImproved(name, iconTex, castID);
         frameData.icon:SetTexture(improvedIcon);
         SetIconVisibility(castbarType, true);
@@ -1247,7 +1130,6 @@ local function HandleCastStart(castbarType, unit)
         SetIconVisibility(castbarType, false);
     end
 
-    -- CORREGIDO: Mostrar frame de texto para player también
     if frameData.textBackground then
         frameData.textBackground:Show();
         frameData.textBackground:ClearAllPoints();
@@ -1255,11 +1137,8 @@ local function HandleCastStart(castbarType, unit)
         frameData.textBackground:SetPoint("TOP", frameData.castbar, "BOTTOM", 0, castbarType == "player" and 6 or 8);
     end
 
-    UpdateCastTimeText(castbarType);
-
-    -- Manejar escudo para hechizos no interrumpibles (solo target y focus)
+    -- Manejar escudo para hechizos no interrumpibles
     if castbarType ~= "player" and frameData.shield and cfg.showIcon then
-        -- Ocultar escudo para crafting incluso si notInterruptible
         if notInterruptible == true and not (isTradeSkill == true or isTradeSkill == 1) then
             frameData.shield:Show();
         else
@@ -1268,7 +1147,7 @@ local function HandleCastStart(castbarType, unit)
     end
 end
 
--- Función unificada para manejar inicio de channel
+-- Función unificada para manejar inicio de channel COMO RETAILUI
 local function HandleChannelStart(castbarType, unit)
     local name, subText, text, iconTex, startTime, endTime, isTradeSkill, notInterruptible = UnitChannelInfo(unit);
     if not name then
@@ -1277,11 +1156,12 @@ local function HandleChannelStart(castbarType, unit)
 
     RefreshCastbar(castbarType)
 
-     local state = addon.castbarStates[castbarType];
+    local state = addon.castbarStates[castbarType];
     local frameData = frames[castbarType];
 
-    state.casting = true;
-    state.isChanneling = true;
+    -- ✅ PATRÓN RETAILUI: Establecer flags y tiempos absolutos
+    state.castingEx = true;  -- RetailUI usa castingEx para ambos
+    state.channelingEx = true;
     state.holdTime = 0;
     state.currentSpellName = name;
 
@@ -1291,15 +1171,16 @@ local function HandleChannelStart(castbarType, unit)
         state.graceTime = 0;
     end
 
-    -- CORREGIDO: Usar parsing correcto para channeling como el original
+    -- ✅ COMO RETAILUI: Usar GetTime() y establecer tiempos absolutos
+    local currentTime = GetTime();
     local startTimeSeconds, endTimeSeconds, spellDuration = ParseCastTimes(startTime, endTime);
+    
+    state.startTime = currentTime;
+    state.endTime = currentTime + spellDuration;
 
-    -- CRITICAL FIX: Para channeling empezar desde max y contar hacia abajo
-    state.maxValue = spellDuration;
-    state.currentValue = spellDuration; -- Empezar desde el máximo para channeling
-
-    frameData.castbar:SetMinMaxValues(0, state.maxValue);
-    frameData.castbar:SetValue(state.currentValue);
+    -- Configurar barra para valor 0-1
+    frameData.castbar:SetMinMaxValues(0, 1);
+    frameData.castbar:SetValue(1); -- Channeling empieza lleno
 
     -- Mostrar castbar
     frameData.castbar:Show();
@@ -1313,14 +1194,12 @@ local function HandleChannelStart(castbarType, unit)
     frameData.castbar:SetStatusBarTexture(TEXTURES.channel);
     ForceStatusBarTextureLayer(frameData.castbar);
 
-    -- CORREGIDO: Color correcto para player channeling
     if castbarType == "player" then
-        frameData.castbar:SetStatusBarColor(0, 1, 0, 1); -- Verde para player
+        frameData.castbar:SetStatusBarColor(0, 1, 0, 1);
     else
-        frameData.castbar:SetStatusBarColor(1, 1, 1, 1); -- Blanco para target/focus
+        frameData.castbar:SetStatusBarColor(1, 1, 1, 1);
     end
-    -- CORREGIDO: Llamar UpdateTextureClipping ahora que está arreglado para WoW 3.3.5a
-    frameData.castbar:UpdateTextureClipping(1.0, true); -- Channeling, empezar lleno
+    frameData.castbar:UpdateTextureClipping(1.0, true);
 
     -- Configurar texto e icono
     SetCastText(castbarType, name);
@@ -1340,7 +1219,6 @@ local function HandleChannelStart(castbarType, unit)
         SetIconVisibility(castbarType, false);
     end
 
-    -- CORREGIDO: Mostrar frame de texto para player también
     if frameData.textBackground then
         frameData.textBackground:Show();
         frameData.textBackground:ClearAllPoints();
@@ -1348,9 +1226,7 @@ local function HandleChannelStart(castbarType, unit)
         frameData.textBackground:SetPoint("TOP", frameData.castbar, "BOTTOM", 0, castbarType == "player" and 6 or 8);
     end
 
-    UpdateCastTimeText(castbarType);
-
-    -- Mostrar ticks de canal si están disponibles
+    -- Mostrar ticks de canal
     UpdateChannelTicks(frameData.castbar, frameData.ticks, name, 15);
 
     -- Manejar escudo para channels no interrumpibles
@@ -1381,15 +1257,14 @@ local function HandleCastingEvents(castbarType, event, unit, ...)
         return;
     end
 
-    -- Forzar ocultar castbar de Blizzard en cualquier evento de casting
+    -- Forzar ocultar castbar de Blizzard
     HideBlizzardCastbar(castbarType);
 
     if event == 'UNIT_SPELLCAST_START' then
         HandleCastStart(castbarType, unitToCheck);
     elseif event == 'UNIT_SPELLCAST_SUCCEEDED' then
-        -- ✅ SUCCEEDED garantiza éxito - marcar como exitoso
         local state = addon.castbarStates[castbarType];
-        if state.casting or state.isChanneling then
+        if state.castingEx or state.channelingEx then
             if castbarType == "player" then
                 state.castSucceeded = true;
             else
@@ -1399,30 +1274,28 @@ local function HandleCastingEvents(castbarType, event, unit, ...)
     elseif event == 'UNIT_SPELLCAST_CHANNEL_START' then
         HandleChannelStart(castbarType, unitToCheck);
     elseif event == 'UNIT_SPELLCAST_STOP' then
-        -- ✅ CORRECCIÓN: STOP nunca es interrupción - siempre completar normalmente
         HandleCastStop(castbarType, event, false);
     elseif event == 'UNIT_SPELLCAST_CHANNEL_STOP' then
-        -- ✅ CORRECCIÓN: CHANNEL_STOP nunca es interrupción real
         HandleCastStop(castbarType, event, false);
     elseif event == 'UNIT_SPELLCAST_FAILED' then
-        -- ✅ FAILED es fracaso real - pero NO mostrar "Interrupted"
         local state = addon.castbarStates[castbarType];
         local frameData = frames[castbarType];
         
         frameData.castbar:SetStatusBarTexture(TEXTURES.interrupted);
         frameData.castbar:SetStatusBarColor(1, 0, 0, 1);
         
-        state.casting = false;
-        state.isChanneling = false;
+        state.castingEx = false;
+        state.channelingEx = false;
         state.holdTime = cfg.holdTime or 0.3;
     elseif event == 'UNIT_SPELLCAST_INTERRUPTED' then
-        -- ✅ SOLUCIÓN SIMPLE: Solo verificar si queda poco tiempo
         local state = addon.castbarStates[castbarType];
         local showInterrupted = true;
         
-        if state.isChanneling and state.currentValue and state.maxValue then
-            -- Para channels: si queda menos del 5% del tiempo total, es natural
-            local progressRemaining = state.currentValue / state.maxValue;
+        if state.channelingEx then
+            local currentTime = GetTime();
+            local remainingTime = state.endTime - currentTime;
+            local totalTime = state.endTime - state.startTime;
+            local progressRemaining = remainingTime / totalTime;
             if progressRemaining < 0.05 then
                 showInterrupted = false;
             end

@@ -94,10 +94,11 @@ local defaults = {
                 font = {"Fonts\\ARIALN.TTF", 12, "OUTLINE"}
             },
             cooldown = {
-                show = false,
-                color = {.67, .80, .93, 1},
+                show = true,
+                color = {1, 1, 1, 1},
                 min_duration = 3,
-                font = {"Fonts\\ARIALN.TTF", 14, "OUTLINE"},
+                font = {"Fonts\\ARIALN.TTF", 16, "OUTLINE"},
+                font_size = 16,
                 position = {'CENTER', 0, 1}
             },
             border_color = {1, 1, 1, 1}
@@ -110,7 +111,7 @@ local defaults = {
             leftbar_offset = 90, -- Offset when bottom left is shown (for pretty_actionbar)
             rightbar_offset = 40, -- Offset when bottom right is shown (for pretty_actionbar)
             stance = {
-                x_position = 82,
+                x_position = -80,
                 y_offset = -44 -- Additional Y offset for fine-tuning position
             },
             pet = {
@@ -130,7 +131,7 @@ local defaults = {
 
         -- MINIMAP SETTINGS
         minimap = {
-            scale = 1,
+            scale = 0.9,
             border_alpha = 1,
             tracking_icons = true,
             zoom_buttons = true,
@@ -141,12 +142,12 @@ local defaults = {
             zonetext_font_size = 12,
             mail_icon_x = -4,
             mail_icon_y = -5,
-            addon_button_skin = true,      -- ✅ NUEVO: Aplicar skin personalizado a iconos de addons
-            addon_button_fade = false,     -- ✅ NUEVO: Fade effect para iconos de addons
+            addon_button_skin = true,      
+            addon_button_fade = false,     
             point = "TOPRIGHT",
             relativePoint = "TOPRIGHT",
-            x = -7,
-            y = 0
+            x = 14,
+            y = 14
         },
 
         -- ✅ BUFFS SETTINGS (NUEVO)

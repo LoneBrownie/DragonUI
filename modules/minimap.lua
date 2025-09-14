@@ -127,7 +127,7 @@ local function ReplaceBlizzardFrame(frame)
     local minimapMailFrame = MiniMapMailFrame
     minimapMailFrame:ClearAllPoints()
     minimapMailFrame:SetPoint("TOP", minimapTracking, "BOTTOM", 0, -3)
-    minimapMailFrame:SetSize(22, 16)
+    minimapMailFrame:SetSize(20, 14)
     minimapMailFrame:SetHitRectInsets(0, 0, 0, 0)
 
     local minimapMailIconTexture = MiniMapMailIcon
@@ -865,13 +865,31 @@ function MinimapModule:ApplyAllSettings()
         end
     end
 
-    -- ✅ APLICAR CLOCK VISIBILITY
+    -- ✅ APLICAR CLOCK VISIBILITY Y AJUSTAR ZONA TEXT
     if settings.clock ~= nil then
         if TimeManagerClockButton then
             if settings.clock then
                 TimeManagerClockButton:Show()
+                -- Clock visible: zona text alineado a la izquierda (posición original)
+                if MinimapZoneTextButton then
+                    MinimapZoneTextButton:ClearAllPoints()
+                    MinimapZoneTextButton:SetPoint("LEFT", MinimapBorderTop, "LEFT", 7, 1)
+                    MinimapZoneTextButton:SetWidth(108)
+                end
+                if MinimapZoneText then
+                    MinimapZoneText:SetJustifyH("LEFT")
+                end
             else
                 TimeManagerClockButton:Hide()
+                -- Clock oculto: centrar zona text en todo el border
+                if MinimapZoneTextButton then
+                    MinimapZoneTextButton:ClearAllPoints()
+                    MinimapZoneTextButton:SetPoint("CENTER", MinimapBorderTop, "CENTER", 0, 1)
+                    MinimapZoneTextButton:SetWidth(150) -- Más ancho para texto centrado
+                end
+                if MinimapZoneText then
+                    MinimapZoneText:SetJustifyH("CENTER")
+                end
             end
         end
     end

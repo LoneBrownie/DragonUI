@@ -16,18 +16,23 @@ function addon.cooldownMixin:update_cooldown(elapsed)
     
 	if remaining > 0 then
         local db = addon.db.profile.buttons.cooldown
-        if remaining <= 2 then
+        if remaining <= 5 then
+            -- Red alert for critical time (hardcoded)
             text:SetTextColor(1, 0, .2)
             text:SetFormattedText('%.1f',remaining)
         elseif remaining <= 60 then
-            text:SetTextColor(unpack(db.color))
+            -- Orange/yellow alert for short time (hardcoded) - show seconds
+            text:SetTextColor(1, 1, 0)
             text:SetText(ceil(remaining))
         elseif remaining <= 3600 then
+            -- 1-60 minutes: Use user color and show minutes
             text:SetText(ceil(remaining/60)..'m')
-            text:SetTextColor(1, 1, 1)
+            text:SetTextColor(unpack(db.color))
         else
+            -- > 1 hour: Use user color but dimmed
             text:SetText(ceil(remaining/3600)..'h')
-            text:SetTextColor(.6, .6, .6)
+            local r, g, b, a = unpack(db.color)
+            text:SetTextColor(r * 0.7, g * 0.7, b * 0.7, a)
         end
     else
         self.remain = nil
@@ -52,7 +57,11 @@ function addon.cooldownMixin:set_cooldown(start, duration)
 		self.remain = start + duration
 
 		local text = self.text or addon.cooldownMixin.create_string(self)
-		text:SetFont(unpack(db.font))
+		-- Use font_size if available, otherwise fallback to font array
+		local fontPath = db.font[1]
+		local fontSize = db.font_size or db.font[2]
+		local fontFlags = db.font[3]
+		text:SetFont(fontPath, fontSize, fontFlags)
 		text:SetPoint(unpack(db.position))
 		text:Show()
 	else
@@ -65,14 +74,56 @@ end
 
 function addon.RefreshCooldowns()
 	if not addon.buttons_iterator then return end
+	local db = addon.db.profile.buttons.cooldown
+	if not db then return end
+	
+	for button in addon.buttons_iterator() do
+		if button then
+			local cooldown = _G[button:GetName()..'Cooldown']
+			if cooldown then
+				-- Update existing text font settings
+				if cooldown.text then
+					local fontPath = db.font[1]
+					local fontSize = db.font_size or db.font[2]
+					local fontFlags = db.font[3]
+					cooldown.text:SetFont(fontPath, fontSize, fontFlags)
+					
+					-- If cooldowns are disabled, hide the text
+					if not db.show then
+						cooldown.text:Hide()
+					end
+				end
+				
+				-- Refresh active cooldowns or force check if cooldowns are enabled
+				if cooldown.GetCooldown then
+					local start, duration = cooldown:GetCooldown()
+					if start and start > 0 then
+						-- Always reapply cooldown to update settings
+						addon.cooldownMixin.set_cooldown(cooldown, start, duration)
+					elseif db.show and cooldown.text then
+						-- If cooldowns are enabled but no active cooldown, ensure text is hidden
+						cooldown.text:Hide()
+						cooldown.remain = nil
+					end
+				end
+			end
+		end
+	end
+end
+
+-- Force update all cooldowns (useful when enabling cooldowns for the first time)
+function addon.ForceRefreshCooldowns()
+	if not addon.buttons_iterator then return end
+	local db = addon.db.profile.buttons.cooldown
+	if not db or not db.show then return end
+	
 	for button in addon.buttons_iterator() do
 		if button then
 			local cooldown = _G[button:GetName()..'Cooldown']
 			if cooldown and cooldown.GetCooldown then
 				local start, duration = cooldown:GetCooldown()
-				if start and start > 0 then
-					addon.cooldownMixin.set_cooldown(cooldown, start, duration)
-				end
+				-- Force check even if start is 0 to ensure proper initialization
+				addon.cooldownMixin.set_cooldown(cooldown, start, duration)
 			end
 		end
 	end

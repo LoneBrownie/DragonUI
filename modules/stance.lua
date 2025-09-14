@@ -43,6 +43,11 @@ local anchor = CreateFrame('Frame', 'pUiStanceHolder', pUiMainBar)
 anchor:SetPoint('TOPLEFT', UIParent, 'BOTTOM', 0, 105) -- Fallback position slightly above pet bar
 anchor:SetSize(37, 37)
 
+-- Initialization tracking (like RetailUI's petBarInitialized)
+local stanceBarInitialized = false;
+local initializationAttempts = 0;
+local maxInitializationAttempts = 5;
+
 -- Queue system to prevent multiple simultaneous updates
 local updateQueue = {};
 local isUpdating = false;
@@ -80,9 +85,31 @@ end
 -- method update position using relative anchoring
 function anchor:stancebar_update()
 	if not InCombatLockdown() and not UnitAffectingCombat('player') then
+		-- Validate config exists before proceeding
+		if not config or not config.additional or not config.additional.stance then
+			-- Schedule retry if config isn't ready yet
+			local retryFrame = CreateFrame("Frame");
+			retryFrame:SetScript("OnUpdate", function(self)
+				local elapsed = (self.elapsed or 0) + arg1;
+				self.elapsed = elapsed;
+				if elapsed > 1 then -- Wait 1 second before retry
+					self:SetScript("OnUpdate", nil);
+					if config and config.additional and config.additional.stance then
+						QueueUpdate("config_retry");
+					end
+				end
+			end);
+			return;
+		end
+		
 		-- Read config values dynamically each time
 		local offsetX = config.additional.stance.x_position;
 		local offsetY = config.additional.stance.y_offset or 0;  -- Additional Y offset for fine-tuning
+		
+		-- Validate frame still exists and is properly set up
+		if not self or not self.SetPoint then
+			return;
+		end
 		
 		-- Check if Pet Bar exists and is visible first (stance should be above pet bar)
 		local petBarHolder = _G["pUiPetBarHolder"];
@@ -155,14 +182,32 @@ function anchor:stancebar_update()
 end
 
 event:RegisterEvents(function()
-	anchor:stancebar_update();
+	QueueUpdate("initial_load");
 end,
 	'PLAYER_LOGIN','ADDON_LOADED'
+);
+
+-- Add more events like RetailUI for better stance bar tracking
+event:RegisterEvents(function()
+	if not stanceBarInitialized then
+		QueueUpdate("shapeshift_update");
+		stanceBarInitialized = true;
+	else
+		QueueUpdate("shapeshift_change");
+	end
+end,
+	'UPDATE_SHAPESHIFT_FORMS', 'UPDATE_SHAPESHIFT_FORM', 'PLAYER_ENTERING_WORLD'
 );
 
 -- Force stance bar initialization with single controlled initialization
 local function ForceStanceBarInitialization()
 	if not InCombatLockdown() and not UnitAffectingCombat('player') then
+		initializationAttempts = initializationAttempts + 1;
+		
+		if initializationAttempts > maxInitializationAttempts then
+			return; -- Prevent infinite loops
+		end
+		
 		if config and config.additional then
 			-- Force button positioning
 			if stancebutton_position then
@@ -312,6 +357,24 @@ stancebar:RegisterEvent('UPDATE_SHAPESHIFT_FORM');
 stancebar:RegisterEvent('ACTIONBAR_PAGE_CHANGED');
 stancebar:SetScript('OnEvent', OnEvent);
 
+-- Hook ShapeshiftBar_Update like RetailUI for better synchronization
+if ShapeshiftBar_Update then
+	hooksecurefunc('ShapeshiftBar_Update', function()
+		if not InCombatLockdown() and not UnitAffectingCombat('player') then
+			QueueUpdate("shapeshift_bar_update");
+		end
+	end);
+end
+
+-- Hook other Blizzard functions that might affect stance bar positioning
+if ActionBar_UpdateState then
+	hooksecurefunc('ActionBar_UpdateState', function()
+		if not InCombatLockdown() and not UnitAffectingCombat('player') then
+			QueueUpdate("actionbar_state_update");
+		end
+	end);
+end
+
 -- Single controlled initialization when player enters world
 event:RegisterEvents(function()
 	-- Force initialization after a short delay when player enters world
@@ -357,4 +420,35 @@ function addon.RefreshStance()
 	if anchor then
 		anchor:stancebar_update();
 	end
+end
+
+-- Debug function for troubleshooting stance bar issues
+function addon.DebugStanceBar()
+	local info = {
+		stanceBarInitialized = stanceBarInitialized,
+		initializationAttempts = initializationAttempts,
+		updateQueueLength = #updateQueue,
+		isUpdating = isUpdating,
+		inCombat = InCombatLockdown(),
+		unitInCombat = UnitAffectingCombat('player'),
+		configExists = (config and config.additional and config.additional.stance) and true or false,
+		anchorExists = anchor and true or false,
+		stanceBarExists = _G.pUiStanceBar and true or false,
+		numShapeshiftForms = GetNumShapeshiftForms(),
+		petBarVisible = _G.pUiPetBarHolder and _G.pUiPetBarHolder:IsShown() or false,
+		leftBarVisible = MultiBarBottomLeft:IsShown(),
+		rightBarVisible = MultiBarBottomRight:IsShown()
+	};
+	
+	print("=== DragonUI Stance Bar Debug Info ===");
+	for k, v in pairs(info) do
+		print(k .. ": " .. tostring(v));
+	end
+	
+	if anchor then
+		local point, relativeTo, relativePoint, x, y = anchor:GetPoint();
+		print("Current anchor point: " .. (point or "none") .. " to " .. (relativeTo and relativeTo:GetName() or "nil") .. " at " .. (relativePoint or "none") .. " (" .. (x or 0) .. ", " .. (y or 0) .. ")");
+	end
+	
+	return info;
 end

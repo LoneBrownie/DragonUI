@@ -398,7 +398,11 @@ function addon:CreateOptionsTable()
                                         end,
                                         set = function(info, value)
                                             addon.db.profile.buttons.cooldown.show = value
-                                            if addon.RefreshCooldowns then
+                                            if value and addon.ForceRefreshCooldowns then
+                                                -- Use force refresh when enabling cooldowns
+                                                addon.ForceRefreshCooldowns()
+                                            elseif addon.RefreshCooldowns then
+                                                -- Use normal refresh when disabling
                                                 addon.RefreshCooldowns()
                                             end
                                         end,
@@ -438,6 +442,24 @@ function addon:CreateOptionsTable()
                                         end,
                                         hasAlpha = true,
                                         order = 3
+                                    },
+                                    font_size = {
+                                        type = 'range',
+                                        name = "Font Size",
+                                        desc = "Size of cooldown text",
+                                        min = 8,
+                                        max = 24,
+                                        step = 1,
+                                        get = function()
+                                            return addon.db.profile.buttons.cooldown.font_size
+                                        end,
+                                        set = function(info, value)
+                                            addon.db.profile.buttons.cooldown.font_size = value
+                                            if addon.RefreshCooldowns then
+                                                addon.RefreshCooldowns()
+                                            end
+                                        end,
+                                        order = 4
                                     }
                                 }
                             },

@@ -229,41 +229,74 @@ end
 
 local function petbutton_position()
 	if InCombatLockdown() then return end
+	
+	-- Ensure pet bar frame exists
+	if not pUiPetBar then
+		print("DragonUI: Pet bar frame not available")
+		return
+	end
+	
 	-- Read config values dynamically
 	local btnsize = config.additional.size;
 	local space = config.additional.spacing;
 	
+	-- Initialize all pet action buttons
 	local button
-	for index=1, 10 do
+	for index=1, NUM_PET_ACTION_SLOTS do
 		button = _G['PetActionButton'..index];
-		button:ClearAllPoints();
-		button:SetParent(pUiPetBar);
-		button:SetSize(btnsize, btnsize);
-		if index == 1 then
-			button:SetPoint('BOTTOMLEFT', 0, 0);
+		if button then
+			button:ClearAllPoints();
+			button:SetParent(pUiPetBar);
+			button:SetSize(btnsize, btnsize);
+			if index == 1 then
+				button:SetPoint('BOTTOMLEFT', 0, 0);
+			else
+				local prevButton = _G['PetActionButton'..(index-1)];
+				if prevButton then
+					button:SetPoint('LEFT', prevButton, 'RIGHT', space, 0);
+				end
+			end
+			button:Show();
+			petbar:SetAttribute('addchild', button);
 		else
-			button:SetPoint('LEFT', _G['PetActionButton'..index-1], 'RIGHT', space, 0);
+			print("DragonUI: PetActionButton"..index.." not found")
 		end
-		button:Show();
-		petbar:SetAttribute('addchild', button);
 	end
-	-- FIXED: Don't force showgrid = 1, let our grid configuration control this
-	-- PetActionBarFrame.showgrid = 1;
+	
+	-- Set up visibility driver
 	RegisterStateDriver(petbar, 'visibility', '[pet,novehicleui,nobonusbar:5] show; hide');
-	hooksecurefunc('PetActionBar_Update', petbutton_updatestate);
+	
+	-- Hook the update function only once
+	if not petbar.updateHooked then
+		hooksecurefunc('PetActionBar_Update', petbutton_updatestate);
+		petbar.updateHooked = true
+	end
 end
 
 local function OnEvent(self,event,...)
 	-- if not UnitIsVisible('pet') then return; end
 	local arg1 = ...;
 	if event == 'PLAYER_LOGIN' then
-		petbutton_position();
+		if not petBarInitialized then
+			petbutton_position();
+			petBarInitialized = true
+		end
 		-- FIXED: Apply grid configuration after initial positioning
 		if addon.RefreshPetbar then
 			addon.RefreshPetbar();
 		end
-	elseif event == 'PET_BAR_UPDATE'
-	or event == 'UNIT_PET' and arg1 == 'player'
+	elseif event == 'PET_BAR_UPDATE' then
+		-- RetailUI-style petbar initialization on first PET_BAR_UPDATE
+		if not petBarInitialized then
+			if config and config.debug then
+				print("DragonUI: Initializing petbar on PET_BAR_UPDATE")
+			end
+			petbutton_position();
+			petBarInitialized = true
+		end
+		-- Always update button states when pet bar updates
+		petbutton_updatestate();
+	elseif event == 'UNIT_PET' and arg1 == 'player'
 	or event == 'PLAYER_CONTROL_LOST'
 	or event == 'PLAYER_CONTROL_GAINED'
 	or event == 'PLAYER_FARSIGHT_FOCUS_CHANGED'
@@ -290,6 +323,9 @@ petbar:RegisterEvent('UNIT_FLAGS');
 petbar:RegisterEvent('UNIT_PET');
 petbar:SetScript('OnEvent',OnEvent);
 
+-- Initialization tracking similar to RetailUI
+local petBarInitialized = false
+
 -- Additional late initialization when player is fully loaded (moved here so petbutton_position is defined)
 event:RegisterEvents(function()
 	-- Force initialization after a short delay when player enters world
@@ -300,8 +336,9 @@ event:RegisterEvents(function()
 		if elapsed >= 1.0 then -- Wait 1 second after entering world
 			self:SetScript("OnUpdate", nil)
 			-- Force button positioning explicitly (now petbutton_position is defined)
-			if _G.pUiPetBar then
+			if _G.pUiPetBar and not petBarInitialized then
 				petbutton_position()
+				petBarInitialized = true
 			end
 			ForcePetBarInitialization()
 			DelayedPetInit() -- Start the delayed retry system
@@ -323,11 +360,15 @@ function addon.RefreshPetbar()
 	for i = 1, NUM_PET_ACTION_SLOTS do
 		local button = _G["PetActionButton"..i];
 		if button then
+			button:ClearAllPoints()
 			button:SetSize(btnsize, btnsize);
 			if i == 1 then
 				button:SetPoint('BOTTOMLEFT', 0, 0);
 			else
-				button:SetPoint('LEFT', _G["PetActionButton"..(i-1)], 'RIGHT', space, 0);
+				local prevButton = _G["PetActionButton"..(i-1)]
+				if prevButton then
+					button:SetPoint('LEFT', prevButton, 'RIGHT', space, 0);
+				end
 			end
 		end
 	end
@@ -365,4 +406,28 @@ function addon.RefreshPetbar()
 	if anchor then
 		anchor:petbar_update();
 	end
+end
+
+-- Reset petbar initialization (for debugging or force re-init)
+function addon.ResetPetbar()
+	print("DragonUI: Resetting petbar initialization")
+	petBarInitialized = false
+	if not InCombatLockdown() and pUiPetBar then
+		petbutton_position()
+		petBarInitialized = true
+		print("DragonUI: Petbar reinitialized successfully")
+	else
+		print("DragonUI: Cannot reset petbar - in combat or frame missing")
+	end
+end
+
+-- Debug function to check petbar status
+function addon.GetPetbarStatus()
+	return {
+		initialized = petBarInitialized,
+		frameExists = pUiPetBar ~= nil,
+		inCombat = InCombatLockdown(),
+		hasPet = UnitExists("pet"),
+		updateHooked = petbar.updateHooked or false
+	}
 end
