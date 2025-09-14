@@ -187,14 +187,6 @@ function addon:RefreshConfig()
 		if not success then table.insert(failed, "RefreshMinimapTime") end
 	end
 	
-	if addon.RefreshCastbar then 
-		-- Delay castbar refresh to ensure Blizzard UI is fully loaded
-		addon.core:ScheduleTimer(function()
-			local success, err = pcall(addon.RefreshCastbar);
-			if not success then table.insert(failed, "RefreshCastbar") end
-		end, 1.5);
-	end
-	
 	-- If some configurations failed, retry them after 2 seconds
 	if #failed > 0 then
 		addon.core:ScheduleTimer(function()
