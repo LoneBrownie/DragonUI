@@ -115,6 +115,75 @@ local function CheckSettingsExists(moduleInstance, widgets)
 end
 
 -- ===================================================================
+-- TEXTURE CLIPPING SYSTEM (Using textures from castbar_refactoredBAK)
+-- ===================================================================
+
+-- Rutas de texturas optimizadas (mismo sistema que castbar_refactoredBAK)
+local TEXTURE_PATH = "Interface\\AddOns\\DragonUI\\Textures\\CastbarOriginal\\";
+local TEXTURES = {
+    atlas = TEXTURE_PATH .. "uicastingbar2x",
+    atlasSmall = TEXTURE_PATH .. "uicastingbar",
+    standard = TEXTURE_PATH .. "CastingBarStandard2",
+    channel = TEXTURE_PATH .. "CastingBarChannel",
+    interrupted = TEXTURE_PATH .. "CastingBarInterrupted2",
+    spark = TEXTURE_PATH .. "CastingBarSpark"
+};
+
+-- Coordenadas UV unificadas (mismo sistema que castbar_refactoredBAK)
+local UV_COORDS = {
+    background = {0.0009765625, 0.4130859375, 0.3671875, 0.41796875},
+    border = {0.412109375, 0.828125, 0.001953125, 0.060546875},
+    flash = {0.0009765625, 0.4169921875, 0.2421875, 0.30078125},
+    spark = {0.076171875, 0.0859375, 0.796875, 0.9140625},
+    borderShield = {0.000976562, 0.0742188, 0.796875, 0.970703},
+    textBorder = {0.001953125, 0.412109375, 0.00390625, 0.11328125}
+};
+
+-- Función para forzar la capa correcta de StatusBar texture
+local function ForceStatusBarTextureLayer(statusBar)
+    if not statusBar then
+        return
+    end
+    local texture = statusBar:GetStatusBarTexture();
+    if texture and texture.SetDrawLayer then
+        texture:SetDrawLayer('BORDER', 0);
+    end
+end
+
+-- Sistema de recorte dinámico usando las texturas del castbar_refactoredBAK
+local function CreateTextureClippingSystem(statusBar)
+    statusBar.UpdateTextureClipping = function(self, progress, isChanneling)
+        local currentTexture = self:GetStatusBarTexture();
+        if not currentTexture then
+            return
+        end
+
+        -- Asegurar que la textura llene todo el frame
+        currentTexture:ClearAllPoints();
+        currentTexture:SetPoint('TOPLEFT', self, 'TOPLEFT', 0, 0);
+        currentTexture:SetPoint('BOTTOMRIGHT', self, 'BOTTOMRIGHT', 0, 0);
+
+        -- CRITICAL: Forzar que la StatusBar texture esté en la capa correcta
+        if currentTexture.SetDrawLayer then
+            currentTexture:SetDrawLayer('BORDER', 0);
+        end
+
+        -- Aplicar recorte dinámico profesional usando coordenadas UV
+        local clampedProgress = math.max(0.001, math.min(1, progress)); -- Evitar valores extremos
+
+        -- Aplicar clipping basado en el progreso usando el mismo método que castbar_refactoredBAK
+        if isChanneling then
+            -- Para channeling: mostrar como barra que se vacía de derecha a izquierda
+            -- progress va de 1.0 a 0.0, mostramos desde izquierda hasta esa posición
+            currentTexture:SetTexCoord(0, clampedProgress, 0, 1);
+        else
+            -- Para casting: recorte de izquierda a derecha (empezar vacío, llenarse)
+            currentTexture:SetTexCoord(0, clampedProgress, 0, 1);
+        end
+    end;
+end
+
+-- ===================================================================
 -- CASTBAR MODULE (Keeping original architecture intact)
 -- ===================================================================
 
@@ -143,21 +212,26 @@ local function ReplaceBlizzardCastingBarFrame(castingBarFrame, attachTo)
     statusBarTexture:SetAllPoints(statusBar)
     statusBarTexture:SetDrawLayer('BORDER')
 
+    -- Aplicar sistema de clipping de texturas
+    CreateTextureClippingSystem(statusBar);
+
     local borderTexture = _G[statusBar:GetName() .. "Border"]
     borderTexture:SetAllPoints(statusBar)
     borderTexture:SetPoint("TOPLEFT", -3, 2)
     borderTexture:SetPoint("BOTTOMRIGHT", 3, -2)
-    SetAtlasTexture(borderTexture, 'CastingBar-Border')
+    borderTexture:SetTexture(TEXTURES.atlas)
+    borderTexture:SetTexCoord(unpack(UV_COORDS.border))
 
     for _, region in pairs { statusBar:GetRegions() } do
         if region:GetObjectType() == 'Texture' and region:GetDrawLayer() == 'BACKGROUND' then
             region:SetAllPoints(borderTexture)
-            SetAtlasTexture(region, 'CastingBar-Background')
+            region:SetTexture(TEXTURES.atlas)
+            region:SetTexCoord(unpack(UV_COORDS.background))
         end
     end
 
     local sparkTexture = _G[statusBar:GetName() .. "Spark"]
-    SetAtlasTexture(sparkTexture, 'CastingBar-Spark')
+    sparkTexture:SetTexture(TEXTURES.spark)
     sparkTexture:SetSize(4, statusBar:GetHeight() * 1.25)
 
     local castingNameText = _G[statusBar:GetName() .. "Text"]
@@ -172,7 +246,8 @@ local function ReplaceBlizzardCastingBarFrame(castingBarFrame, attachTo)
     local backgroundTexture = statusBar.backgroundInfo.background
     backgroundTexture:SetAllPoints(statusBar)
     backgroundTexture:SetPoint("BOTTOMRIGHT", 1, -16)
-    SetAtlasTexture(backgroundTexture, 'CastingBar-MainBackground')
+    backgroundTexture:SetTexture(TEXTURES.atlas)
+    backgroundTexture:SetTexCoord(unpack(UV_COORDS.background))
 
     local iconTexture = _G[statusBar:GetName() .. "Icon"]
     iconTexture:ClearAllPoints()
@@ -190,12 +265,14 @@ local function ReplaceBlizzardCastingBarFrame(castingBarFrame, attachTo)
     local borderShieldTexture = _G[statusBar:GetName() .. 'BorderShield']
     borderShieldTexture:ClearAllPoints()
     borderShieldTexture:SetPoint("CENTER", _G[statusBar:GetName() .. 'Icon'], "CENTER", 0, 0)
-    SetAtlasTexture(borderShieldTexture, 'CastingBar-BorderShield')
+    borderShieldTexture:SetTexture(TEXTURES.atlas)
+    borderShieldTexture:SetTexCoord(unpack(UV_COORDS.borderShield))
     borderShieldTexture:SetDrawLayer("BACKGROUND")
     borderShieldTexture:SetSize(borderShieldTexture:GetWidth() / 2.5, borderShieldTexture:GetHeight() / 2.5)
 
     statusBar.ShowTest = function(self)
-        SetAtlasTexture(self:GetStatusBarTexture(), 'CastingBar-StatusBar-Casting')
+        self:GetStatusBarTexture():SetTexture(TEXTURES.standard)
+        self:GetStatusBarTexture():SetTexCoord(0, 1, 0, 1) -- Coordenadas UV completas
         self:GetStatusBarTexture():SetVertexColor(1, 1, 1, 1)
         self:SetValue(0.5)
 
@@ -212,7 +289,7 @@ local function ReplaceBlizzardCastingBarFrame(castingBarFrame, attachTo)
     end
 end
 
--- Custom OnUpdate handler for casting bars
+-- Custom OnUpdate handler for casting bars with texture clipping
 local function CastingBarFrame_OnUpdate(self, elapsed)
     local currentTime, value, remainingTime = GetTime(), 0, 0
     if self.channelingEx or self.castingEx then
@@ -225,6 +302,11 @@ local function CastingBarFrame_OnUpdate(self, elapsed)
         end
 
         self:SetValue(value)
+
+        -- Aplicar sistema de clipping si está disponible
+        if self.UpdateTextureClipping then
+            self:UpdateTextureClipping(value, self.channelingEx);
+        end
 
         self.castingTime:SetText(string.format('%.1f/%.2f', abs(remainingTime),
             self.endTime - self.startTime))
@@ -393,11 +475,15 @@ function CastbarModule:UNIT_SPELLCAST_START(eventName, unit)
     if eventName == 'UNIT_SPELLCAST_START' then
         spell, rank, displayName, icon, startTime, endTime = UnitCastingInfo(unit)
         statusBar.castingEx = true
-        SetAtlasTexture(statusBar:GetStatusBarTexture(), 'CastingBar-StatusBar-Casting')
+        -- Establecer textura directa para casting
+        statusBar:GetStatusBarTexture():SetTexture(TEXTURES.standard)
+        statusBar:GetStatusBarTexture():SetTexCoord(0, 1, 0, 1) -- Coordenadas UV completas
     else
         spell, rank, displayName, icon, startTime, endTime = UnitChannelInfo(unit)
         statusBar.channelingEx = true
-        SetAtlasTexture(statusBar:GetStatusBarTexture(), 'CastingBar-StatusBar-Channeling')
+        -- Establecer textura directa para channeling
+        statusBar:GetStatusBarTexture():SetTexture(TEXTURES.channel)
+        statusBar:GetStatusBarTexture():SetTexCoord(0, 1, 0, 1) -- Coordenadas UV completas
     end
 
     local iconTexture = _G[statusBar:GetName() .. 'Icon']
@@ -418,6 +504,17 @@ function CastbarModule:UNIT_SPELLCAST_START(eventName, unit)
 
     local sparkTexture = _G[statusBar:GetName() .. "Spark"]
     sparkTexture:Show()
+
+    -- Inicializar el sistema de clipping
+    if statusBar.UpdateTextureClipping then
+        if eventName == 'UNIT_SPELLCAST_START' then
+            -- Para casting: empezar con barra vacía (progreso 0)
+            statusBar:UpdateTextureClipping(0.0, false);
+        else
+            -- Para channeling: empezar con barra llena (progreso 1)
+            statusBar:UpdateTextureClipping(1.0, true);
+        end
+    end
 
     statusBar:SetAlpha(1.0)
     statusBar:Show()
@@ -442,9 +539,11 @@ function CastbarModule:UNIT_SPELLCAST_STOP(eventName, unit)
     if not statusBar then return end
 
     if statusBar.castingEx then
-        SetAtlasTexture(statusBar:GetStatusBarTexture(), 'CastingBar-StatusBar-Casting')
+        statusBar:GetStatusBarTexture():SetTexture(TEXTURES.standard)
+        statusBar:GetStatusBarTexture():SetTexCoord(0, 1, 0, 1) -- Coordenadas UV completas
     elseif statusBar.channelingEx then
-        SetAtlasTexture(statusBar:GetStatusBarTexture(), 'CastingBar-StatusBar-Channeling')
+        statusBar:GetStatusBarTexture():SetTexture(TEXTURES.channel)
+        statusBar:GetStatusBarTexture():SetTexCoord(0, 1, 0, 1) -- Coordenadas UV completas
         statusBar.selfInterrupt = true
     end
 
@@ -475,9 +574,11 @@ function CastbarModule:UNIT_SPELLCAST_FAILED(eventName, unit)
     if not statusBar then return end
 
     if statusBar.castingEx then
-        SetAtlasTexture(statusBar:GetStatusBarTexture(), 'CastingBar-StatusBar-Casting')
+        statusBar:GetStatusBarTexture():SetTexture(TEXTURES.standard)
+        statusBar:GetStatusBarTexture():SetTexCoord(0, 1, 0, 1) -- Coordenadas UV completas
     elseif statusBar.channelingEx then
-        SetAtlasTexture(statusBar:GetStatusBarTexture(), 'CastingBar-StatusBar-Channeling')
+        statusBar:GetStatusBarTexture():SetTexture(TEXTURES.channel)
+        statusBar:GetStatusBarTexture():SetTexCoord(0, 1, 0, 1) -- Coordenadas UV completas
     end
 
     statusBar:GetStatusBarTexture():SetVertexColor(1, 1, 1, 1)
@@ -503,7 +604,8 @@ function CastbarModule:UNIT_SPELLCAST_INTERRUPTED(eventName, unit)
 
     if not statusBar.selfInterrupt then
         statusBar:SetValue(1.0)
-        SetAtlasTexture(statusBar:GetStatusBarTexture(), 'CastingBar-StatusBar-Failed')
+        statusBar:GetStatusBarTexture():SetTexture(TEXTURES.interrupted)
+        statusBar:GetStatusBarTexture():SetTexCoord(0, 1, 0, 1) -- Resetear coordenadas UV para mostrar textura completa
         statusBar:GetStatusBarTexture():SetVertexColor(1, 1, 1, 1)
 
         local castingNameText = _G[statusBar:GetName() .. "Text"]

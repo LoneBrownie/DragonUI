@@ -27,7 +27,7 @@
 
     <!-- Cast Bar module -->
     <!-- <Script file="castbar_refactored.lua"/> --> <!-- Old complex module - DISABLED -->
-    <Script file="castbar_simple.lua"/>                <!-- New simple module based on RetailUI -->
+    <Script file="castbar_refactored.lua"/>                <!-- New simple module based on RetailUI -->
     <!-- Chat module -->
     <Script file="Chat.lua"/>
 
