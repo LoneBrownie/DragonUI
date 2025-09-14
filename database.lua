@@ -3,6 +3,13 @@ local addon = select(2, ...);
 -- Default values for new profiles (only used when creating new profiles)
 local defaults = {
     profile = {
+        -- Quest Tracker
+        questtracker = {
+            anchor = "TOPRIGHT",
+            x = -140,
+            y = -255,
+            show_header = false
+        },
         -- ACTIONBAR SETTINGS
         mainbars = {
             -- ✅ Cada barra ahora tiene su propia configuración de posición y override.
@@ -136,14 +143,14 @@ local defaults = {
             tracking_icons = true,
             zoom_buttons = true,
             calendar = true,
-            clock = true,                    
-            clock_font_size = 12,          
+            clock = true,
+            clock_font_size = 12,
             player_arrow_size = 40,
             zonetext_font_size = 12,
             mail_icon_x = -4,
             mail_icon_y = -5,
-            addon_button_skin = true,      
-            addon_button_fade = false,     
+            addon_button_skin = true,
+            addon_button_fade = false,
             point = "TOPRIGHT",
             relativePoint = "TOPRIGHT",
             x = 14,
@@ -158,7 +165,6 @@ local defaults = {
             posY = -20,
             show_toggle_button = true
         },
-
 
         -- CASTBAR SETTINGS
         castbar = {

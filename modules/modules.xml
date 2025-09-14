@@ -18,7 +18,7 @@
     <!-- <Script file="minimap_auras.lua"/> -->
      <Script file="BuffFrame.lua"/> 
     <Script file="minimap.lua"/>    
-
+    <Script file="questtracker.lua"/>   
 
 
 

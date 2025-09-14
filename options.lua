@@ -1240,86 +1240,101 @@ function addon:CreateOptionsTable()
             },
 
             questtracker = {
-                type = 'group',
                 name = "Quest Tracker",
-                desc = "Configure the position and behavior of the quest tracker",
+                type = "group",
                 order = 9,
                 args = {
-                    info_text = {
+                    description = {
                         type = 'description',
-                        name = "Quest Tracker Position:\nAdjust the position of the quest tracker window to avoid overlapping with the minimap or other UI elements.\n\nTip: Changes apply immediately - no reload required!",
+                        name = "Configures the quest objective tracker position and behavior.",
                         order = 1
                     },
-                    spacer1 = {
-                        type = 'description',
-                        name = " ",
+                    show_header = {
+                        type = 'toggle',
+                        name = "Show Header Background",
+                        desc = "Show/hide the decorative header background texture",
+                        get = function()
+                            return addon.db.profile.questtracker.show_header ~= false
+                        end,
+                        set = function(_, value)
+                            addon.db.profile.questtracker.show_header = value
+                            if addon.RefreshQuestTracker then
+                                addon.RefreshQuestTracker()
+                            end
+                        end,
+                        order = 1.5
+                    },
+                    x = {
+                        type = "range",
+                        name = "X Position",
+                        desc = "Horizontal position offset",
+                        min = -500,
+                        max = 500,
+                        step = 1,
+                        get = function()
+                            return addon.db.profile.questtracker.x
+                        end,
+                        set = function(_, value)
+                            addon.db.profile.questtracker.x = value
+                            if addon.RefreshQuestTracker then
+                                addon.RefreshQuestTracker()
+                            end
+                        end,
                         order = 2
                     },
-                    quest_tracker_x = {
-                        type = 'range',
-                        name = "Horizontal Position (X)",
-                        desc = "Horizontal position of quest tracker\n• Negative values = more to the left\n• Positive values = more to the right",
-                        min = -400,
-                        max = 200,
-                        step = 5,
+                    y = {
+                        type = "range",
+                        name = "Y Position",
+                        desc = "Vertical position offset",
+                        min = -500,
+                        max = 500,
+                        step = 1,
                         get = function()
-                            return addon.db.profile.map.quest_tracker_x
+                            return addon.db.profile.questtracker.y
                         end,
-                        set = function(info, val)
-                            -- Get current value to avoid abrupt jumps
-                            local currentVal = addon.db.profile.map.quest_tracker_x
-                            if not currentVal then
-                                currentVal = -100 -- Use fallback default
-                            end
-
-                            addon.db.profile.map.quest_tracker_x = val
-                            if addon.RefreshQuestTrackerPosition then
-                                addon.RefreshQuestTrackerPosition()
+                        set = function(_, value)
+                            addon.db.profile.questtracker.y = value
+                            if addon.RefreshQuestTracker then
+                                addon.RefreshQuestTracker()
                             end
                         end,
                         order = 3
                     },
-                    quest_tracker_y = {
-                        type = 'range',
-                        name = "Vertical Position (Y)",
-                        desc = "Vertical position of quest tracker\n• Negative values = more down\n• Positive values = more up",
-                        min = -600,
-                        max = 200,
-                        step = 5,
+                    anchor = {
+                        type = 'select',
+                        name = "Anchor Point",
+                        desc = "Screen anchor point for the quest tracker",
+                        values = {
+                            ["TOPRIGHT"] = "Top Right",
+                            ["TOPLEFT"] = "Top Left",
+                            ["BOTTOMRIGHT"] = "Bottom Right",
+                            ["BOTTOMLEFT"] = "Bottom Left",
+                            ["CENTER"] = "Center"
+                        },
                         get = function()
-                            return addon.db.profile.map.quest_tracker_y
+                            return addon.db.profile.questtracker.anchor
                         end,
-                        set = function(info, val)
-                            -- Get current value to avoid abrupt jumps
-                            local currentVal = addon.db.profile.map.quest_tracker_y
-                            if not currentVal then
-                                currentVal = -290 -- Use fallback default
-                            end
-
-                            addon.db.profile.map.quest_tracker_y = val
-                            if addon.RefreshQuestTrackerPosition then
-                                addon.RefreshQuestTrackerPosition()
+                        set = function(_, value)
+                            addon.db.profile.questtracker.anchor = value
+                            if addon.RefreshQuestTracker then
+                                addon.RefreshQuestTracker()
                             end
                         end,
                         order = 4
                     },
-                    spacer2 = {
-                        type = 'description',
-                        name = " ",
-                        order = 5
-                    },
                     reset_position = {
                         type = 'execute',
-                        name = "Reset to Default Position",
-                        desc = "Reset quest tracker to the default position (-115, -250)",
+                        name = "Reset Position",
+                        desc = "Reset quest tracker to default position",
                         func = function()
-                            addon.db.profile.map.quest_tracker_x = -115
-                            addon.db.profile.map.quest_tracker_y = -250
-                            if addon.RefreshQuestTrackerPosition then
-                                addon.RefreshQuestTrackerPosition()
+                            addon.db.profile.questtracker.anchor = "TOPRIGHT"
+                            addon.db.profile.questtracker.x = -140
+                            addon.db.profile.questtracker.y = -255
+                            if addon.RefreshQuestTracker then
+                                addon.RefreshQuestTracker()
                             end
                         end,
-                        order = 6
+                        order = 5
                     }
                 }
             },
