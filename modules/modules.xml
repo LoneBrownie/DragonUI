@@ -26,7 +26,8 @@
     <Include file="unitframes\unitframes.xml"/>
 
     <!-- Cast Bar module -->
-    <Script file="castbar_refactored.lua"/>
+    <!-- <Script file="castbar_refactored.lua"/> --> <!-- Old complex module - DISABLED -->
+    <Script file="castbar_simple.lua"/>                <!-- New simple module based on RetailUI -->
     <!-- Chat module -->
     <Script file="Chat.lua"/>
 
