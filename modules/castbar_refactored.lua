@@ -88,18 +88,19 @@ local GRACE_PERIOD_AFTER_SUCCESS = 0.15;
 -- =================================================================
 -- VARIABLES DE ESTADO UNIFICADAS
 -- =================================================================
-
 addon.castbarStates = {
     player = {
-        castingEx = false,        -- Flags como RetailUI
+        castingEx = false,
         channelingEx = false,
-        startTime = 0,           -- Tiempo absoluto GetTime()
-        endTime = 0,             -- Tiempo absoluto GetTime()
+        startTime = 0,
+        endTime = 0,
         holdTime = 0,
         currentSpellName = "",
         castSucceeded = false,
         graceTime = 0,
-        selfInterrupt = false 
+        selfInterrupt = false,
+        unitGUID = nil,    
+        fadeOutEx = false   
     },
     target = {
         castingEx = false,
@@ -108,7 +109,9 @@ addon.castbarStates = {
         endTime = 0,
         holdTime = 0,
         currentSpellName = "",
-        selfInterrupt = false 
+        selfInterrupt = false,
+        unitGUID = nil,    
+        fadeOutEx = false   
     },
     focus = {
         castingEx = false,
@@ -117,7 +120,9 @@ addon.castbarStates = {
         endTime = 0,
         holdTime = 0,
         currentSpellName = "",
-        selfInterrupt = false 
+        selfInterrupt = false,
+        unitGUID = nil,     
+        fadeOutEx = false   
     }
 };
 
@@ -136,16 +141,6 @@ local lastRefreshTime = {
     focus = 0
 };
 
--- Caché de auras optimizado
-local auraCache = {
-    target = {
-        lastUpdate = 0,
-        lastRows = 0,
-        lastOffset = 0,
-        lastTargetGUID = nil,
-        updateInterval = AURA_CONFIG.updateInterval
-    }
-};
 
 -- =================================================================
 -- FUNCIONES AUXILIARES OPTIMIZADAS
@@ -343,83 +338,40 @@ end
 -- SISTEMA DE OFFSET DE AURAS OPTIMIZADO
 -- =================================================================
 
--- Contar auras visibles manualmente (respuesta inmediata)
-local function CountVisibleAuras(unit)
-    if not UnitExists(unit) then
-        return 0
-    end
-
-    local count = 0;
-    local maxCheck = 32; -- Verificar hasta 32 auras (4 filas de 8)
-
-    -- Contar buffs
-    for i = 1, maxCheck do
-        local name = UnitAura(unit, i, "HELPFUL");
-        if name then
-            count = count + 1
-        else
-            break
-        end
-    end
-
-    -- Contar debuffs
-    for i = 1, maxCheck do
-        local name = UnitAura(unit, i, "HARMFUL");
-        if name then
-            count = count + 1
-        else
-            break
-        end
-    end
-
-    return math.ceil(count / 8); -- Convertir a filas (8 auras por fila)
-end
-
--- Obtener offset de auras del target simplificado
-local function GetTargetAuraOffsetSimplified()
+local function GetTargetAuraOffsetRetailUI()
     if not addon.db or not addon.db.profile.castbar or not addon.db.profile.castbar.target or
         not addon.db.profile.castbar.target.autoAdjust then
-        return AURA_CONFIG.baseOffset;
+        return 0;
     end
 
-    local currentTime = GetTime();
-    local currentGUID = UnitGUID("target");
-    local targetChanged = auraCache.target.lastTargetGUID ~= currentGUID;
-
-    -- Usar caché solo si el target no ha cambiado y el caché es reciente
-    if not targetChanged and (currentTime - auraCache.target.lastUpdate) < auraCache.target.updateInterval then
-        return auraCache.target.lastOffset;
+    -- ✅ USAR SISTEMA NATIVO como RetailUI
+    local parentFrame = TargetFrame;
+    if not parentFrame then
+        return 0;
     end
 
-    -- Obtener filas directamente del cálculo nativo de WoW
-    local rows = 0;
-    if TargetFrame and TargetFrame.auraRows then
-        rows = TargetFrame.auraRows;
-    else
-        rows = CountVisibleAuras("target"); -- Fallback manual
-    end
+    -- ✅ LEER DIRECTAMENTE del sistema de Blizzard (sin caché, sin polling)
+    local auraRows = parentFrame.auraRows or 0;
+    local offset = 0;
 
-    -- Calcular offset basado en lógica de ultimaversion
-    local offset = AURA_CONFIG.baseOffset;
-    if rows > AURA_CONFIG.minRowsToAdjust then
-        local delta = (rows - AURA_CONFIG.minRowsToAdjust) * (AURA_CONFIG.auraSize + AURA_CONFIG.rowSpacing);
-        local parent = TargetFrame;
-        if not parent.buffsOnTop then
-            offset = AURA_CONFIG.baseOffset + delta;
+    -- ✅ LÓGICA SIMPLIFICADA: Si hay más de 1 fila, calcular offset
+    if auraRows > 1 then
+        -- Usar spellbarAnchor si existe (como RetailUI)
+        if parentFrame.spellbarAnchor then
+            -- ✅ EL ANCHOR YA TIENE EL OFFSET calculado por Blizzard
+            local _, _, _, _, anchorY = parentFrame.spellbarAnchor:GetPoint(1);
+            local _, _, _, _, frameY = parentFrame:GetPoint(1);
+            offset = math.abs((anchorY or 0) - (frameY or 0));
+        else
+            -- Fallback: cálculo manual SOLO si no hay anchor
+            offset = (auraRows - 1) * (AURA_CONFIG.auraSize + AURA_CONFIG.rowSpacing);
         end
     end
-
-    -- Actualizar caché
-    auraCache.target.lastUpdate = currentTime;
-    auraCache.target.lastRows = rows;
-    auraCache.target.lastOffset = offset;
-    auraCache.target.lastTargetGUID = currentGUID;
 
     return offset;
 end
 
--- Aplicar offset de auras simplificado al castbar del target
-local function ApplySimplifiedAuraOffsetToTargetCastbar()
+local function ApplyRetailUIAuraOffsetToTargetCastbar()
     if not frames.target.castbar or not frames.target.castbar:IsVisible() then
         return
     end
@@ -429,12 +381,15 @@ local function ApplySimplifiedAuraOffsetToTargetCastbar()
         return
     end
 
-    local offset = GetTargetAuraOffsetSimplified();
+    -- ✅ OBTENER OFFSET DIRECTO (sin caché)
+    local offset = GetTargetAuraOffsetRetailUI();
     local anchorFrame = _G[cfg.anchorFrame] or TargetFrame or UIParent;
 
+    -- ✅ APLICAR INMEDIATAMENTE
     frames.target.castbar:ClearAllPoints();
     frames.target.castbar:SetPoint(cfg.anchor, anchorFrame, cfg.anchorParent, cfg.x_position, cfg.y_position - offset);
 end
+
 
 -- =================================================================
 -- FUNCIONES DE VISIBILIDAD Y MODO DE TEXTO OPTIMIZADAS
@@ -609,6 +564,11 @@ local function HideBlizzardCastbar(castbarType)
         return
     end
 
+    -- ✅ CRÍTICO: DESREGISTRAR EVENTOS como RetailUI
+    if frame.UnregisterAllEvents then
+        frame:UnregisterAllEvents();
+    end
+
     if castbarType == "target" or castbarType == "player" then
         -- CORRECCIÓN: Tratar al player igual que al target para permitir la sincronización.
         -- No usar Hide() - necesitamos las actualizaciones para sincronización.
@@ -642,6 +602,44 @@ local function ShowBlizzardCastbar(castbarType)
     local frame = blizzardFrames[castbarType];
     if not frame then
         return
+    end
+
+    -- ✅ CRÍTICO: RESTAURAR EVENTOS como RetailUI
+    if castbarType == "player" and frame.RegisterEvent then
+        -- Restaurar eventos del player castbar
+        frame:RegisterEvent("UNIT_SPELLCAST_START");
+        frame:RegisterEvent("UNIT_SPELLCAST_STOP");
+        frame:RegisterEvent("UNIT_SPELLCAST_FAILED");
+        frame:RegisterEvent("UNIT_SPELLCAST_INTERRUPTED");
+        frame:RegisterEvent("UNIT_SPELLCAST_DELAYED");
+        frame:RegisterEvent("UNIT_SPELLCAST_CHANNEL_START");
+        frame:RegisterEvent("UNIT_SPELLCAST_CHANNEL_STOP");
+        frame:RegisterEvent("UNIT_SPELLCAST_CHANNEL_UPDATE");
+        frame:RegisterEvent("UNIT_SPELLCAST_SUCCEEDED");
+    elseif castbarType == "target" and frame.RegisterEvent then
+        -- Restaurar eventos del target castbar
+        frame:RegisterEvent("UNIT_SPELLCAST_START");
+        frame:RegisterEvent("UNIT_SPELLCAST_STOP");
+        frame:RegisterEvent("UNIT_SPELLCAST_FAILED");
+        frame:RegisterEvent("UNIT_SPELLCAST_INTERRUPTED");
+        frame:RegisterEvent("UNIT_SPELLCAST_DELAYED");
+        frame:RegisterEvent("UNIT_SPELLCAST_CHANNEL_START");
+        frame:RegisterEvent("UNIT_SPELLCAST_CHANNEL_STOP");
+        frame:RegisterEvent("UNIT_SPELLCAST_CHANNEL_UPDATE");
+        frame:RegisterEvent("UNIT_SPELLCAST_INTERRUPTIBLE");
+        frame:RegisterEvent("UNIT_SPELLCAST_NOT_INTERRUPTIBLE");
+    elseif castbarType == "focus" and frame.RegisterEvent then
+        -- Restaurar eventos del focus castbar
+        frame:RegisterEvent("UNIT_SPELLCAST_START");
+        frame:RegisterEvent("UNIT_SPELLCAST_STOP");
+        frame:RegisterEvent("UNIT_SPELLCAST_FAILED");
+        frame:RegisterEvent("UNIT_SPELLCAST_INTERRUPTED");
+        frame:RegisterEvent("UNIT_SPELLCAST_DELAYED");
+        frame:RegisterEvent("UNIT_SPELLCAST_CHANNEL_START");
+        frame:RegisterEvent("UNIT_SPELLCAST_CHANNEL_STOP");
+        frame:RegisterEvent("UNIT_SPELLCAST_CHANNEL_UPDATE");
+        frame:RegisterEvent("UNIT_SPELLCAST_INTERRUPTIBLE");
+        frame:RegisterEvent("UNIT_SPELLCAST_NOT_INTERRUPTIBLE");
     end
 
     frame:SetAlpha(1);
@@ -750,43 +748,24 @@ end
 local function HandleCastStop(castbarType, event, forceInterrupted)
     local state = addon.castbarStates[castbarType];
     local frameData = frames[castbarType];
-    local cfg = addon.db.profile.castbar;
-
-    if castbarType ~= "player" then
-        cfg = cfg[castbarType];
-    end
 
     if not state.castingEx and not state.channelingEx then
         return
     end
 
-    if forceInterrupted then
-        -- Interrupción real
-        if frameData.shield then frameData.shield:Hide() end
-        HideAllChannelTicks(frameData.ticks, 15);
+    state.castingEx = false;
+    state.channelingEx = false;
 
+    if forceInterrupted then
+        -- Mostrar interrupción visualmente
         frameData.castbar:SetStatusBarTexture(TEXTURES.interrupted);
         frameData.castbar:SetStatusBarColor(1, 0, 0, 1);
-        ForceStatusBarTextureLayer(frameData.castbar);
-
-        frameData.castbar:SetValue(1.0);
-        if frameData.castbar.UpdateTextureClipping then
-            frameData.castbar:UpdateTextureClipping(1.0, false);
-        end
-
         SetCastText(castbarType, "Interrupted");
-
-        state.castingEx = false;
-        state.channelingEx = false;
-        state.holdTime = cfg.holdTimeInterrupt or 0.8;
-    else
-        -- Completado normalmente
-        if castbarType == "player" then
-            state.castSucceeded = true;
-        else
-            FinishSpell(castbarType);
-        end
     end
+
+    -- ✅ USAR UIFrameFadeOut como RetailUI (más eficiente)
+    state.fadeOutEx = true;
+    UIFrameFadeOut(frameData.castbar, 1.0, 1.0, 0.0);
 end
 
 
@@ -794,6 +773,18 @@ end
 local function UpdateCastbar(castbarType, self, elapsed)
     local state = addon.castbarStates[castbarType];
     local frameData = frames[castbarType];
+    
+    -- ✅ MANEJAR fadeOut como RetailUI - PERO SIN BLOQUEAR NUEVOS CASTS
+    if state.fadeOutEx then
+        if self:GetAlpha() <= 0.0 then
+            self:Hide();
+            if frameData.background then frameData.background:Hide() end
+            if frameData.textBackground then frameData.textBackground:Hide() end
+            state.fadeOutEx = false; -- ✅ IMPORTANTE: Resetear para permitir nuevos casts
+        end
+        return;
+    end
+    
     local cfg = addon.db.profile.castbar;
 
     if castbarType ~= "player" then
@@ -806,7 +797,6 @@ local function UpdateCastbar(castbarType, self, elapsed)
         local unit = castbarType;
         if not UnitExists(unit) then
             if state.castingEx or state.channelingEx then
-                -- Target/focus died - hide castbar immediately
                 self:Hide();
                 if frameData.background then frameData.background:Hide() end
                 if frameData.textBackground then frameData.textBackground:Hide() end
@@ -821,6 +811,7 @@ local function UpdateCastbar(castbarType, self, elapsed)
                 state.holdTime = 0;
                 state.startTime = 0;
                 state.endTime = 0;
+                state.fadeOutEx = false; -- ✅ RESETEAR también aquí
             end
             return;
         end
@@ -828,20 +819,60 @@ local function UpdateCastbar(castbarType, self, elapsed)
         return;
     end
 
-    -- Manejar período de gracia para casts exitosos (solo player)
-    if castbarType == "player" and state.castSucceeded and (state.castingEx or state.channelingEx) then
-        -- Forzar barra al 100% para feedback visual
-        self:SetValue(1.0);
+    -- ✅ CORREGIR: Lógica principal como RetailUI
+    local currentTime = GetTime();
+    local value, remainingTime = 0, 0;
+    
+    if state.channelingEx or state.castingEx then
+        if state.castingEx and not state.channelingEx then
+            -- ✅ COMO RETAILUI: Para casting normal
+            remainingTime = math.min(currentTime, state.endTime) - state.startTime;
+            value = remainingTime / (state.endTime - state.startTime);
+        elseif state.channelingEx then
+            -- ✅ COMO RETAILUI: Para channeling
+            remainingTime = state.endTime - currentTime;
+            value = remainingTime / (state.endTime - state.startTime);
+        end
+        
+        value = math.max(0, math.min(1, value));
+        self:SetValue(value);
+        
         if self.UpdateTextureClipping then
-            self:UpdateTextureClipping(1.0, state.channelingEx);
+            self:UpdateTextureClipping(value, state.channelingEx);
         end
 
-        -- Actualizar spark a posición final
+        -- Actualizar texto de tiempo
+        UpdateCastTimeTextRetailUI(castbarType, math.abs(remainingTime), state.endTime - state.startTime);
+
+        -- Actualizar posición del spark
         if frameData.spark and frameData.spark:IsShown() then
-            frameData.spark:SetPoint('CENTER', self, 'LEFT', self:GetWidth(), 0);
+            local actualWidth = self:GetWidth() * value;
+            frameData.spark:ClearAllPoints();
+            frameData.spark:SetPoint('CENTER', self, 'LEFT', actualWidth, 0);
         end
 
-        -- Contar período de gracia
+        -- ✅ COMO RETAILUI: Verificar si terminó
+        if currentTime >= state.endTime then
+            state.castingEx = false;
+            state.channelingEx = false;
+            -- ✅ NO poner fadeOutEx aquí para el player - usar periodo de gracia
+            if castbarType == "player" then
+                state.castSucceeded = true;
+                state.graceTime = 0;
+            else
+                state.fadeOutEx = true;
+                UIFrameFadeOut(frameData.castbar, 0.5, 1.0, 0.0);
+            end
+        end
+
+        -- Ocultar flash durante casting/channeling
+        if frameData.flash then
+            frameData.flash:Hide()
+        end
+    end
+
+    -- Manejar período de gracia para casts exitosos (solo player)
+    if castbarType == "player" and state.castSucceeded and not state.castingEx and not state.channelingEx then
         state.graceTime = state.graceTime + elapsed;
         if state.graceTime >= GRACE_PERIOD_AFTER_SUCCESS then
             FinishSpell(castbarType);
@@ -855,7 +886,6 @@ local function UpdateCastbar(castbarType, self, elapsed)
     if state.holdTime > 0 then
         state.holdTime = state.holdTime - elapsed;
         if state.holdTime <= 0 then
-            -- Ocultar todo
             self:Hide();
             if frameData.background then frameData.background:Hide() end
             if frameData.textBackground then frameData.textBackground:Hide() end
@@ -866,52 +896,13 @@ local function UpdateCastbar(castbarType, self, elapsed)
             -- Resetear estados
             state.castingEx = false;
             state.channelingEx = false;
+            state.fadeOutEx = false; -- ✅ RESETEAR también aquí
             if castbarType == "player" then
                 state.castSucceeded = false;
                 state.graceTime = 0;
             end
         end
         return;
-    end
-
-    -- ✅ LÓGICA PRINCIPAL COMO RETAILUI: Basada en GetTime()
-    if state.castingEx or state.channelingEx then
-        local currentTime = GetTime();
-        local value = 0;
-        local remainingTime = 0;
-        
-        if state.castingEx then
-            -- Para casting: progreso de 0 a 1
-            remainingTime = math.min(currentTime, state.endTime) - state.startTime;
-            value = remainingTime / (state.endTime - state.startTime);
-            value = math.max(0, math.min(1, value));
-        elseif state.channelingEx then
-            -- Para channeling: tiempo restante
-            remainingTime = state.endTime - currentTime;
-            value = remainingTime / (state.endTime - state.startTime);
-            value = math.max(0, math.min(1, value));
-        end
-
-        -- Aplicar valores
-        self:SetValue(value);
-        if self.UpdateTextureClipping then
-            self:UpdateTextureClipping(value, state.channelingEx);
-        end
-
-        -- Actualizar texto de tiempo usando remainingTime
-        UpdateCastTimeTextRetailUI(castbarType, remainingTime, state.endTime - state.startTime);
-
-        -- Actualizar posición del spark
-        if frameData.spark and frameData.spark:IsShown() then
-            local actualWidth = self:GetWidth() * value;
-            frameData.spark:ClearAllPoints();
-            frameData.spark:SetPoint('CENTER', self, 'LEFT', actualWidth, 0);
-        end
-
-        -- Ocultar flash durante casting/channeling
-        if frameData.flash then
-            frameData.flash:Hide()
-        end
     end
 end
 
@@ -931,10 +922,8 @@ local function HandleUnitAura(unit)
     if unit == 'target' then
         local cfg = addon.db.profile.castbar.target;
         if cfg and cfg.enabled and cfg.autoAdjust then
-            -- Pequeño delay para evitar actualizaciones excesivas durante cambios rápidos de aura
-            addon.core:ScheduleTimer(function()
-                ApplySimplifiedAuraOffsetToTargetCastbar();
-            end, 0.05);
+            -- ✅ CORREGIR: Usar la nueva función RetailUI
+            ApplyRetailUIAuraOffsetToTargetCastbar();
         end
     end
 end
@@ -955,11 +944,25 @@ local function HandleCastStart(castbarType, unit)
     local state = addon.castbarStates[castbarType];
     local frameData = frames[castbarType];
 
-    -- ✅ PATRÓN RETAILUI: Establecer flags y tiempos absolutos
+    -- ✅ CRÍTICO: Resetear fadeOut y mostrar barra inmediatamente
+    state.fadeOutEx = false;
+    frameData.castbar:SetAlpha(1.0);
+    
+    -- ✅ CRÍTICO: Cancelar cualquier fade en progreso
+    if UIFrameFadeRemoveFrame then
+        UIFrameFadeRemoveFrame(frameData.castbar);
+    end
+
+    -- ✅ CRÍTICO: Establecer GUID ANTES de otros flags
+    state.unitGUID = UnitGUID(unit);
     state.castingEx = true;
     state.channelingEx = false;
     state.holdTime = 0;
     state.currentSpellName = name;
+    state.selfInterrupt = false;
+
+    -- ✅ AÑADIR: Timestamp del cast para evitar eventos obsoletos
+    state.castStartTime = GetTime();
 
     -- Reset estado de éxito (solo player)
     if castbarType == "player" then
@@ -967,24 +970,22 @@ local function HandleCastStart(castbarType, unit)
         state.graceTime = 0;
     end
 
-    -- ✅ COMO RETAILUI: Usar GetTime() y establecer tiempos absolutos
-    local currentTime = GetTime();
-    local startTimeSeconds, endTimeSeconds, spellDuration = ParseCastTimes(startTime, endTime);
-    
-    state.startTime = currentTime;
-    state.endTime = currentTime + spellDuration;
+    -- ✅ COMO RETAILUI: Tiempos correctos
+    state.startTime = startTime / 1000;
+    state.endTime = endTime / 1000;
 
-    -- Configurar barra para valor 0-1
+    -- Configurar barra
     frameData.castbar:SetMinMaxValues(0, 1);
     frameData.castbar:SetValue(0);
 
-    -- Mostrar castbar
+    -- ✅ CRÍTICO: Mostrar elementos DESPUÉS de resetear fade
     frameData.castbar:Show();
     if frameData.background and frameData.background ~= frameData.textBackground then
         frameData.background:Show();
     end
     frameData.spark:Show();
     frameData.flash:Hide();
+
 
     -- Ocultar ticks de canal de hechizos anteriores
     HideAllChannelTicks(frameData.ticks, 15);
@@ -1041,11 +1042,25 @@ local function HandleChannelStart(castbarType, unit)
     local state = addon.castbarStates[castbarType];
     local frameData = frames[castbarType];
 
-    -- ✅ PATRÓN RETAILUI: Establecer flags y tiempos absolutos
-    state.castingEx = true;  -- RetailUI usa castingEx para ambos
+    -- ✅ CRÍTICO: Resetear fadeOut y mostrar barra inmediatamente
+    state.fadeOutEx = false;
+    frameData.castbar:SetAlpha(1.0);
+    
+    -- ✅ CRÍTICO: Cancelar cualquier fade en progreso
+    if UIFrameFadeRemoveFrame then
+        UIFrameFadeRemoveFrame(frameData.castbar);
+    end
+
+    -- ✅ CRÍTICO: Establecer GUID ANTES de otros flags
+    state.unitGUID = UnitGUID(unit);
+    state.castingEx = true;
     state.channelingEx = true;
     state.holdTime = 0;
     state.currentSpellName = name;
+
+
+    -- ✅ AÑADIR: Timestamp del cast para evitar eventos obsoletos
+    state.castStartTime = GetTime();
 
     -- Reset estado de éxito (solo player)
     if castbarType == "player" then
@@ -1064,7 +1079,7 @@ local function HandleChannelStart(castbarType, unit)
     frameData.castbar:SetMinMaxValues(0, 1);
     frameData.castbar:SetValue(1); -- Channeling empieza lleno
 
-    -- Mostrar castbar
+    -- ✅ CRÍTICO: Mostrar castbar DESPUÉS de resetear fade
     frameData.castbar:Show();
     if frameData.background and frameData.background ~= frameData.textBackground then
         frameData.background:Show();
@@ -1121,72 +1136,164 @@ local function HandleChannelStart(castbarType, unit)
     end
 end
 
+-- ✅ NUEVA FUNCIÓN: Verificar si el evento es válido para el cast actual
+local function IsValidCastEvent(castbarType, unit)
+    local state = addon.castbarStates[castbarType];
+    
+    if castbarType == "player" then
+        -- ✅ CORREGIR: Para eventos START, SIEMPRE son válidos (nuevo cast)
+        -- Para otros eventos, verificar coherencia pero sin ser demasiado restrictivo
+        if not (state.castingEx or state.channelingEx) then
+            return false;
+        end
+        
+        -- ✅ SIMPLIFICAR: Solo verificar si hay un estado de cast activo
+        -- No verificar nombres porque pueden cambiar entre el evento y nuestro estado
+        return true;
+    else
+        -- Para target/focus: verificar GUID como RetailUI
+        local currentGUID = UnitGUID(unit);
+        return state.unitGUID == currentGUID and (state.castingEx or state.channelingEx);
+    end
+end
 
 -- Función principal unificada para manejar eventos de casting
 local function HandleCastingEvents(castbarType, event, unit, ...)
     local unitToCheck = castbarType == "player" and "player" or castbarType;
-    if unit ~= unitToCheck then
-        return
+    if unit ~= unitToCheck then return end
+
+    local state = addon.castbarStates[castbarType];
+
+    -- ✅ CRÍTICO: START events SIEMPRE se procesan (para permitir nuevos casts)
+    if event == 'UNIT_SPELLCAST_START' or event == 'UNIT_SPELLCAST_CHANNEL_START' then
+        -- ✅ START events siempre reemplazan cualquier cast anterior
+        -- NO hacer validaciones aquí
+    else
+        -- ✅ CRÍTICO: FILTRO GCD PRIMERO, antes que cualquier otra validación
+        if event == 'UNIT_SPELLCAST_FAILED' then
+            local failureReason = select(1, ...);
+            if failureReason and (
+                failureReason == "Spell is not ready yet" or
+                failureReason:find("not ready") or
+                failureReason:find("cooldown")
+            ) then
+                return; -- ✅ IGNORAR completamente - es solo GCD, no falla real
+            end
+        end
+
+        -- ✅ VERIFICAR GUID para target/focus (como RetailUI)
+        if castbarType ~= "player" then
+            local currentGUID = UnitGUID(unit);
+            if state.unitGUID ~= currentGUID then
+                return; -- ✅ GUID no coincide - ignorar evento
+            end
+        end
+        
+        -- ✅ VERIFICAR que hay un cast activo
+        if not (state.castingEx or state.channelingEx) then
+            return; -- ✅ No hay cast activo - ignorar evento espurio
+        end
+        
+        -- ✅ PARA FAILED/INTERRUPTED: Verificar que el nombre coincida
+        if event == 'UNIT_SPELLCAST_FAILED' or event == 'UNIT_SPELLCAST_INTERRUPTED' then
+            local currentSpellName;
+            if state.castingEx and not state.channelingEx then
+                currentSpellName = UnitCastingInfo(unit);
+            elseif state.channelingEx then
+                currentSpellName = UnitChannelInfo(unit);
+            end
+            
+            -- ✅ Si el nombre no coincide, ignorar
+            if currentSpellName and currentSpellName ~= state.currentSpellName then
+                return; -- ✅ Evento de un hechizo diferente
+            end
+        end
     end
 
-    local cfg = addon.db.profile.castbar;
-    if castbarType ~= "player" then
-        cfg = cfg[castbarType];
-        if not cfg or not cfg.enabled then
-            return
+    -- ✅ UPDATES: Solo procesar si corresponde al cast actual
+    if event == 'UNIT_SPELLCAST_DELAYED' or event == 'UNIT_SPELLCAST_CHANNEL_UPDATE' then
+        local name, subText, text, iconTex, startTime, endTime;
+        if state.castingEx and not state.channelingEx then
+            name, subText, text, iconTex, startTime, endTime = UnitCastingInfo(unit);
+        elseif state.channelingEx then
+            name, subText, text, iconTex, startTime, endTime = UnitChannelInfo(unit);
         end
-    elseif not cfg or not cfg.enabled then
+        
+        -- ✅ Solo actualizar si el nombre coincide
+        if name and name == state.currentSpellName then
+            state.startTime = startTime / 1000;
+            state.endTime = endTime / 1000;
+        end
+        return; -- ✅ RETURN temprano para UPDATES
+    end
+
+    -- ✅ SHIELD events
+    if event == 'UNIT_SPELLCAST_INTERRUPTIBLE' then
+        local frameData = frames[castbarType];
+        if frameData.shield then
+            frameData.shield:Hide();
+        end
+        return;
+    elseif event == 'UNIT_SPELLCAST_NOT_INTERRUPTIBLE' then
+        local frameData = frames[castbarType];
+        if frameData.shield then
+            frameData.shield:Show();
+        end
         return;
     end
 
     -- Forzar ocultar castbar de Blizzard
     HideBlizzardCastbar(castbarType);
 
+    -- ✅ MANEJAR EVENTOS PRINCIPALES como RetailUI
     if event == 'UNIT_SPELLCAST_START' then
         HandleCastStart(castbarType, unitToCheck);
-    elseif event == 'UNIT_SPELLCAST_SUCCEEDED' then
-        local state = addon.castbarStates[castbarType];
-        if state.castingEx or state.channelingEx then
-            if castbarType == "player" then
-                state.castSucceeded = true;
-            else
-                FinishSpell(castbarType);
-            end
-        end
     elseif event == 'UNIT_SPELLCAST_CHANNEL_START' then
         HandleChannelStart(castbarType, unitToCheck);
+    elseif event == 'UNIT_SPELLCAST_SUCCEEDED' then
+        -- ✅ Como RetailUI: procesar sin verificaciones extra
+        if castbarType == "player" then
+            state.castSucceeded = true;
+        else
+            FinishSpell(castbarType);
+        end
     elseif event == 'UNIT_SPELLCAST_STOP' then
+        -- ✅ COMO RETAILUI: Procesar directamente (GUID ya verificado arriba)
         HandleCastStop(castbarType, event, false);
     elseif event == 'UNIT_SPELLCAST_CHANNEL_STOP' then
+        -- ✅ COMO RETAILUI: Marcar selfInterrupt SOLO para channel stop
+        state.selfInterrupt = true;
         HandleCastStop(castbarType, event, false);
     elseif event == 'UNIT_SPELLCAST_FAILED' then
-        local state = addon.castbarStates[castbarType];
-        local frameData = frames[castbarType];
-        
-        frameData.castbar:SetStatusBarTexture(TEXTURES.interrupted);
-        frameData.castbar:SetStatusBarColor(1, 0, 0, 1);
-        
-        state.castingEx = false;
-        state.channelingEx = false;
-        state.holdTime = cfg.holdTime or 0.3;
+        -- ✅ CRÍTICO: Solo aplicar cambios si NO es channeling
+        if state.castingEx and not state.channelingEx then
+            local frameData = frames[castbarType];
+            frameData.castbar:SetStatusBarTexture(TEXTURES.standard); 
+            frameData.castbar:SetStatusBarColor(1, 1, 1, 1);
+            ForceStatusBarTextureLayer(frameData.castbar);
+        end
     elseif event == 'UNIT_SPELLCAST_INTERRUPTED' then
-        local state = addon.castbarStates[castbarType];
-        local showInterrupted = true;
+        -- ✅ COMO RETAILUI: Usar selfInterrupt para determinar si mostrar "Interrupted"
+        local showInterrupted = not state.selfInterrupt;
         
-        if state.channelingEx then
+        -- ✅ CORREGIR: Para channeling, verificar si terminó naturalmente
+        if state.channelingEx and not state.selfInterrupt then
             local currentTime = GetTime();
             local remainingTime = state.endTime - currentTime;
             local totalTime = state.endTime - state.startTime;
             local progressRemaining = remainingTime / totalTime;
+            -- Si queda menos del 5% del tiempo, no es interrupción real
             if progressRemaining < 0.05 then
                 showInterrupted = false;
             end
         end
         
+        -- ✅ RESETEAR selfInterrupt después de usarlo
+        state.selfInterrupt = false;
+        
         HandleCastStop(castbarType, event, showInterrupted);
     end
 end
-
 local function HandleTargetChanged()
     -- Si el modo editor está activo, no hacer nada.
     if addon.EditorMode and addon.EditorMode:IsActive() then
@@ -1231,11 +1338,7 @@ local function HandleTargetChanged()
         end
     end
 
-    -- Limpiar caché de auras del target cuando cambia
-    auraCache.target.lastUpdate = 0;
-    auraCache.target.lastRows = 0;  -- ✅ CORRECCIÓN: Era lastCount
-    auraCache.target.lastOffset = 0;
-    auraCache.target.lastTargetGUID = nil;
+
 
     -- Verificar si el nuevo target ya está casteando
     if UnitExists("target") and addon.db.profile.castbar.target.enabled then
@@ -1249,8 +1352,8 @@ local function HandleTargetChanged()
                 HandleCastingEvents("target", 'UNIT_SPELLCAST_CHANNEL_START', "target");
             end
 
-            -- Aplicar offset de auras simplificado para nuevo target
-            ApplySimplifiedAuraOffsetToTargetCastbar();
+            -- ✅ USAR NUEVA FUNCIÓN
+            ApplyRetailUIAuraOffsetToTargetCastbar();
         end, 0.05);
     end
 end
@@ -1379,43 +1482,53 @@ local function CreateCastbar(castbarType)
     local frameName = 'DragonUI' .. castbarType:sub(1, 1):upper() .. castbarType:sub(2) .. 'Castbar';
     local frameData = frames[castbarType];
 
-    -- Frame principal de StatusBar
+    -- ✅ OPTIMIZACIÓN: Frame más simple inicialmente
     frameData.castbar = CreateFrame('StatusBar', frameName, UIParent);
     frameData.castbar:SetFrameStrata("MEDIUM");
     frameData.castbar:SetFrameLevel(10);
     frameData.castbar:SetMinMaxValues(0, 1);
     frameData.castbar:SetValue(0);
     frameData.castbar:Hide();
+    
+    -- ✅ OPTIMIZACIÓN: Solo crear elementos si van a ser usados
+    local cfg = addon.db.profile.castbar;
+    if castbarType ~= "player" then
+        cfg = cfg[castbarType];
+    end
+    
+    if not cfg then return end
 
-    -- PASO 1: FONDO (BACKGROUND layer) - UNA SOLA VEZ
+    -- PASO 1: FONDO básico
     local bg = frameData.castbar:CreateTexture(nil, 'BACKGROUND');
     bg:SetTexture(TEXTURES.atlas);
     bg:SetTexCoord(unpack(UV_COORDS.background));
     bg:SetAllPoints();
 
-    -- PASO 2: STATUSBAR TEXTURE (forzada en BORDER layer)
+    -- PASO 2: STATUSBAR TEXTURE
     frameData.castbar:SetStatusBarTexture(TEXTURES.standard);
     frameData.castbar:SetStatusBarColor(1, 0.7, 0, 1);
     ForceStatusBarTextureLayer(frameData.castbar);
 
-    -- PASO 3: BORDE DEL CASTBAR (ARTWORK sublevel 0)
-    local border = frameData.castbar:CreateTexture(nil, 'ARTWORK', nil, 0);
-    border:SetTexture(TEXTURES.atlas);
-    border:SetTexCoord(unpack(UV_COORDS.border));
-    border:SetPoint("TOPLEFT", frameData.castbar, "TOPLEFT", -2, 2);
-    border:SetPoint("BOTTOMRIGHT", frameData.castbar, "BOTTOMRIGHT", 2, -2);
+    -- ✅ OPTIMIZACIÓN: Solo crear elementos necesarios según configuración
+    if cfg.showBorder ~= false then
+        local border = frameData.castbar:CreateTexture(nil, 'ARTWORK', nil, 0);
+        border:SetTexture(TEXTURES.atlas);
+        border:SetTexCoord(unpack(UV_COORDS.border));
+        border:SetPoint("TOPLEFT", frameData.castbar, "TOPLEFT", -2, 2);
+        border:SetPoint("BOTTOMRIGHT", frameData.castbar, "BOTTOMRIGHT", 2, -2);
+    end
 
-    -- PASO 4: TICKS DE CHANNELING (ARTWORK sublevel 1)
+    -- ✅ OPTIMIZACIÓN: Ticks solo si pueden ser necesarios
     frameData.ticks = {};
     CreateChannelTicks(frameData.castbar, frameData.ticks, 15);
 
-    -- PASO 5: SPARK (OVERLAY layer) - CORREGIDO
+    -- SPARK (siempre necesario)
     frameData.spark = frameData.castbar:CreateTexture(nil, 'OVERLAY', nil, 1);
     frameData.spark:SetTexture(TEXTURES.spark);
     frameData.spark:SetBlendMode('ADD');
     frameData.spark:Hide();
 
-    -- PASO 6: FLASH DE COMPLETADO (OVERLAY layer)
+    -- FLASH (siempre necesario)
     frameData.flash = frameData.castbar:CreateTexture(nil, 'OVERLAY');
     frameData.flash:SetTexture(TEXTURES.atlas);
     frameData.flash:SetTexCoord(unpack(UV_COORDS.flash));
@@ -1423,70 +1536,57 @@ local function CreateCastbar(castbarType)
     frameData.flash:SetAllPoints();
     frameData.flash:Hide();
 
-    -- PASO 7: ICONO Y BORDE DEL ICONO (ARTWORK layer)
-    frameData.icon = frameData.castbar:CreateTexture(frameName .. "Icon", 'ARTWORK');
-    frameData.icon:SetTexCoord(0.07, 0.93, 0.07, 0.93);
-    frameData.icon:Hide();
+    -- ✅ OPTIMIZACIÓN: Solo crear icono si está habilitado
+    if cfg.showIcon then
+        frameData.icon = frameData.castbar:CreateTexture(frameName .. "Icon", 'ARTWORK');
+        frameData.icon:SetTexCoord(0.07, 0.93, 0.07, 0.93);
+        frameData.icon:Hide();
 
-    local iconBorder = frameData.castbar:CreateTexture(nil, 'ARTWORK');
-    iconBorder:SetTexture("Interface\\Buttons\\UI-Quickslot2");
-    iconBorder:SetTexCoord(0.05, 0.95, 0.05, 0.95);
-    iconBorder:SetVertexColor(0.8, 0.8, 0.8, 1);
-    iconBorder:Hide();
-    frameData.icon.Border = iconBorder;
+        local iconBorder = frameData.castbar:CreateTexture(nil, 'ARTWORK');
+        iconBorder:SetTexture("Interface\\Buttons\\UI-Quickslot2");
+        iconBorder:SetTexCoord(0.05, 0.95, 0.05, 0.95);
+        iconBorder:SetVertexColor(0.8, 0.8, 0.8, 1);
+        iconBorder:Hide();
+        frameData.icon.Border = iconBorder;
 
-    -- PASO 8: ESCUDO (solo target y focus)
-    if castbarType ~= "player" then
-        frameData.shield = CreateSimplifiedShield(frameData.castbar, frameData.icon, frameName,
-            SHIELD_CONFIG.baseIconSize);
-    else
-        frameData.shield = frameData.castbar:CreateTexture(nil, 'OVERLAY');
-        frameData.shield:SetTexture("Interface\\CastingBar\\UI-CastingBar-Arena-Shield");
-        frameData.shield:SetSize(16, 16);
-        frameData.shield:Hide();
+        -- Escudo solo si hay icono
+        if castbarType ~= "player" then
+            frameData.shield = CreateSimplifiedShield(frameData.castbar, frameData.icon, frameName, SHIELD_CONFIG.baseIconSize);
+        end
     end
 
     -- Aplicar sistemas
     ApplyVertexColor(frameData.castbar);
     CreateTextureClippingSystem(frameData.castbar);
 
-    -- Frame de fondo de texto
-    local textBgName = frameName .. 'TextBG';
-    frameData.textBackground = CreateFrame('Frame', textBgName, UIParent);
-    frameData.textBackground:SetFrameStrata("MEDIUM");
-    frameData.textBackground:SetFrameLevel(9);
-    frameData.textBackground:Hide();
+    -- ✅ OPTIMIZACIÓN: Fondo de texto simplificado
+    if cfg.text_mode ~= "none" then
+        local textBgName = frameName .. 'TextBG';
+        frameData.textBackground = CreateFrame('Frame', textBgName, UIParent);
+        frameData.textBackground:SetFrameStrata("MEDIUM");
+        frameData.textBackground:SetFrameLevel(9);
+        frameData.textBackground:Hide();
 
-    local textBg = frameData.textBackground:CreateTexture(nil, 'BACKGROUND');
-    if castbarType == "player" then
-        textBg:SetTexture(TEXTURES.atlas);
-        textBg:SetTexCoord(0.001953125, 0.410109375, 0.00390625, 0.11328125);
-    else
-        textBg:SetTexture(TEXTURES.atlasSmall);
-        textBg:SetTexCoord(unpack(UV_COORDS.textBorder));
-    end
-    textBg:SetAllPoints();
+        local textBg = frameData.textBackground:CreateTexture(nil, 'BACKGROUND');
+        if castbarType == "player" then
+            textBg:SetTexture(TEXTURES.atlas);
+            textBg:SetTexCoord(0.001953125, 0.410109375, 0.00390625, 0.11328125);
+        else
+            textBg:SetTexture(TEXTURES.atlasSmall);
+            textBg:SetTexCoord(unpack(UV_COORDS.textBorder));
+        end
+        textBg:SetAllPoints();
 
-    -- Crear elementos de texto
-    local textElements = CreateTextElements(frameData.textBackground, castbarType);
-    for key, element in pairs(textElements) do
-        frameData[key] = element;
-    end
-
-    -- Frame de fondo adicional
-    if castbarType ~= "player" then
-        frameData.background = CreateFrame('Frame', frameName .. 'Background', frameData.castbar);
-        frameData.background:SetFrameLevel(frameData.castbar:GetFrameLevel() - 1);
-        frameData.background:SetAllPoints(frameData.castbar);
-    else
-        frameData.background = frameData.textBackground;
+        -- Crear elementos de texto
+        local textElements = CreateTextElements(frameData.textBackground, castbarType);
+        for key, element in pairs(textElements) do
+            frameData[key] = element;
+        end
     end
 
-    -- Configurar OnUpdate handler
+    -- ✅ OPTIMIZACIÓN: Configurar OnUpdate handler
     frameData.castbar:SetScript('OnUpdate', CreateUpdateFunction(castbarType));
-
 end
-
 -- =================================================================
 -- FUNCIONES DE REFRESH UNIFICADAS
 -- =================================================================
@@ -1539,7 +1639,7 @@ RefreshCastbar = function(castbarType)
     -- Calcular offset de auras para target
     local auraOffset = 0;
     if castbarType == "target" and cfg.autoAdjust then
-        auraOffset = GetTargetAuraOffsetSimplified();
+        auraOffset = GetTargetAuraOffsetRetailUI();
     end
 
     -- Posicionar y dimensionar castbar principal
@@ -1692,12 +1792,6 @@ end
 
 -- Función principal de manejo de eventos unificada
 function OnCastbarEvent(self, event, unit, ...)
-    -- Manejar evento UNIT_AURA para sistema mejorado de auto-adjust por auras
-    if event == 'UNIT_AURA' then
-        HandleUnitAura(unit);
-        return;
-    end
-
     -- Manejar PLAYER_FOCUS_CHANGED para castbar focus
     if event == 'PLAYER_FOCUS_CHANGED' then
         HandleFocusChanged();
@@ -1789,31 +1883,52 @@ local function InitializeCastbar()
     -- Crear frame de inicialización único para todos los eventos
     local initFrame = CreateFrame('Frame', 'DragonUICastbarEventHandler');
 
-    -- Registrar todos los eventos necesarios en un solo lugar
-    local allEvents = {'PLAYER_ENTERING_WORLD', 'UNIT_SPELLCAST_START', 'UNIT_SPELLCAST_STOP', 'UNIT_SPELLCAST_FAILED',
-                       'UNIT_SPELLCAST_INTERRUPTED', 'UNIT_SPELLCAST_CHANNEL_START', 'UNIT_SPELLCAST_CHANNEL_STOP',
-                       'UNIT_SPELLCAST_SUCCEEDED', 'UNIT_AURA', 'PLAYER_TARGET_CHANGED', 'PLAYER_FOCUS_CHANGED'};
+    -- ✅ CAMBIAR: Solo eventos esenciales como RetailUI
+    local essentialEvents = {
+        'PLAYER_ENTERING_WORLD', 
+        'UNIT_SPELLCAST_START', 
+        'UNIT_SPELLCAST_STOP', 
+        'UNIT_SPELLCAST_FAILED',
+        'UNIT_SPELLCAST_INTERRUPTED', 
+        'UNIT_SPELLCAST_CHANNEL_START', 
+        'UNIT_SPELLCAST_CHANNEL_STOP',
+        'UNIT_SPELLCAST_SUCCEEDED',
+        'UNIT_SPELLCAST_DELAYED',           
+        'UNIT_SPELLCAST_CHANNEL_UPDATE',    
+        'UNIT_SPELLCAST_INTERRUPTIBLE',     
+        'UNIT_SPELLCAST_NOT_INTERRUPTIBLE', 
+        'PLAYER_TARGET_CHANGED', 
+        'PLAYER_FOCUS_CHANGED'
+    };
 
-    for _, event in ipairs(allEvents) do
+    for _, event in ipairs(essentialEvents) do
         initFrame:RegisterEvent(event);
     end
 
-    -- Usar OnCastbarEvent como el manejador central para todo
     initFrame:SetScript('OnEvent', OnCastbarEvent);
 
-    -- Hook ajuste de posición de auras nativo de WoW (como ultimaversion)
+    -- ✅ CRÍTICO: DESREGISTRAR EVENTOS DE BLIZZARD al inicializar como RetailUI
+    if CastingBarFrame and CastingBarFrame.UnregisterAllEvents then
+        CastingBarFrame:UnregisterAllEvents();
+    end
+    if TargetFrameSpellBar and TargetFrameSpellBar.UnregisterAllEvents then
+        TargetFrameSpellBar:UnregisterAllEvents();
+    end
+    if FocusFrameSpellBar and FocusFrameSpellBar.UnregisterAllEvents then
+        FocusFrameSpellBar:UnregisterAllEvents();
+    end
+
+    -- ✅ MANTENER: Hook solo si UNIT_AURA se va a usar
     if TargetFrameSpellBar then
         hooksecurefunc('Target_Spellbar_AdjustPosition', function(self)
-            -- Aplicar offset de auras simplificado cuando WoW ajusta spellbar nativo del target
             if addon.db and addon.db.profile.castbar and addon.db.profile.castbar.target and
                 addon.db.profile.castbar.target.autoAdjust then
                 addon.core:ScheduleTimer(function()
-                    ApplySimplifiedAuraOffsetToTargetCastbar();
+                    ApplyRetailUIAuraOffsetToTargetCastbar();
                 end, 0.05);
             end
         end);
     end
-
 end
 
 -- Iniciar inicialización
