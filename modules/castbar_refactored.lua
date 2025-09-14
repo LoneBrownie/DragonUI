@@ -661,127 +661,9 @@ local function ShowBlizzardCastbar(castbarType)
     end
 end
 
--- =================================================================
--- SISTEMA DE ACTUALIZACIÓN DE TIEMPOS UNIFICADO
--- =================================================================
 
--- Función unificada para actualizar texto de tiempo de cast
-local function UpdateCastTimeText(castbarType)
-    local frameData = frames[castbarType];
-    local state = addon.castbarStates[castbarType];
 
-    -- CORREGIDO: Para player castbar, verificar timeValue y timeMax también
-    if castbarType == "player" then
-        if not frameData.timeValue and not frameData.timeMax then
-            return
-        end
-    else
-        if not frameData.castTimeText and not frameData.castTimeTextCompact then
-            return
-        end
-    end
 
-    local cfg = addon.db.profile.castbar;
-    if castbarType ~= "player" then
-        cfg = cfg[castbarType];
-        if not cfg then
-            return
-        end
-    end
-
-    local seconds = 0;
-    local secondsMax = state.maxValue or 0;
-
-    if state.casting or state.isChanneling then
-        if state.casting and not state.isChanneling then
-            -- Para casts regulares, mostrar tiempo restante
-            seconds = math.max(0, state.maxValue - state.currentValue);
-        else
-            -- Para channels, mostrar currentValue como tiempo restante
-            seconds = math.max(0, state.currentValue);
-        end
-    end
-
-    -- Formatear texto de tiempo
-    local timeText = string.format('%.' .. (cfg.precision_time or 1) .. 'f', seconds);
-    local fullText;
-
-    if cfg.precision_max and cfg.precision_max > 0 then
-        -- Formato con tiempo máximo: "2.5 / 8.0"
-        local maxText = string.format('%.' .. cfg.precision_max .. 'f', secondsMax);
-        fullText = timeText .. ' / ' .. maxText;
-    else
-        -- Formato simple: "2.5s"
-        fullText = timeText .. 's';
-    end
-
-    -- CORREGIDO: Manejar player castbar diferente (usa timeValue/timeMax separados)
-    if castbarType == "player" then
-        -- Solo mostrar tiempos si NO estamos en modo simple
-        local textMode = cfg.text_mode or "simple";
-        if textMode ~= "simple" and frameData.timeValue and frameData.timeMax then
-            frameData.timeValue:SetText(timeText);
-            frameData.timeMax:SetText(' / ' .. string.format('%.' .. (cfg.precision_max or 1) .. 'f', secondsMax));
-        end
-    else
-        -- Para target y focus, usar castTimeText
-        if frameData.castTimeText then
-            frameData.castTimeText:SetText(fullText)
-        end
-        if frameData.castTimeTextCompact then
-            frameData.castTimeTextCompact:SetText(fullText)
-        end
-    end
-end
-
--- =================================================================
--- SISTEMA DE SINCRONIZACIÓN CON BLIZZARD
--- =================================================================
-
--- Función unificada para sincronizar con castbars de Blizzard
-local function SyncWithBlizzardCastbar(castbarType, ourFrame)
-    local blizzardFrames = {
-        player = CastingBarFrame,
-        target = TargetFrameSpellBar
-    };
-
-    local blizzardFrame = blizzardFrames[castbarType];
-     local state = addon.castbarStates[castbarType];
-
-    if not blizzardFrame or not ourFrame or not state then
-        return false
-    end
-
-    -- Verificar si el frame de Blizzard está visible/activo
-    -- CORRECCIÓN: La barra del player ahora no se oculta, por lo que IsVisible() debería funcionar.
-    -- Mantenemos la excepción para el target por si acaso.
-    if not blizzardFrame:IsVisible() and castbarType ~= "target" then
-        return false
-    end
-
-    -- Copiar valores correctos de Blizzard
-    local blizzMin, blizzMax = blizzardFrame:GetMinMaxValues();
-    local blizzValue = blizzardFrame:GetValue();
-
-    if blizzMax > 0 and blizzMax ~= 1 then -- 1 es valor por defecto inválido
-        -- Usar valores perfectos de Blizzard
-        state.maxValue = blizzMax;
-        state.currentValue = blizzValue;
-
-        ourFrame:SetMinMaxValues(0, state.maxValue);
-        ourFrame:SetValue(state.currentValue);
-
-        -- Aplicar mejoras visuales
-        local progress = state.currentValue / state.maxValue;
-        if ourFrame.UpdateTextureClipping then
-            ourFrame:UpdateTextureClipping(progress);
-        end
-        UpdateCastTimeText(castbarType);
-
-        return true;
-    end
-    return false;
-end
 
 -- =================================================================
 -- FUNCIÓN DE FINALIZACIÓN UNIFICADA
@@ -1307,7 +1189,6 @@ end
 
 local function HandleTargetChanged()
     -- Si el modo editor está activo, no hacer nada.
-    -- Esto evita que la barra se oculte al entrar/salir del modo editor.
     if addon.EditorMode and addon.EditorMode:IsActive() then
         return;
     end
@@ -1328,28 +1209,19 @@ local function HandleTargetChanged()
             frameData.textBackground:Hide()
         end
 
-        state.casting = false;
-        state.isChanneling = false;
+        -- ✅ CORRECCIÓN: Usar variables del nuevo sistema
+        state.castingEx = false;
+        state.channelingEx = false;
         state.holdTime = 0;
-        state.maxValue = 0;
-        state.currentValue = 0;
+        state.startTime = 0;
+        state.endTime = 0;
 
         -- Limpiar elementos visuales
-        if frameData.icon then
-            frameData.icon:Hide()
-        end
-        if frameData.castTimeText then
-            frameData.castTimeText:SetText("")
-        end
-        if frameData.castTimeTextCompact then
-            frameData.castTimeTextCompact:SetText("")
-        end
-        if frameData.spark then
-            frameData.spark:Hide()
-        end
-        if frameData.shield then
-            frameData.shield:Hide()
-        end
+        if frameData.icon then frameData.icon:Hide() end
+        if frameData.castTimeText then frameData.castTimeText:SetText("") end
+        if frameData.castTimeTextCompact then frameData.castTimeTextCompact:SetText("") end
+        if frameData.spark then frameData.spark:Hide() end
+        if frameData.shield then frameData.shield:Hide() end
 
         -- Ocultar todos los ticks
         if frameData.ticks then
@@ -1361,7 +1233,7 @@ local function HandleTargetChanged()
 
     -- Limpiar caché de auras del target cuando cambia
     auraCache.target.lastUpdate = 0;
-    auraCache.target.lastCount = 0;
+    auraCache.target.lastRows = 0;  -- ✅ CORRECCIÓN: Era lastCount
     auraCache.target.lastOffset = 0;
     auraCache.target.lastTargetGUID = nil;
 
@@ -1621,10 +1493,9 @@ end
 
 -- Función unificada para refresh de castbars
 RefreshCastbar = function(castbarType)
-    -- CRITICAL: Protección contra refreshes muy frecuentes (causa problemas de capas)
+    -- CRITICAL: Protección contra refreshes muy frecuentes
     local currentTime = GetTime();
     local timeSinceLastRefresh = currentTime - (lastRefreshTime[castbarType] or 0);
-    -- No permitir refreshes más frecuentes que cada 0.1 segundos (excepto primer refresh)
     if timeSinceLastRefresh < 0.1 and (lastRefreshTime[castbarType] or 0) > 0 then
         return;
     end
@@ -1634,14 +1505,10 @@ RefreshCastbar = function(castbarType)
     local cfg = addon.db.profile.castbar;
     if castbarType ~= "player" then
         cfg = cfg[castbarType];
-        if not cfg then
-            return
-        end
+        if not cfg then return end
     end
 
-    if not cfg then
-        return
-    end
+    if not cfg then return end
 
     -- Manejar castbar de Blizzard primero
     if not cfg.enabled then
@@ -1650,14 +1517,13 @@ RefreshCastbar = function(castbarType)
         local frameData = frames[castbarType];
         if frameData.castbar then
             frameData.castbar:Hide();
-            if frameData.background then
-                frameData.background:Hide()
-            end
-            if frameData.textBackground then
-                frameData.textBackground:Hide()
-            end
-            local state = addon.castbarStates[castbarType]; -- ✅ CORRECCIÓN: Usar la tabla del addon
-            state.casting = false;
+            if frameData.background then frameData.background:Hide() end
+            if frameData.textBackground then frameData.textBackground:Hide() end
+            
+            -- ✅ CORRECCIÓN: Usar variables del nuevo sistema
+            local state = addon.castbarStates[castbarType];
+            state.castingEx = false;
+            state.channelingEx = false;
             state.holdTime = 0;
         end
         return;
@@ -1666,8 +1532,6 @@ RefreshCastbar = function(castbarType)
     -- Crear castbar si no existe
     if not frames[castbarType].castbar then
         CreateCastbar(castbarType);
-
-        -- PROBANDO
     end
 
     local frameData = frames[castbarType];
