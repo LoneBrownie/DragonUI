@@ -443,8 +443,8 @@ local function SetupCharacterButton(button)
     -- PASO 1: Usar el portrait nativo de Blizzard (como RetailUI)
     local portraitTexture = MicroButtonPortrait  
     portraitTexture:ClearAllPoints()
-    portraitTexture:SetPoint('CENTER', button, 'CENTER', 0, 0)  -- Sin offset
-    portraitTexture:SetSize(18, 23)  -- Tamaño ajustable
+    portraitTexture:SetPoint('CENTER', button, 'CENTER', 0, -0.5)  -- Sin offset
+    portraitTexture:SetSize(18, 24)  -- Tamaño ajustable
     portraitTexture:SetAlpha(1)  -- Visible siempre
     
     -- PASO 2: Solo background (como otros botones)
