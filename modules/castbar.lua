@@ -313,58 +313,16 @@ end
 -- AURA OFFSET SYSTEM
 -- ============================================================================
 
-local function CountVisibleAuras(unit)
-    if not UnitExists(unit) then return 0 end
-    
-    local count = 0
-    
-    -- Count buffs
-    for i = 1, 32 do
-        if not UnitAura(unit, i, "HELPFUL") then break end
-        count = count + 1
-    end
-    
-    -- Count debuffs
-    for i = 1, 32 do
-        if not UnitAura(unit, i, "HARMFUL") then break end
-        count = count + 1
-    end
-    
-    return ceil(count / 8) -- Convert to rows
-end
-
 local function GetTargetAuraOffset()
     local cfg = GetConfig("target")
     if not cfg or not cfg.autoAdjust then return 0 end
     
-    local cache = CastbarModule.auraCache.target
-    local currentTime = GetTime()
-    local currentGUID = UnitGUID("target")
-    
-    -- Use cache if valid
-    if cache.lastGUID == currentGUID and 
-       (currentTime - cache.lastUpdate) < AURA_UPDATE_INTERVAL then
-        return cache.lastOffset
+    -- Simple approach: check if target has multiple aura rows
+    if TargetFrame and TargetFrame.auraRows and TargetFrame.auraRows > 1 then
+        return (TargetFrame.auraRows - 1) * 24  -- 24px per extra row
     end
     
-    -- Calculate offset
-    local rows = TargetFrame and TargetFrame.auraRows or CountVisibleAuras("target")
-    local offset = 0
-    
-    if rows > 2 then
-        local delta = (rows - 2) * 24
-        if not (TargetFrame and TargetFrame.buffsOnTop) then
-            offset = delta
-        end
-    end
-    
-    -- Update cache
-    cache.lastUpdate = currentTime
-    cache.lastRows = rows
-    cache.lastOffset = offset
-    cache.lastGUID = currentGUID
-    
-    return offset
+    return 0
 end
 
 local function ApplyTargetAuraOffset()
