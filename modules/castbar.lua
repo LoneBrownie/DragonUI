@@ -1,7 +1,9 @@
 local addon = select(2, ...)
 
+-- CASTBAR MODULE FOR DRAGONUI
+-- Original code by Neticsoul
 -- ============================================================================
--- CASTBAR MODULE FOR DRAGONUI - OPTIMIZED FOR WOW 3.3.5A
+-- CASTBAR MODULE - OPTIMIZED FOR WOW 3.3.5A
 -- ============================================================================
 
 local _G = _G
