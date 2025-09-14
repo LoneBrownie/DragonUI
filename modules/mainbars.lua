@@ -226,63 +226,105 @@ function addon.PositionActionBars()
     local db = addon.db and addon.db.profile and addon.db.profile.mainbars
     if not db then return end
 
-    -- ✅ OBTENER LA ESCALA DE LA UI UNA SOLA VEZ
     local scale = UIParent:GetEffectiveScale()
 
-    -- 1. Barra Principal (pUiMainBar)
+    -- 1. Barra Principal (pUiMainBar) - sin cambios
     if pUiMainBar then
         pUiMainBar:SetMovable(true)
         pUiMainBar:ClearAllPoints()
         
         if db.player.override then
-            -- MODO MANUAL: Posición guardada por el usuario.
-            -- ✅ CORRECCIÓN: Dividimos por la escala para convertir píxeles a puntos.
             pUiMainBar:SetPoint("BOTTOMLEFT", UIParent, "BOTTOMLEFT", (db.player.x or 0) / scale, (db.player.y or 0) / scale)
         else
-            -- MODO AUTOMÁTICO: Posicionamiento por defecto.
             pUiMainBar:SetPoint("BOTTOM", UIParent, "BOTTOM", 0, db.player.y_position_offset or 75)
         end
         pUiMainBar:SetUserPlaced(db.player.override)
     end
 
-    -- 2. Barra Derecha (MultiBarRight)
+    -- 2. Barra Derecha (MultiBarRight) - CON ORIENTACIÓN
     if MultiBarRight then
         MultiBarRight:SetMovable(true)
         MultiBarRight:ClearAllPoints()
+        
+        -- ✅ CONFIGURAR ORIENTACIÓN HORIZONTAL/VERTICAL
+        if db.right.horizontal then
+            -- Modo horizontal: los botones van de izquierda a derecha
+            for i = 2, 12 do
+                local button = _G["MultiBarRightButton" .. i]
+                if button then
+                    button:ClearAllPoints()
+                    button:SetPoint("LEFT", _G["MultiBarRightButton" .. (i-1)], "RIGHT", 7, 0)
+                end
+            end
+        else
+            -- Modo vertical: los botones van de arriba a abajo (default)
+            for i = 2, 12 do
+                local button = _G["MultiBarRightButton" .. i]
+                if button then
+                    button:ClearAllPoints()
+                    button:SetPoint("TOP", _G["MultiBarRightButton" .. (i-1)], "BOTTOM", 0, -7)
+                end
+            end
+        end
 
         if db.right.override then
-            -- MODO MANUAL
-            -- ✅ CORRECCIÓN: Dividimos por la escala.
             MultiBarRight:SetPoint("BOTTOMLEFT", UIParent, "BOTTOMLEFT", (db.right.x or 0) / scale, (db.right.y or 0) / scale)
         else
-            -- MODO AUTOMÁTICO
-            MultiBarRight:SetPoint("RIGHT", UIParent, "RIGHT", -5, -70)
+            if db.right.horizontal then
+                -- Posición horizontal por defecto
+                MultiBarRight:SetPoint("BOTTOM", UIParent, "BOTTOM", 0, 150)
+            else
+                -- Posición vertical por defecto
+                MultiBarRight:SetPoint("RIGHT", UIParent, "RIGHT", -5, -70)
+            end
         end
         MultiBarRight:SetUserPlaced(db.right.override)
     end
 
-    -- 3. Barra Izquierda (MultiBarLeft)
+    -- 3. Barra Izquierda (MultiBarLeft) - CON ORIENTACIÓN
     if MultiBarLeft then
         MultiBarLeft:SetMovable(true)
         MultiBarLeft:ClearAllPoints()
+        
+        -- ✅ CONFIGURAR ORIENTACIÓN HORIZONTAL/VERTICAL
+        if db.left.horizontal then
+            -- Modo horizontal: los botones van de izquierda a derecha
+            for i = 2, 12 do
+                local button = _G["MultiBarLeftButton" .. i]
+                if button then
+                    button:ClearAllPoints()
+                    button:SetPoint("LEFT", _G["MultiBarLeftButton" .. (i-1)], "RIGHT", 7, 0)
+                end
+            end
+        else
+            -- Modo vertical: los botones van de arriba a abajo (default)
+            for i = 2, 12 do
+                local button = _G["MultiBarLeftButton" .. i]
+                if button then
+                    button:ClearAllPoints()
+                    button:SetPoint("TOP", _G["MultiBarLeftButton" .. (i-1)], "BOTTOM", 0, -7)
+                end
+            end
+        end
 
         if db.left.override then
-            -- MODO MANUAL
-            -- ✅ CORRECCIÓN: Dividimos por la escala.
             MultiBarLeft:SetPoint("BOTTOMLEFT", UIParent, "BOTTOMLEFT", (db.left.x or 0) / scale, (db.left.y or 0) / scale)
         else
-            -- MODO AUTOMÁTICO: Anclada a la barra derecha si esta no ha sido movida.
-            if not db.right.override then
-                 MultiBarLeft:SetPoint("RIGHT", MultiBarRight, "LEFT", -5, 0)
+            if db.left.horizontal then
+                -- Posición horizontal por defecto
+                MultiBarLeft:SetPoint("BOTTOM", UIParent, "BOTTOM", 0, 200)
             else
-                -- Si la barra derecha fue movida, la izquierda se ancla a la pantalla para no quedar huérfana.
-                MultiBarLeft:SetPoint("RIGHT", MultiBarRight, "LEFT", -5, 0)
+                -- Posición vertical por defecto - anclada a la barra derecha
+                if not db.right.override then
+                    MultiBarLeft:SetPoint("RIGHT", MultiBarRight, "LEFT", -5, 0)
+                else
+                    MultiBarLeft:SetPoint("RIGHT", MultiBarRight, "LEFT", -5, 0)
+                end
             end
         end
         MultiBarLeft:SetUserPlaced(db.left.override)
     end
 end
-
 
 
 function MainMenuBarMixin:statusbar_setup()

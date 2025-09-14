@@ -22,12 +22,15 @@ local defaults = {
             left = {
                 override = false,
                 x = 0,
-                y = 0
+                y = 0,
+                horizontal = false
             },
             right = {
                 override = false,
                 x = 0,
-                y = 0
+                y = 0,
+                horizontal = false
+                
             },
 
             -- La escala sigue siendo global para las barras.

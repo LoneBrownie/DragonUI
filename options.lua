@@ -67,6 +67,36 @@ function addon:CreateOptionsTable()
                         inline = true,
                         order = 1,
                         args = {
+                            left_horizontal = {
+                                type = 'toggle',
+                                name = "Left Bar Horizontal",
+                                desc = "Make the left secondary bar horizontal instead of vertical",
+                                get = function()
+                                    return addon.db.profile.mainbars.left.horizontal
+                                end,
+                                set = function(_, value)
+                                    addon.db.profile.mainbars.left.horizontal = value
+                                    if addon.RefreshMainbars then
+                                        addon.RefreshMainbars()
+                                    end
+                                end,
+                                order = 25
+                            },
+                            right_horizontal = {
+                                type = 'toggle',
+                                name = "Right Bar Horizontal",
+                                desc = "Make the right secondary bar horizontal instead of vertical",
+                                get = function()
+                                    return addon.db.profile.mainbars.right.horizontal
+                                end,
+                                set = function(_, value)
+                                    addon.db.profile.mainbars.right.horizontal = value
+                                    if addon.RefreshMainbars then
+                                        addon.RefreshMainbars()
+                                    end
+                                end,
+                                order = 26
+                            },
                             scale_actionbar = {
                                 type = 'range',
                                 name = "Main Bar Scale",
