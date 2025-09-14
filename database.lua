@@ -3,6 +3,14 @@ local addon = select(2, ...);
 -- Default values for new profiles (only used when creating new profiles)
 local defaults = {
     profile = {
+        -- Widgets
+        widgets = {
+            minimap = { 
+                anchor = "TOPRIGHT", 
+                posX = 14, 
+                posY = 14 
+            }
+        },
         -- Quest Tracker
         questtracker = {
             anchor = "TOPRIGHT",
@@ -30,7 +38,7 @@ local defaults = {
                 x = 0,
                 y = 0,
                 horizontal = false
-                
+
             },
 
             -- La escala sigue siendo global para las barras.
@@ -154,10 +162,6 @@ local defaults = {
             mail_icon_y = -5,
             addon_button_skin = true,
             addon_button_fade = false,
-            point = "TOPRIGHT",
-            relativePoint = "TOPRIGHT",
-            x = 14,
-            y = 14
         },
 
         -- ✅ BUFFS SETTINGS (NUEVO)
@@ -166,19 +170,26 @@ local defaults = {
             anchor = "TOPRIGHT",
             posX = -260,
             posY = -20,
-            show_toggle_button = true
+            show_toggle_button = true,
+            position = {
+                override = false,
+                anchor = "TOPRIGHT",
+                anchorParent = "TOPRIGHT",
+                x = -260,
+                y = -20
+            }
         },
 
         -- CASTBAR SETTINGS
         castbar = {
             enabled = true,
             scale = 1,
-            anchorFrame = "UIParent", -- Anclar al frame principal de la UI
-            anchor = "BOTTOM", -- Usar el punto de anclaje inferior central de la barra
-            anchorParent = "BOTTOM", -- Anclarlo al punto inferior central de la pantalla
-            x_position = 0, -- Desplazamiento horizontal (0 para centrado)
-            y_position = 230, -- Desplazamiento vertical hacia arriba
-            text_mode = "simple", -- "simple" (centered spell name only) or "detailed" (name + time)
+            anchorFrame = "UIParent",
+            anchor = "BOTTOM",
+            anchorParent = "BOTTOM",
+            x_position = 0,
+            y_position = 230,
+            text_mode = "simple",
             precision_time = 1,
             precision_max = 1,
             sizeX = 256,
@@ -187,6 +198,13 @@ local defaults = {
             sizeIcon = 27,
             holdTime = 0.3,
             holdTimeInterrupt = 0.8,
+            position = {
+                override = false,
+                anchor = "BOTTOM",
+                anchorParent = "BOTTOM",
+                x = 256,
+                y = 16
+            },
 
             -- TARGET CASTBAR SETTINGS
             target = {
@@ -361,13 +379,11 @@ local function deepCopy(source, target)
     for key, value in pairs(source) do
         if type(value) == "table" then
             if not target[key] then
-                target[key] = {};
+                target[key] = {}
             end
-            deepCopy(value, target[key]);
+            deepCopy(value, target[key])
         else
-            if target[key] == nil then
-                target[key] = value;
-            end
+            target[key] = value
         end
     end
 end

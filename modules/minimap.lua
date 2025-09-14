@@ -722,14 +722,17 @@ function MinimapModule:Initialize()
         LoadAddOn('Blizzard_TimeManager')
     end
 
-    -- Create a simple frame instead of CreateUIFrame
-    self.minimapFrame = CreateFrame('Frame', 'DragonUIMinimapFrame', UIParent)
-    self.minimapFrame:SetSize(230, 230)
+    self.minimapFrame = CreateUIFrame(230, 230, "MinimapFrame")
 
-    -- ✅ USAR COORDENADAS DE LA DATABASE POR DEFECTO
-    local x = addon.db and addon.db.profile and addon.db.profile.minimap and addon.db.profile.minimap.x or -7
-    local y = addon.db and addon.db.profile and addon.db.profile.minimap and addon.db.profile.minimap.y or 0
-    self.minimapFrame:SetPoint("TOPRIGHT", UIParent, "TOPRIGHT", x, y)
+    local defaultX, defaultY = -7, 0
+    local widgetConfig = addon.db and addon.db.profile.widgets and addon.db.profile.widgets.minimap
+    
+    if widgetConfig then
+        self.minimapFrame:SetPoint(widgetConfig.anchor or "TOPRIGHT", UIParent, widgetConfig.anchor or "TOPRIGHT", 
+                                  widgetConfig.posX or defaultX, widgetConfig.posY or defaultY)
+    else
+        self.minimapFrame:SetPoint("TOPRIGHT", UIParent, "TOPRIGHT", defaultX, defaultY)
+    end
 
     self.borderFrame = CreateMinimapBorderFrame(232, 232)
     self.borderFrame:SetPoint("CENTER", MinimapBorder, "CENTER", 0, -2)
@@ -753,44 +756,60 @@ end
 
 -- Eliminar las funciones que no existen más y convertir en funciones DragonUI
 function MinimapModule:UpdateSettings()
-    -- Función para actualizar configuraciones si es necesario
+    local scale = addon.db.profile.minimap.scale or 1.0
+    
     if self.minimapFrame then
-        local x = addon.db and addon.db.profile and addon.db.profile.minimap and addon.db.profile.minimap.x or -7
-        local y = addon.db and addon.db.profile and addon.db.profile.minimap and addon.db.profile.minimap.y or 0
-        local scale = addon.db and addon.db.profile and addon.db.profile.minimap and addon.db.profile.minimap.scale or
-                          1.0
-
+        -- ✅ MANEJAR POSICIÓN: Prioridad a widgets (editor mode), fallback a x,y
+        local x, y, anchor
+        
+        -- 1. Intentar usar posición del editor mode (widgets)
+        if addon.db.profile.widgets and addon.db.profile.widgets.minimap then
+            local widgetConfig = addon.db.profile.widgets.minimap
+            anchor = widgetConfig.anchor or "TOPRIGHT"
+            x = widgetConfig.posX or 0
+            y = widgetConfig.posY or 0
+            print("[DragonUI] Using EDITOR MODE position:", anchor, x, y)
+        else
+            -- 2. Fallback a posición legacy (x, y)
+            x = addon.db.profile.minimap.x or -7
+            y = addon.db.profile.minimap.y or 0
+            anchor = "TOPRIGHT"
+            print("[DragonUI] Using LEGACY position:", anchor, x, y)
+        end
+        
+        -- ✅ APLICAR POSICIÓN
         self.minimapFrame:ClearAllPoints()
-        self.minimapFrame:SetPoint("TOPRIGHT", UIParent, "TOPRIGHT", x, y)
-
-        -- ✅ ESCALAR ELEMENTOS INDIVIDUALES EN LUGAR DEL FRAME PADRE
-
-        -- Escalar el MinimapCluster completo
+        self.minimapFrame:SetPoint(anchor, UIParent, anchor, x, y)
+        
+        -- ✅ APLICAR ESCALA (funciona perfecto ahora)
         if MinimapCluster then
             MinimapCluster:SetScale(scale)
+            print("[DragonUI] Applied scale to MinimapCluster:", scale)
         end
 
-        -- ✅ TAMBIÉN ESCALAR EL BORDER FRAME
         if self.borderFrame then
             self.borderFrame:SetScale(scale)
         end
 
-        -- ✅ APLICAR CONFIGURACIONES ADICIONALES
+        -- ✅ APLICAR TODAS LAS CONFIGURACIONES
         self:ApplyAllSettings()
     end
 
-    -- Update blip texture (always use DragonUI modern icons)
-    Minimap:SetBlipTexture("Interface\\AddOns\\DragonUI\\assets\\objecticons")
-
-    -- Update player arrow size
-    local playerArrowSize = addon.db.profile.minimap.player_arrow_size
-    if playerArrowSize then
-        Minimap:SetPlayerTextureHeight(playerArrowSize)
-        Minimap:SetPlayerTextureWidth(playerArrowSize)
+    -- ✅ CONFIGURACIONES GLOBALES DEL MINIMAP
+    if Minimap then
+        Minimap:SetBlipTexture("Interface\\AddOns\\DragonUI\\assets\\objecticons")
+        
+        local playerArrowSize = addon.db.profile.minimap.player_arrow_size
+        if playerArrowSize then
+            Minimap:SetPlayerTextureHeight(playerArrowSize)
+            Minimap:SetPlayerTextureWidth(playerArrowSize)
+        end
     end
 
-    -- ✅ ACTUALIZAR TRACKING ICON TAMBIÉN
+    -- ✅ REFRESCAR OTROS ELEMENTOS
     self:UpdateTrackingIcon()
+    
+    print("[DragonUI] UpdateSettings completed - Scale:", scale)
 end
 
 local function GetClockTextFrame()
@@ -912,46 +931,44 @@ function MinimapModule:ApplyAllSettings()
         MinimapZoneText:SetFont(font, settings.zonetext_font_size, flags)
     end
 end
--- ✅ PATRÓN RETAILUI: Editor Mode Functions
-function MinimapModule:ShowEditorTest()
-    -- Hacer minimap draggable
-    if self.minimapFrame then
-        self.minimapFrame:SetMovable(true)
-        self.minimapFrame:EnableMouse(true)
-        self.minimapFrame:RegisterForDrag("LeftButton")
-
-        self.minimapFrame:SetScript("OnDragStart", function(frame)
-            frame:StartMoving()
-        end)
-
-        self.minimapFrame:SetScript("OnDragStop", function(frame)
-            frame:StopMovingOrSizing()
-            -- Guardar posición
-            local point, _, relativePoint, x, y = frame:GetPoint()
-            if addon.db and addon.db.profile and addon.db.profile.minimap then
-                addon.db.profile.minimap.point = point
-                addon.db.profile.minimap.relativePoint = relativePoint
-                addon.db.profile.minimap.x = x
-                addon.db.profile.minimap.y = y
-            end
-        end)
-
-        print("|cFF00FF00[DragonUI]|r Minimap now draggable")
+--  Editor Mode Functions
+function MinimapModule:LoadDefaultSettings()
+    -- ✅ USAR LA BASE DE DATOS CORRECTA: addon.db (no addon.core.db)
+    if not addon.db.profile.widgets then
+        addon.db.profile.widgets = {}
     end
+    addon.db.profile.widgets.minimap = { 
+        anchor = "TOPRIGHT", 
+        posX = 0, 
+        posY = 0 
+    }
 end
 
-function MinimapModule:HideEditorTest(savePosition)
-    -- Deshabilitar drag
-    if self.minimapFrame then
-        self.minimapFrame:SetMovable(false)
-        self.minimapFrame:EnableMouse(false)
-        self.minimapFrame:SetScript("OnDragStart", nil)
-        self.minimapFrame:SetScript("OnDragStop", nil)
+function MinimapModule:UpdateWidgets()
+    -- ✅ USAR LA BASE DE DATOS CORRECTA: addon.db (no addon.core.db)
+    if not addon.db or not addon.db.profile.widgets or not addon.db.profile.widgets.minimap then
+        print("[DragonUI] Minimap widgets config not found, loading defaults")
+        self:LoadDefaultSettings()
+        return
+    end
+    
+    local widgetOptions = addon.db.profile.widgets.minimap
+    self.minimapFrame:SetPoint(widgetOptions.anchor, widgetOptions.posX, widgetOptions.posY)
+    
+    print(string.format("[DragonUI] Minimap positioned at: %s (%d, %d)", 
+          widgetOptions.anchor, widgetOptions.posX, widgetOptions.posY))
+end
 
-        if savePosition then
-            self:UpdateSettings()
-            print("|cFF00FF00[DragonUI]|r Minimap position saved")
-        end
+function MinimapModule:ShowEditorTest()
+    HideUIFrame(self.minimapFrame)
+end
+
+function MinimapModule:HideEditorTest(refresh)
+    ShowUIFrame(self.minimapFrame)
+    SaveUIFramePosition(self.minimapFrame, 'minimap')
+
+    if refresh then
+        self:UpdateWidgets()
     end
 end
 

@@ -108,81 +108,45 @@ end
 
 -- ✅ PATRÓN RETAILUI: Delegar a cada módulo
 function EditorMode:Show()
-    if InCombatLockdown() then 
-        print("[DragonUI] Cannot enter editor mode while in combat!")
-        return 
+    if InCombatLockdown() then
+        print("Cannot open editor mode while in combat")
+        return
     end
-    
-    -- ✅ Mostrar grid y botón
+
+    -- Mostrar grid y botón
     createGridOverlay()
-    createExitButton() -- Asegura que el botón exista
-    if gridOverlay then gridOverlay:Show() end
-    if exitEditorButton then exitEditorButton:Show() end
-    
-    -- ✅ DELEGAR A CADA MÓDULO - PATRÓN RETAILUI (SIN CONDICIONES)
-    -- Los módulos que no existan simplemente fallarán silenciosamente
-    
-    -- Minimap y elementos HUD
-    if addon.MinimapModule and addon.MinimapModule.ShowEditorTest then
+    createExitButton()
+    gridOverlay:Show()
+    exitEditorButton:Show()
+
+    -- ✅ PATRÓN RETAILUI: Delegar a cada módulo
+    if addon.MinimapModule then
         addon.MinimapModule:ShowEditorTest()
     end
     
-    -- Buffs y elementos de interfaz  
-    if addon.BuffFrameModule and addon.BuffFrameModule.ShowEditorTest then
-        addon.BuffFrameModule:ShowEditorTest()
-    end
+    -- Cuando agregues más módulos:
+    -- if addon.UnitFrameModule then addon.UnitFrameModule:ShowEditorTest() end
+    -- if addon.ActionBarModule then addon.ActionBarModule:ShowEditorTest() end
     
-    -- Action Bars (mainbars.lua) - TODO: Implementar ShowEditorTest
-    -- addon.ActionBarModule:ShowEditorTest()
-    
-    -- Unit Frames (unitframes/*.lua) - TODO: Implementar ShowEditorTest  
-    -- addon.UnitFrameModule:ShowEditorTest()
-    
-    -- Cast Bars (castbar_refactored.lua) - TODO: Implementar ShowEditorTest
-    -- addon.CastBarModule:ShowEditorTest()
-    
-    -- Chat Frame (Chat.lua) - TODO: Implementar ShowEditorTest
-    -- addon.ChatModule:ShowEditorTest()
-    
-    -- Micro Menu (micromenu.lua) - TODO: Implementar ShowEditorTest
-    -- addon.MicroMenuModule:ShowEditorTest()
-    
-    print("|cFF00FF00[DragonUI]|r Editor Mode activated")
+    print("|cFF00FF00[DragonUI]|r Editor mode activated")
 end
 
+
 function EditorMode:Hide()
+    -- Ocultar grid y botón
     if gridOverlay then gridOverlay:Hide() end
     if exitEditorButton then exitEditorButton:Hide() end
-    
-    -- ✅ DELEGAR A CADA MÓDULO CON REFRESH - PATRÓN RETAILUI
-    -- Los módulos que no existan simplemente fallarán silenciosamente
-    
-    -- Minimap y elementos HUD
-    if addon.MinimapModule and addon.MinimapModule.HideEditorTest then
-        addon.MinimapModule:HideEditorTest(true)  -- true = refresh settings
+
+    -- ✅ PATRÓN RETAILUI: Delegar a cada módulo
+    if addon.MinimapModule then
+        addon.MinimapModule:HideEditorTest(true) -- true = refresh
     end
     
-    -- Buffs y elementos de interfaz
-    if addon.BuffFrameModule and addon.BuffFrameModule.HideEditorTest then
-        addon.BuffFrameModule:HideEditorTest(true)
-    end
+    -- Cuando agregues más módulos:
+    -- if addon.UnitFrameModule then addon.UnitFrameModule:HideEditorTest(true) end
+    -- if addon.ActionBarModule then addon.ActionBarModule:HideEditorTest(true) end
     
-    -- Action Bars (mainbars.lua) - TODO: Implementar HideEditorTest
-    -- addon.ActionBarModule:HideEditorTest(true)
-    
-    -- Unit Frames (unitframes/*.lua) - TODO: Implementar HideEditorTest
-    -- addon.UnitFrameModule:HideEditorTest(true)
-    
-    -- Cast Bars (castbar_refactored.lua) - TODO: Implementar HideEditorTest  
-    -- addon.CastBarModule:HideEditorTest(true)
-    
-    -- Chat Frame (Chat.lua) - TODO: Implementar HideEditorTest
-    -- addon.ChatModule:HideEditorTest(true)
-    
-    -- Micro Menu (micromenu.lua) - TODO: Implementar HideEditorTest
-    -- addon.MicroMenuModule:HideEditorTest(true)
-    
-    print("|cFF00FF00[DragonUI]|r Editor Mode deactivated")
+    print("|cFF00FF00[DragonUI]|r Editor mode deactivated")
 end
 
 function EditorMode:Toggle()

@@ -1696,54 +1696,29 @@ function addon:CreateOptionsTable()
                         name = "Position",
                         order = 6
                     },
-                    x = {
-                        type = 'range',
-                        name = "X Position",
-                        desc = "Horizontal position",
-                        min = -500,
-                        max = 500,
-                        step = 1,
-                        get = function()
-                            return addon.db.profile.minimap.x
-                        end,
-                        set = function(info, value)
-                            addon.db.profile.minimap.x = value
-                            if addon.MinimapModule then
-                                addon.MinimapModule:UpdateSettings()
-                            end
-                        end,
-                        order = 7
-                    },
-                    y = {
-                        type = 'range',
-                        name = "Y Position",
-                        desc = "Vertical position",
-                        min = -500,
-                        max = 500,
-                        step = 1,
-                        get = function()
-                            return addon.db.profile.minimap.y
-                        end,
-                        set = function(info, value)
-                            addon.db.profile.minimap.y = value
-                            if addon.MinimapModule then
-                                addon.MinimapModule:UpdateSettings()
-                            end
-                        end,
-                        order = 8
-                    },
                     position_reset = {
                         type = 'execute',
                         name = "Reset Position",
-                        desc = "Reset minimap to default position",
+                        desc = "Reset minimap to default position (top-right corner)",
                         func = function()
-                            addon.db.profile.minimap.x = -7
-                            addon.db.profile.minimap.y = 0
+                            -- ✅ SOLO RESETEAR SISTEMA WIDGETS
+                            if not addon.db.profile.widgets then
+                                addon.db.profile.widgets = {}
+                            end
+
+                            addon.db.profile.widgets.minimap = {
+                                anchor = "TOPRIGHT",
+                                posX = 14,
+                                posY = 14
+                            }
+
                             if addon.MinimapModule then
                                 addon.MinimapModule:UpdateSettings()
                             end
+
+                            print("|cFF00FF00[DragonUI]|r Minimap position reset to default")
                         end,
-                        order = 9
+                        order = 6.2
                     }
                 }
             },
