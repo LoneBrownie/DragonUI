@@ -238,16 +238,48 @@ function addon.core:SlashCommand(input)
         else
             self:Print("Editor mode not available. Make sure the editor_mode module is loaded.");
         end
+    elseif input:lower() == "debug" or input:lower() == "test" then
+        -- ✅ COMANDO DE DIAGNÓSTICO DEL SISTEMA CENTRALIZADO
+        self:Print("=== DragonUI Centralized System Debug ===");
+        
+        if addon.EditableFrames then
+            self:Print("Registered frames: " .. tostring(addon:tcount(addon.EditableFrames)));
+            for name, frameData in pairs(addon.EditableFrames) do
+                local frameStatus = frameData.frame and "OK" or "MISSING"
+                local configPath = table.concat(frameData.configPath, ".")
+                self:Print("  - " .. name .. " (frame: " .. frameStatus .. ", config: " .. configPath .. ")");
+            end
+        else
+            self:Print("ERROR: No EditableFrames table found!");
+        end
+        
+        if addon.db and addon.db.profile.widgets then
+            self:Print("Database widgets:");
+            for widgetName, widgetData in pairs(addon.db.profile.widgets) do
+                self:Print("  - " .. widgetName .. ": " .. (widgetData.anchor or "NONE") .. " (" .. (widgetData.posX or 0) .. "," .. (widgetData.posY or 0) .. ")");
+            end
+        else
+            self:Print("ERROR: No widgets in database!");
+        end
     else
         self:Print("Commands:");
         self:Print("/dragonui config - Open configuration");
         self:Print("/dragonui edit - Toggle editor mode for moving UI elements");
+        self:Print("/dragonui debug - Show centralized system debug info");
     end
 end
 
 ---------------------------------------------------
 -- FUNCIONES GLOBALES PARA EL SISTEMA DE MOVILIDAD 
 ---------------------------------------------------
+
+-- ✅ FUNCIÓN AUXILIAR PARA CONTAR ELEMENTOS EN TABLA
+function addon:tcount(tbl)
+    local count = 0
+    for _ in pairs(tbl) do count = count + 1 end
+    return count
+end
+
 function CreateUIFrame(width, height, frameName)
     local frame = CreateFrame("Frame", 'DragonUI_' .. frameName, UIParent)
     frame:SetSize(width, height)
@@ -328,27 +360,50 @@ function HideUIFrame(frame, exclude)
     end
 end
 
-function SaveUIFramePosition(frame, widgetName)
-    if not frame or not widgetName then
+function SaveUIFramePosition(frame, configPath1, configPath2)
+    if not frame then
+        print("|cFFFF0000[DragonUI]|r SaveUIFramePosition: frame is nil")
         return
     end
 
     local anchor, _, relativePoint, posX, posY = frame:GetPoint(1) -- Primer punto
 
-    if not addon.db.profile.widgets then
-        addon.db.profile.widgets = {}
+    -- ✅ MANEJAR RUTAS ANIDADAS (widgets.player)
+    if configPath2 then
+        -- Caso: SaveUIFramePosition(frame, "widgets", "player")
+        if not addon.db.profile[configPath1] then
+            addon.db.profile[configPath1] = {}
+        end
+
+        if not addon.db.profile[configPath1][configPath2] then
+            addon.db.profile[configPath1][configPath2] = {}
+        end
+
+        addon.db.profile[configPath1][configPath2].anchor = anchor or "CENTER"
+        addon.db.profile[configPath1][configPath2].posX = posX or 0
+        addon.db.profile[configPath1][configPath2].posY = posY or 0
+
+        print(string.format("[DragonUI] %s.%s position saved: %s (%.0f, %.0f)", 
+              configPath1, configPath2, anchor or "CENTER", posX or 0, posY or 0))
+    else
+        -- Caso: SaveUIFramePosition(frame, "minimap") - compatibilidad hacia atrás
+        local widgetName = configPath1
+        
+        if not addon.db.profile.widgets then
+            addon.db.profile.widgets = {}
+        end
+
+        if not addon.db.profile.widgets[widgetName] then
+            addon.db.profile.widgets[widgetName] = {}
+        end
+
+        addon.db.profile.widgets[widgetName].anchor = anchor or "CENTER"
+        addon.db.profile.widgets[widgetName].posX = posX or 0
+        addon.db.profile.widgets[widgetName].posY = posY or 0
+
+        print(string.format("[DragonUI] %s position saved: %s (%.0f, %.0f)", 
+              widgetName, anchor or "CENTER", posX or 0, posY or 0))
     end
-
-    if not addon.db.profile.widgets[widgetName] then
-        addon.db.profile.widgets[widgetName] = {}
-    end
-
-    addon.db.profile.widgets[widgetName].anchor = anchor or "CENTER"
-    addon.db.profile.widgets[widgetName].posX = posX or 0
-    addon.db.profile.widgets[widgetName].posY = posY or 0
-
-    print(string.format("[DragonUI] %s position saved: %s (%.0f, %.0f)", widgetName, anchor or "CENTER", posX or 0,
-        posY or 0))
 end
 
 function CheckSettingsExists(moduleInstance, widgets)
@@ -403,5 +458,96 @@ function CheckSettingsExists(moduleTable, configPaths)
 end
 
 ---------------------------------------------------
+-- SISTEMA CENTRALIZADO DE FRAMES EDITABLES (EXTENDIDO)
+---------------------------------------------------
+
+-- ✅ REGISTRO GLOBAL DE TODOS LOS FRAMES EDITABLES
+addon.EditableFrames = {}
+
+-- ✅ FUNCIÓN PARA REGISTRAR FRAMES AUTOMÁTICAMENTE
+function addon:RegisterEditableFrame(frameInfo)
+    local frameData = {
+        name = frameInfo.name,                    -- "player", "minimap", "target"
+        frame = frameInfo.frame,                  -- El frame auxiliar
+        blizzardFrame = frameInfo.blizzardFrame,  -- ✅ NUEVO: Frame real de Blizzard (opcional)
+        configPath = frameInfo.configPath,       -- {"widgets", "player"} o {"unitframe", "target"}
+        onShow = frameInfo.onShow,               -- Función opcional al mostrar editor
+        onHide = frameInfo.onHide,               -- Función opcional al ocultar editor
+        -- ✅ NUEVO: Funciones para mostrar/ocultar con datos fake
+        showTest = frameInfo.showTest,           -- Función para mostrar con datos fake
+        hideTest = frameInfo.hideTest,           -- Función para ocultar frame fake
+        hasTarget = frameInfo.hasTarget,         -- Función para verificar si debe estar visible
+        module = frameInfo.module                -- Referencia al módulo
+    }
+    
+    self.EditableFrames[frameInfo.name] = frameData
+    print("|cFF00FF00[DragonUI]|r Registered editable frame:", frameInfo.name)
+end
+
+-- ✅ FUNCIÓN PARA MOSTRAR TODOS LOS FRAMES EN EDITOR MODE
+function addon:ShowAllEditableFrames()
+    for name, frameData in pairs(self.EditableFrames) do
+        if frameData.frame then
+            HideUIFrame(frameData.frame) -- Mostrar overlay verde
+            
+            -- ✅ NUEVO: Mostrar frame con datos fake si es necesario
+            if frameData.showTest then
+                frameData.showTest()
+            end
+            
+            if frameData.onShow then
+                frameData.onShow()
+            end
+        end
+    end
+    print("|cFF00FF00[DragonUI]|r All editable frames shown for editing")
+end
+
+-- ✅ FUNCIÓN PARA OCULTAR TODOS LOS FRAMES Y GUARDAR POSICIONES
+function addon:HideAllEditableFrames(refresh)
+    for name, frameData in pairs(self.EditableFrames) do
+        if frameData.frame then
+            ShowUIFrame(frameData.frame) -- Ocultar overlay verde
+            
+            -- ✅ NUEVO: Ocultar frame fake si no debe estar visible
+            if frameData.hideTest then
+                frameData.hideTest()
+            end
+            
+            if refresh then
+                -- Guardar posición automáticamente
+                if #frameData.configPath == 2 then
+                    SaveUIFramePosition(frameData.frame, frameData.configPath[1], frameData.configPath[2])
+                else
+                    SaveUIFramePosition(frameData.frame, frameData.configPath[1])
+                end
+                
+                if frameData.onHide then
+                    frameData.onHide()
+                end
+            end
+        end
+    end
+    print("|cFF00FF00[DragonUI]|r All editable frames hidden, positions saved")
+end
+
+-- ✅ FUNCIÓN PARA VERIFICAR SI UN FRAME DEBE ESTAR VISIBLE
+function addon:ShouldFrameBeVisible(frameName)
+    local frameData = self.EditableFrames[frameName]
+    if not frameData then return false end
+    
+    if frameData.hasTarget then
+        return frameData.hasTarget()
+    end
+    
+    -- Por defecto, los frames siempre están visibles (player, minimap)
+    return true
+end
+
+-- ✅ FUNCIÓN PARA OBTENER INFORMACIÓN DE UN FRAME REGISTRADO
+function addon:GetEditableFrameInfo(frameName)
+    return self.EditableFrames[frameName]
+end
+
 ---------------------------------------------------
 ---------------------------------------------------
