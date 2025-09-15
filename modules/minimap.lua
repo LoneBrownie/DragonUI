@@ -724,6 +724,18 @@ function MinimapModule:Initialize()
 
     self.minimapFrame = CreateUIFrame(230, 230, "MinimapFrame")
 
+    -- ✅ REGISTRO AUTOMÁTICO EN EL SISTEMA CENTRALIZADO
+    addon:RegisterEditableFrame({
+        name = "minimap",
+        frame = self.minimapFrame,
+        blizzardFrame = MinimapCluster,
+        configPath = {"widgets", "minimap"},
+        onHide = function()
+            self:UpdateWidgets() -- Aplicar nueva configuración al salir del editor
+        end,
+        module = self
+    })
+
     local defaultX, defaultY = -7, 0
     local widgetConfig = addon.db and addon.db.profile.widgets and addon.db.profile.widgets.minimap
     
@@ -959,18 +971,7 @@ function MinimapModule:UpdateWidgets()
           widgetOptions.anchor, widgetOptions.posX, widgetOptions.posY))
 end
 
-function MinimapModule:ShowEditorTest()
-    HideUIFrame(self.minimapFrame)
-end
-
-function MinimapModule:HideEditorTest(refresh)
-    ShowUIFrame(self.minimapFrame)
-    SaveUIFramePosition(self.minimapFrame, 'minimap')
-
-    if refresh then
-        self:UpdateWidgets()
-    end
-end
+-- ✅ FUNCIONES EDITOR MODE ELIMINADAS - AHORA USA SISTEMA CENTRALIZADO
 
 -- Función de refresh para ser llamada desde options.lua
 function addon:RefreshMinimap()

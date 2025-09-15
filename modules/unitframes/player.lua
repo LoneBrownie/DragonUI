@@ -139,6 +139,34 @@ local function CreateUIFrame(width, height, name)
     frame:SetSize(width, height)
     frame:SetPoint("TOPLEFT", UIParent, "TOPLEFT", 50, -50)
     frame:SetFrameStrata("LOW")
+    
+    -- ✅ AÑADIR: Texturas de editor (como minimap)
+    local editorTexture = frame:CreateTexture(nil, "BACKGROUND")
+    editorTexture:SetAllPoints(frame)
+    editorTexture:SetTexture(0, 1, 0, 0.3) -- Verde semi-transparente
+    editorTexture:Hide() -- Oculto por defecto
+    frame.editorTexture = editorTexture
+    
+    local editorText = frame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    editorText:SetPoint("CENTER", frame, "CENTER")
+    editorText:SetText("Player Frame")
+    editorText:SetTextColor(1, 1, 1, 1)
+    editorText:Hide() -- Oculto por defecto
+    frame.editorText = editorText
+    
+    -- ✅ AÑADIR: Funcionalidad de arrastre
+    frame:SetMovable(false) -- Deshabilitado por defecto
+    frame:EnableMouse(false) -- Deshabilitado por defecto
+    frame:SetScript("OnDragStart", function(self)
+        if self:IsMovable() then
+            self:StartMoving()
+        end
+    end)
+    frame:SetScript("OnDragStop", function(self)
+        self:StopMovingOrSizing()
+    end)
+    frame:RegisterForDrag("LeftButton")
+    
     return frame
 end
 
@@ -1045,27 +1073,6 @@ local function CreatePlayerFrameTextures()
     UpdatePlayerDragonDecoration()
 end
 
--- Position PlayerFrame elements
-local function MovePlayerFrame(point, relativeTo, relativePoint, xOfs, yOfs)
-    PlayerFrame:ClearAllPoints()
-
-    local originalClamped = PlayerFrame:IsClampedToScreen()
-    PlayerFrame:SetClampedToScreen(false)
-
-    -- Usar defaults de database
-    local dbDefaults = addon.defaults and addon.defaults.profile.unitframe.player or {}
-
-    local finalPoint = point or "TOPLEFT"
-    local finalFrame = _G[relativeTo or "UIParent"] or UIParent
-    local finalRelativePoint = relativePoint or "TOPLEFT"
-    local finalX = xOfs or (dbDefaults.x or -19)
-    local finalY = yOfs or (dbDefaults.y or -4)
-
-    PlayerFrame:SetPoint(finalPoint, finalFrame, finalRelativePoint, finalX, finalY)
-    PlayerFrame:SetClampedToScreen(originalClamped)
-
-    print("|cFF00FF00[DragonUI]|r PlayerFrame positioned:", finalPoint, "to", finalRelativePoint, finalX, finalY)
-end
 
 -- Main frame configuration function
 local function ChangePlayerframe()
@@ -1173,30 +1180,44 @@ local function SetCombatFlashVisible(visible)
     SetEliteCombatFlashVisible(visible) -- Use unified system
 end
 
+-- ✅ FUNCIÓN PARA APLICAR POSICIÓN DESDE WIDGETS (COMO MINIMAP)
+local function ApplyWidgetPosition()
+    local widgetConfig = addon:GetConfigValue("widgets", "player")
+    if not widgetConfig then
+        -- Si no hay widgets config, usar defaults
+        widgetConfig = {
+            anchor = "TOPLEFT",
+            posX = -19,
+            posY = -4
+        }
+    end
+
+    -- ✅ CLAVE: Posicionar el frame auxiliar
+    Module.playerFrame:ClearAllPoints()
+    Module.playerFrame:SetPoint(
+        widgetConfig.anchor or "TOPLEFT", 
+        UIParent, 
+        widgetConfig.anchor or "TOPLEFT",
+        widgetConfig.posX or -19,
+        widgetConfig.posY or -4
+    )
+    
+    -- ✅ CLAVE: Anclar PlayerFrame al auxiliar (sistema RetailUI)
+    PlayerFrame:ClearAllPoints()
+    PlayerFrame:SetPoint("CENTER", Module.playerFrame, "CENTER", 0, 0)
+
+    print("|cFF00FF00[DragonUI]|r Player frame positioned via widgets:", widgetConfig.posX, widgetConfig.posY)
+end
+
 -- Apply configuration settings
 local function ApplyPlayerConfig()
     local config = GetPlayerConfig()
-    local x, y, valid = ValidateCoordinates(config.x, config.y)
 
-    if not valid then
-        -- Reset invalid coordinates usando database defaults
-        local dbDefaults = addon.defaults and addon.defaults.profile.unitframe.player or {}
-        for key, value in pairs(dbDefaults) do
-            addon:SetConfigValue("unitframe", "player", key, value)
-        end
-        config = dbDefaults
-        x, y = dbDefaults.x or -19, dbDefaults.y or -4
-    end
+    -- Aplicar escala
+    PlayerFrame:SetScale(config.scale or 1.0)
 
-    PlayerFrame:SetScale(config.scale)
-
-    if config.override then
-        PlayerFrame:SetUserPlaced(true)
-        MovePlayerFrame(config.anchor, "UIParent", config.anchorParent, x, y)
-    else
-        local dbDefaults = addon.defaults and addon.defaults.profile.unitframe.player or {}
-        MovePlayerFrame("TOPLEFT", "UIParent", "TOPLEFT", dbDefaults.x or -19, dbDefaults.y or -4)
-    end
+    -- ✅ SIEMPRE usar posición de widgets (Editor Mode)
+    ApplyWidgetPosition()
 
     -- Setup text system
     local dragonFrame = _G["DragonUIUnitframeFrame"]
@@ -1204,16 +1225,15 @@ local function ApplyPlayerConfig()
         if not Module.textSystem then
             Module.textSystem = addon.TextSystem.SetupFrameTextSystem("player", "player", dragonFrame,
                 PlayerFrameHealthBar, PlayerFrameManaBar, "PlayerFrame")
-            print("|cFF00FF00[DragonUI]|r PlayerFrame TextSystem configured")
         end
-
         if Module.textSystem then
             Module.textSystem.update()
         end
     end
+
     UpdatePlayerDragonDecoration()
     UpdateGlowVisibility()
-    print("|cFF00FF00[DragonUI]|r PlayerFrame config applied - Override:", config.override, "Scale:", config.scale)
+    print("|cFF00FF00[DragonUI]|r PlayerFrame config applied - Scale:", config.scale)
 end
 
 -- ============================================================================
@@ -1235,18 +1255,18 @@ end
 local function RefreshPlayerFrame()
     -- ✅ APLICAR CONFIGURACIÓN INMEDIATAMENTE
     ApplyPlayerConfig()
-    
+
     -- ✅ ACTUALIZAR CLASS COLOR
     UpdatePlayerHealthBarColor()
-    
+
     -- ✅ ACTUALIZAR DECORACIÓN DRAGON (importante para scale)
     UpdatePlayerDragonDecoration()
-    
+
     -- ✅ ACTUALIZAR SISTEMA DE TEXTOS
     if Module.textSystem then
         Module.textSystem.update()
     end
-    
+
     print("|cFF00FF00[DragonUI]|r PlayerFrame refreshed via Ace3")
 end
 
@@ -1262,7 +1282,7 @@ local function SetupPlayerClassColorHooks()
                 UpdatePlayerHealthBarColor()
             end
         end)
-        
+
         _G.DragonUI_PlayerHealthHookSetup = true
         print("|cFF00FF00[DragonUI]|r Player class color hook installed")
     end
@@ -1282,6 +1302,18 @@ local function InitializePlayerFrame()
 
     -- Create auxiliary frame
     Module.playerFrame = CreateUIFrame(198, 71, "PlayerFrame")
+
+    -- ✅ REGISTRO AUTOMÁTICO EN EL SISTEMA CENTRALIZADO
+    addon:RegisterEditableFrame({
+        name = "player",
+        frame = Module.playerFrame,
+        blizzardFrame = PlayerFrame,
+        configPath = {"widgets", "player"},
+        onHide = function()
+            ApplyPlayerConfig() -- Aplicar nueva configuración al salir del editor
+        end,
+        module = Module
+    })
 
     -- Setup frame hooks
     if PlayerFrame and PlayerFrame.HookScript then
@@ -1428,7 +1460,6 @@ local function SetupPlayerEvents()
     print("|cFF00FF00[DragonUI Player]|r Optimized event system configured")
 end
 
-
 -- ============================================================================
 -- MODULE STARTUP
 -- ============================================================================
@@ -1451,3 +1482,5 @@ addon.PlayerFrame = {
 }
 
 print("|cFF00FF00[DragonUI]|r Player.lua LOADED")
+
+-- ✅ FUNCIONES EDITOR MODE ELIMINADAS - AHORA USA SISTEMA CENTRALIZADO

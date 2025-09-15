@@ -2833,66 +2833,7 @@ function addon:CreateOptionsTable()
                                 end,
                                 order = 6
                             },
-                            override = {
-                                type = 'toggle',
-                                name = "Override Position",
-                                desc = "Override default positioning",
-                                get = function()
-                                    return addon.db.profile.unitframe.player.override
-                                end,
-                                set = function(info, value)
-                                    addon.db.profile.unitframe.player.override = value
-                                    -- ✅ AUTO-REFRESH
-                                    if addon.PlayerFrame and addon.PlayerFrame.RefreshPlayerFrame then
-                                        addon.PlayerFrame.RefreshPlayerFrame()
-                                    end
-                                end,
-                                order = 7
-                            },
-                            x = {
-                                type = 'range',
-                                name = "X Position",
-                                desc = "Horizontal position",
-                                min = -1000,
-                                max = 1000,
-                                step = 1,
-                                get = function()
-                                    return addon.db.profile.unitframe.player.x
-                                end,
-                                set = function(info, value)
-                                    addon.db.profile.unitframe.player.x = value
-                                    -- ✅ AUTO-REFRESH INMEDIATO
-                                    if addon.PlayerFrame and addon.PlayerFrame.RefreshPlayerFrame then
-                                        addon.PlayerFrame.RefreshPlayerFrame()
-                                    end
-                                end,
-                                order = 8,
-                                disabled = function()
-                                    return not addon.db.profile.unitframe.player.override
-                                end
-                            },
-                            y = {
-                                type = 'range',
-                                name = "Y Position",
-                                desc = "Vertical position",
-                                min = -1000,
-                                max = 1000,
-                                step = 1,
-                                get = function()
-                                    return addon.db.profile.unitframe.player.y
-                                end,
-                                set = function(info, value)
-                                    addon.db.profile.unitframe.player.y = value
-                                    -- ✅ AUTO-REFRESH INMEDIATO
-                                    if addon.PlayerFrame and addon.PlayerFrame.RefreshPlayerFrame then
-                                        addon.PlayerFrame.RefreshPlayerFrame()
-                                    end
-                                end,
-                                order = 9,
-                                disabled = function()
-                                    return not addon.db.profile.unitframe.player.override
-                                end
-                            },
+
                             dragon_decoration = {
                                 type = 'select',
                                 name = "Dragon Decoration",
@@ -2913,6 +2854,27 @@ function addon:CreateOptionsTable()
                                     end
                                 end,
                                 order = 10
+                            },
+                            reset_position = {
+                                type = 'execute',
+                                name = "Reset Position",
+                                desc = "Reset player frame to default position",
+                                func = function()
+                                    -- Reset widgets position
+                                    if not addon.db.profile.widgets then
+                                        addon.db.profile.widgets = {}
+                                    end
+                                    addon.db.profile.widgets.player = {
+                                        anchor = "TOPLEFT",
+                                        posX = -19,
+                                        posY = -4
+                                    }
+                                    if addon.PlayerFrame then
+                                        addon.PlayerFrame.Refresh()
+                                    end
+                                    print("|cFF00FF00[DragonUI]|r Player frame position reset to default")
+                                end,
+                                order = 11
                             }
                         }
                     },

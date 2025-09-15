@@ -106,45 +106,30 @@ local function createGridOverlay()
     gridOverlay:Hide()
 end
 
--- ✅ PATRÓN RETAILUI: Delegar a cada módulo
 function EditorMode:Show()
     if InCombatLockdown() then
         print("Cannot open editor mode while in combat")
         return
     end
 
-    -- Mostrar grid y botón
     createGridOverlay()
     createExitButton()
     gridOverlay:Show()
     exitEditorButton:Show()
 
-    -- ✅ PATRÓN RETAILUI: Delegar a cada módulo
-    if addon.MinimapModule then
-        addon.MinimapModule:ShowEditorTest()
-    end
-    
-    -- Cuando agregues más módulos:
-    -- if addon.UnitFrameModule then addon.UnitFrameModule:ShowEditorTest() end
-    -- if addon.ActionBarModule then addon.ActionBarModule:ShowEditorTest() end
+    -- ✅ NUEVO: USAR SISTEMA CENTRALIZADO - UNA SOLA LÍNEA
+    addon:ShowAllEditableFrames()
     
     print("|cFF00FF00[DragonUI]|r Editor mode activated")
 end
 
 
 function EditorMode:Hide()
-    -- Ocultar grid y botón
     if gridOverlay then gridOverlay:Hide() end
     if exitEditorButton then exitEditorButton:Hide() end
 
-    -- ✅ PATRÓN RETAILUI: Delegar a cada módulo
-    if addon.MinimapModule then
-        addon.MinimapModule:HideEditorTest(true) -- true = refresh
-    end
-    
-    -- Cuando agregues más módulos:
-    -- if addon.UnitFrameModule then addon.UnitFrameModule:HideEditorTest(true) end
-    -- if addon.ActionBarModule then addon.ActionBarModule:HideEditorTest(true) end
+    -- ✅ NUEVO: USAR SISTEMA CENTRALIZADO - UNA SOLA LÍNEA
+    addon:HideAllEditableFrames(true) -- true = refresh and save positions
     
     print("|cFF00FF00[DragonUI]|r Editor mode deactivated")
 end

@@ -5,10 +5,15 @@ local defaults = {
     profile = {
         -- Widgets
         widgets = {
-            minimap = { 
-                anchor = "TOPRIGHT", 
-                posX = 14, 
-                posY = 14 
+            minimap = {
+                anchor = "TOPRIGHT",
+                posX = 14,
+                posY = 14
+            },
+            player = {
+                anchor = "TOPLEFT",
+                posX = -19,
+                posY = -4
             }
         },
         -- Quest Tracker
@@ -161,7 +166,7 @@ local defaults = {
             mail_icon_x = -4,
             mail_icon_y = -5,
             addon_button_skin = true,
-            addon_button_fade = false,
+            addon_button_fade = false
         },
 
         -- ✅ BUFFS SETTINGS (NUEVO)
@@ -269,11 +274,6 @@ local defaults = {
                 enabled = true,
                 breakUpLargeNumbers = true,
                 scale = 1.0,
-                override = false, -- ✅ CLAVE: Por defecto NO override
-                x = -19, -- ✅ Posición por defecto
-                y = -4, -- ✅ Posición por defecto  
-                anchor = "TOPLEFT",
-                anchorParent = "TOPLEFT",
                 classcolor = false,
                 healthFormat = "both",
                 manaFormat = "both",
