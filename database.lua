@@ -30,7 +30,11 @@ local defaults = {
                 posX = 10,
                 posY = -200
             },
-            -- ✅ PLAYER CASTBAR WIDGET
+            buffs = {
+                anchor = "TOPRIGHT",
+                posX = -260,
+                posY = -20
+            },
             playerCastbar = {
                 anchor = "BOTTOM",
                 posX = 0,
@@ -193,17 +197,7 @@ local defaults = {
         -- ✅ BUFFS SETTINGS (NUEVO)
         buffs = {
             enabled = true,
-            anchor = "TOPRIGHT",
-            posX = -260,
-            posY = -20,
-            show_toggle_button = true,
-            position = {
-                override = false,
-                anchor = "TOPRIGHT",
-                anchorParent = "TOPRIGHT",
-                x = -260,
-                y = -20
-            }
+            show_toggle_button = true
         },
 
         -- CASTBAR SETTINGS
@@ -224,13 +218,7 @@ local defaults = {
             sizeIcon = 27,
             holdTime = 0.3,
             holdTimeInterrupt = 0.8,
-            position = {
-                override = false,
-                anchor = "BOTTOM",
-                anchorParent = "BOTTOM",
-                x = 256,
-                y = 16
-            },
+           
 
             -- TARGET CASTBAR SETTINGS
             target = {

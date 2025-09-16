@@ -226,6 +226,13 @@ function addon:RefreshConfig()
         end
     end
 
+    if addon.RefreshBuffFrame then
+        local success, err = pcall(addon.RefreshBuffFrame);
+        if not success then
+            table.insert(failed, "RefreshBuffFrame")
+        end
+    end
+
     -- If some configurations failed, retry them after 2 seconds
     if #failed > 0 then
         addon.core:ScheduleTimer(function()

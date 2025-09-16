@@ -14,22 +14,15 @@ local buffFrame = nil
 local toggleButton = nil
 local dragonUIBuffFrame = nil  -- ✅ NUESTRO FRAME CUSTOM COMO RETAILUI
 
--- ✅ FUNCIÓN PARA CREAR EL FRAME CUSTOM Y TOGGLE BUTTON
-local function CreateDragonUIBuffFrame()
-    if dragonUIBuffFrame then return end
-    
-    -- ✅ CREAR NUESTRO FRAME CUSTOM COMO EN RETAILUI
-    dragonUIBuffFrame = CreateFrame('Frame', "DragonUI_BuffFrame", UIParent)
-    dragonUIBuffFrame:SetSize(BuffFrame:GetWidth(), BuffFrame:GetHeight())
-    
-    -- ✅ CREAR EL TOGGLE BUTTON COMO EN RETAILUI
-    toggleButton = CreateFrame('Button', "DragonUI_BuffToggle", UIParent)
+-- ✅ FUNCIÓN PARA REEMPLAZAR BUFFFRAME (IGUAL QUE RETAILUI)
+local function ReplaceBlizzardFrame(frame)
+    frame.toggleButton = frame.toggleButton or CreateFrame('Button', nil, UIParent)
+    toggleButton = frame.toggleButton
     toggleButton.toggle = true
-    toggleButton:SetPoint("RIGHT", dragonUIBuffFrame, "RIGHT", 0, -3)  -- ✅ RELATIVO A NUESTRO FRAME
+    toggleButton:SetPoint("RIGHT", frame, "RIGHT", 0, -3)
     toggleButton:SetSize(9, 17)
     toggleButton:SetHitRectInsets(0, 0, 0, 0)
 
-    -- ✅ TEXTURAS USANDO ATLAS TEXTURES COMO EN RETAILUI
     local normalTexture = toggleButton:GetNormalTexture() or toggleButton:CreateTexture(nil, "BORDER")
     normalTexture:SetAllPoints(toggleButton)
     SetAtlasTexture(normalTexture, 'CollapseButton-Right')
@@ -40,96 +33,72 @@ local function CreateDragonUIBuffFrame()
     SetAtlasTexture(highlightTexture, 'CollapseButton-Right')
     toggleButton:SetHighlightTexture(highlightTexture)
 
-    -- ✅ FUNCIONALIDAD DEL BOTÓN
     toggleButton:SetScript("OnClick", function(self)
         if self.toggle then
-            -- Ocultar buffs
+            local normalTexture = self:GetNormalTexture()
+            SetAtlasTexture(normalTexture, 'CollapseButton-Left')
+            local highlightTexture = toggleButton:GetHighlightTexture()
+            SetAtlasTexture(highlightTexture, 'CollapseButton-Left')
+
             for index = 1, BUFF_ACTUAL_DISPLAY do
                 local button = _G['BuffButton' .. index]
                 if button then
                     button:Hide()
                 end
             end
-            -- Cambiar textura a "mostrar" (CollapseButton-Left)
-            local normalTexture = self:GetNormalTexture()
-            SetAtlasTexture(normalTexture, 'CollapseButton-Left')
-            local highlightTexture = self:GetHighlightTexture()
-            SetAtlasTexture(highlightTexture, 'CollapseButton-Left')
         else
-            -- Mostrar buffs
+            local normalTexture = self:GetNormalTexture()
+            SetAtlasTexture(normalTexture, 'CollapseButton-Right')
+            local highlightTexture = toggleButton:GetHighlightTexture()
+            SetAtlasTexture(highlightTexture, 'CollapseButton-Right')
+
             for index = 1, BUFF_ACTUAL_DISPLAY do
                 local button = _G['BuffButton' .. index]
                 if button then
                     button:Show()
                 end
             end
-            -- Cambiar textura a "ocultar" (CollapseButton-Right)
-            local normalTexture = self:GetNormalTexture()
-            SetAtlasTexture(normalTexture, 'CollapseButton-Right')
-            local highlightTexture = self:GetHighlightTexture()
-            SetAtlasTexture(highlightTexture, 'CollapseButton-Right')
         end
-        
+
         self.toggle = not self.toggle
     end)
-    
-    -- ✅ POSICIONAR CONSOLIDATED BUFFS COMO EN RETAILUI
-    if ConsolidatedBuffs then
-        ConsolidatedBuffs:SetMovable(true)
-        ConsolidatedBuffs:SetUserPlaced(true)
-        ConsolidatedBuffs:ClearAllPoints()
-        ConsolidatedBuffs:SetPoint("RIGHT", toggleButton, "LEFT", -6, 0)
-    end
 
-    return dragonUIBuffFrame
+    local consolidatedBuffFrame = ConsolidatedBuffs
+    consolidatedBuffFrame:SetMovable(true)
+    consolidatedBuffFrame:SetUserPlaced(true)
+    consolidatedBuffFrame:ClearAllPoints()
+    consolidatedBuffFrame:SetPoint("RIGHT", toggleButton, "LEFT", -6, 0)
 end
 
--- ✅ FUNCIÓN PARA MOSTRAR/OCULTAR EL BOTÓN SEGÚN BUFFS
-local function UpdateToggleButtonVisibility()
-    if not toggleButton then return end
-    
-    local buffCount = 0
-    for index = 1, 16 do
-        local name = UnitBuff("player", index)
-        if name then
-            buffCount = buffCount + 1
-        end
-    end
-    
-    -- ✅ VERIFICAR TAMBIÉN BUFFS DE VEHÍCULO
-    if UnitHasVehicleUI("player") then
-        for index = 1, 16 do
-            local name = UnitBuff("vehicle", index)
-            if name then
-                buffCount = buffCount + 1
-            end
-        end
-    end
-    
-    if buffCount > 0 then
-        toggleButton:Show()
+-- ✅ FUNCIÓN PARA MOSTRAR/OCULTAR EL BOTÓN SEGÚN BUFFS (IGUAL QUE RETAILUI)
+local function ShowToggleButtonIf(condition)
+    if condition then
+        dragonUIBuffFrame.toggleButton:Show()
     else
-        toggleButton:Hide()
+        dragonUIBuffFrame.toggleButton:Hide()
     end
 end
 
--- ✅ FUNCIÓN PARA POSICIONAR EL BUFF FRAME COMO EN RETAILUI
+-- ✅ FUNCIÓN PARA CONTAR BUFFS (IGUAL QUE RETAILUI)
+local function GetUnitBuffCount(unit, range)
+    local count = 0
+    for index = 1, range do
+        local name = UnitBuff(unit, index)
+        if name then
+            count = count + 1
+        end
+    end
+    return count
+end
+
+-- ✅ FUNCIÓN PARA POSICIONAR EL BUFF FRAME (SIMPLIFICADA COMO RETAILUI)
 function BuffFrameModule:UpdatePosition()
-    if not addon.db or not addon.db.profile or not addon.db.profile.buffs then
+    if not addon.db or not addon.db.profile or not addon.db.profile.widgets or not addon.db.profile.widgets.buffs then
         return
     end
     
-    local settings = addon.db.profile.buffs
-    
-    -- ✅ POSICIONAR NUESTRO FRAME CUSTOM (NO EL BUFFFRAME NATIVO)
-    if dragonUIBuffFrame then
-        dragonUIBuffFrame:ClearAllPoints()
-        dragonUIBuffFrame:SetPoint(settings.anchor, UIParent, settings.posX, settings.posY)
-    end
-    
-    -- ✅ EL TOGGLE BUTTON YA ESTÁ POSICIONADO RELATIVO AL dragonUIBuffFrame
-    -- ✅ EL CONSOLIDATED BUFFS YA ESTÁ POSICIONADO RELATIVO AL TOGGLE BUTTON
-    -- ✅ NO NECESITAMOS TOCAR EL BUFFFRAME NATIVO DE BLIZZARD
+    local widgetOptions = addon.db.profile.widgets.buffs
+    dragonUIBuffFrame:SetPoint(widgetOptions.anchor, widgetOptions.posX, widgetOptions.posY)
 end
 
 -- ✅ FUNCIÓN PARA HABILITAR/DESHABILITAR EL MÓDULO
@@ -145,14 +114,26 @@ function BuffFrameModule:Toggle(enabled)
     end
 end
 
--- ✅ FUNCIÓN PARA HABILITAR EL MÓDULO
+-- ✅ FUNCIÓN PARA HABILITAR EL MÓDULO (IGUAL QUE RETAILUI)
 function BuffFrameModule:Enable()
     if not addon.db.profile.buffs.enabled then return end
     
-    -- Crear nuestro frame custom y toggle button
-    CreateDragonUIBuffFrame()
+    -- ✅ CREAR BUFFFRAME USANDO CreateUIFrame (IGUAL QUE RETAILUI)
+    dragonUIBuffFrame = addon.CreateUIFrame(BuffFrame:GetWidth(), BuffFrame:GetHeight(), "Auras")
     
-    -- Configurar eventos
+    -- ✅ REGISTRAR EN SISTEMA CENTRALIZADO
+    addon:RegisterEditableFrame({
+        name = "buffs",
+        frame = dragonUIBuffFrame,
+        blizzardFrame = BuffFrame,
+        configPath = {"widgets", "buffs"},
+        onHide = function()
+            self:UpdatePosition()
+        end,
+        module = self
+    })
+    
+    -- ✅ CONFIGURAR EVENTOS (IGUAL QUE RETAILUI)
     if not buffFrame then
         buffFrame = CreateFrame("Frame")
         buffFrame:RegisterEvent("PLAYER_ENTERING_WORLD")
@@ -162,15 +143,22 @@ function BuffFrameModule:Enable()
         
         buffFrame:SetScript("OnEvent", function(self, event, unit)
             if event == "PLAYER_ENTERING_WORLD" then
+                ReplaceBlizzardFrame(dragonUIBuffFrame)
+                ShowToggleButtonIf(GetUnitBuffCount("player", 16) > 0)
                 BuffFrameModule:UpdatePosition()
-                UpdateToggleButtonVisibility()
             elseif event == "UNIT_AURA" then
-                if unit == "player" or unit == "vehicle" then
-                    UpdateToggleButtonVisibility()
+                if unit == 'vehicle' then
+                    ShowToggleButtonIf(GetUnitBuffCount("vehicle", 16) > 0)
+                elseif unit == 'player' then
+                    ShowToggleButtonIf(GetUnitBuffCount("player", 16) > 0)
                 end
-            elseif event == "UNIT_ENTERED_VEHICLE" or event == "UNIT_EXITED_VEHICLE" then
-                if unit == "player" then
-                    UpdateToggleButtonVisibility()
+            elseif event == "UNIT_ENTERED_VEHICLE" then
+                if unit == 'player' then
+                    ShowToggleButtonIf(GetUnitBuffCount("vehicle", 16) > 0)
+                end
+            elseif event == "UNIT_EXITED_VEHICLE" then
+                if unit == 'player' then
+                    ShowToggleButtonIf(GetUnitBuffCount("player", 16) > 0)
                 end
             end
         end)
@@ -179,7 +167,7 @@ function BuffFrameModule:Enable()
     print("|cff00FF00[DragonUI]|r BuffFrame module enabled")
 end
 
--- ✅ FUNCIÓN PARA DESHABILITAR EL MÓDULO
+-- ✅ FUNCIÓN PARA DESHABILITAR EL MÓDULO (SIMPLIFICADA)
 function BuffFrameModule:Disable()
     if buffFrame then
         buffFrame:UnregisterAllEvents()
@@ -189,22 +177,12 @@ function BuffFrameModule:Disable()
     
     if toggleButton then
         toggleButton:Hide()
-        toggleButton:SetParent(nil)
         toggleButton = nil
     end
     
     if dragonUIBuffFrame then
         dragonUIBuffFrame:Hide()
-        dragonUIBuffFrame:SetParent(nil)
         dragonUIBuffFrame = nil
-    end
-    
-    -- ✅ RESTAURAR BUFFS A VISIBLES
-    for index = 1, BUFF_ACTUAL_DISPLAY do
-        local button = _G['BuffButton' .. index]
-        if button then
-            button:Show()
-        end
     end
     
     print("|cff00FF00[DragonUI]|r BuffFrame module disabled")
