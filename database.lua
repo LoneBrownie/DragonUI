@@ -17,7 +17,7 @@ local defaults = {
             },
             target = {
                 anchor = "TOPLEFT",
-                posX = 240,
+                posX = 230,
                 posY = -9
             },
             focus = {
