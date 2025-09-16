@@ -69,7 +69,8 @@ local function CreatePartyAnchorFrame()
     local frame = CreateFrame("Frame", "DragonUI_Party_Anchor", UIParent)
     frame:SetSize(120, 200) -- Size to encompass all 4 party frames
     frame:SetPoint("TOPLEFT", UIParent, "TOPLEFT", 10, -200) -- Default position
-    frame:SetFrameStrata("LOW")
+    frame:SetFrameStrata("FULLSCREEN")
+    frame:SetFrameLevel(100)
     
     -- ✅ AÑADIR: Texturas de editor (como target.lua)
     local editorTexture = frame:CreateTexture(nil, "BACKGROUND")

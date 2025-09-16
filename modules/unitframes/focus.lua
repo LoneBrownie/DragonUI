@@ -32,7 +32,8 @@ local function CreateUIFrame(width, height, name)
     local frame = CreateFrame("Frame", "DragonUI_" .. name .. "_Anchor", UIParent)
     frame:SetSize(width, height)
     frame:SetPoint("TOPLEFT", UIParent, "TOPLEFT", 250, -170)
-    frame:SetFrameStrata("LOW")
+    frame:SetFrameStrata("FULLSCREEN") -- ✅ CAMBIO: Strata más alto para editor
+    frame:SetFrameLevel(100) -- ✅ CAMBIO: Level muy alto para estar por encima
     
     -- ✅ AÑADIR: Texturas de editor (como player.lua)
     local editorTexture = frame:CreateTexture(nil, "BACKGROUND")
@@ -79,7 +80,7 @@ local function ApplyWidgetPosition()
         
         -- También aplicar al frame de Blizzard
         FocusFrame:ClearAllPoints()
-        FocusFrame:SetPoint("CENTER", Module.focusFrame, "CENTER", 0, 0)
+        FocusFrame:SetPoint("CENTER", Module.focusFrame, "CENTER", 20, -7)
         
         print("|cFF00FF00[DragonUI]|r Focus frame positioned via widgets:", widgetConfig.posX, widgetConfig.posY)
     else
@@ -95,6 +96,21 @@ end
 -- ✅ FUNCIÓN PARA VERIFICAR SI EL FOCUS FRAME DEBE ESTAR VISIBLE
 local function ShouldFocusFrameBeVisible()
     return UnitExists("focus")
+end
+
+-- ✅ FUNCIONES DE TESTEO SIMPLIFICADAS (estilo RetailUI)
+local function ShowFocusFrameTest()
+    -- ✅ SISTEMA SIMPLE: Solo llamar al método ShowTest del frame
+    if FocusFrame and FocusFrame.ShowTest then
+        FocusFrame:ShowTest()
+    end
+end
+
+local function HideFocusFrameTest()
+    -- ✅ SISTEMA SIMPLE: Solo llamar al método HideTest del frame
+    if FocusFrame and FocusFrame.HideTest then
+        FocusFrame:HideTest()
+    end
 end
 
 -- ============================================================================
@@ -316,7 +332,7 @@ local function InitializeFrame()
     
     -- ✅ CREAR OVERLAY FRAME PARA EL SISTEMA CENTRALIZADO
     if not Module.focusFrame then
-        Module.focusFrame = CreateUIFrame(232, 100, "FocusFrame")
+        Module.focusFrame = CreateUIFrame(180, 70, "FocusFrame")
         
         -- ✅ REGISTRO AUTOMÁTICO EN EL SISTEMA CENTRALIZADO
         addon:RegisterEditableFrame({
@@ -325,6 +341,8 @@ local function InitializeFrame()
             blizzardFrame = FocusFrame,
             configPath = {"widgets", "focus"},
             hasTarget = ShouldFocusFrameBeVisible, -- Solo visible cuando hay focus
+            showTest = ShowFocusFrameTest,         -- ✅ NUEVO: Mostrar frame fake
+            hideTest = HideFocusFrameTest,         -- ✅ NUEVO: Ocultar frame fake
             onHide = function()
                 ApplyWidgetPosition() -- Aplicar nueva configuración al salir del editor
             end,
@@ -437,6 +455,173 @@ local function InitializeFrame()
         end
         Module.scaleHooked = true
         print("|cFF00FF00[DragonUI]|r Focus frame scale protection enabled")
+    end
+    
+    -- ✅ MÉTODOS ShowTest Y HideTest EXACTAMENTE COMO RETAILUI (adaptado para Focus)
+    if not FocusFrame.ShowTest then
+        FocusFrame.ShowTest = function(self)
+            -- ✅ MOSTRAR FRAME CON DATOS DEL PLAYER Y NUESTRAS TEXTURAS PERSONALIZADAS
+            self:Show()
+            
+            -- ✅ ASEGURAR QUE EL FOCUSFRAME ESTÉ EN STRATA BAJO PARA QUE EL EDITOR ESTÉ ENCIMA
+            self:SetFrameStrata("MEDIUM")
+            self:SetFrameLevel(10) -- Nivel bajo para que el frame verde esté encima
+            
+            -- ✅ ASEGURAR QUE NUESTRAS TEXTURAS PERSONALIZADAS ESTÉN VISIBLES
+            if frameElements.background then
+                frameElements.background:Show()
+            end
+            if frameElements.border then
+                frameElements.border:Show()
+            end
+            
+            -- ✅ PORTRAIT DEL PLAYER (como RetailUI)
+            if FocusFramePortrait then
+                SetPortraitTexture(FocusFramePortrait, "player")
+            end
+            
+            -- ✅ BACKGROUND CON COLOR DEL PLAYER Y NUESTRA TEXTURA
+            if FocusFrameNameBackground then
+                local r, g, b = UnitSelectionColor("player")
+                FocusFrameNameBackground:SetVertexColor(r, g, b, 0.8)
+                FocusFrameNameBackground:Show()
+            end
+            
+            -- ✅ NOMBRE Y NIVEL DEL PLAYER (conservar color original)
+            local nameText = FocusFrameTextureFrameName
+            if nameText then
+                -- ✅ GUARDAR COLOR ORIGINAL ANTES DE CAMBIAR
+                if not nameText.originalColor then
+                    local r, g, b, a = nameText:GetTextColor()
+                    nameText.originalColor = {r, g, b, a}
+                end
+                nameText:SetText(UnitName("player"))
+                -- ✅ NO CAMBIAR COLOR - mantener el original
+            end
+            
+            local levelText = FocusFrameTextureFrameLevelText  
+            if levelText then
+                -- ✅ GUARDAR COLOR ORIGINAL ANTES DE CAMBIAR
+                if not levelText.originalColor then
+                    local r, g, b, a = levelText:GetTextColor()
+                    levelText.originalColor = {r, g, b, a}
+                end
+                levelText:SetText(UnitLevel("player"))
+                -- ✅ NO CAMBIAR COLOR - mantener el original
+            end
+            
+            -- ✅ HEALTH BAR CON NUESTRO SISTEMA DE CLASS COLOR
+            local healthBar = FocusFrameHealthBar
+            if healthBar then
+                local curHealth = UnitHealth("player")
+                local maxHealth = UnitHealthMax("player")
+                healthBar:SetMinMaxValues(0, maxHealth)
+                healthBar:SetValue(curHealth)
+                
+                -- ✅ APLICAR NUESTRO SISTEMA DE CLASS COLOR
+                local texture = healthBar:GetStatusBarTexture()
+                if texture then
+                    local config = GetConfig()
+                    if config.classcolor then
+                        -- ✅ USAR TEXTURA STATUS PARA CLASS COLOR
+                        local statusTexturePath = "Interface\\AddOns\\DragonUI\\Textures\\Unitframe\\UI-HUD-UnitFrame-Target-PortraitOn-Bar-Health-Status"
+                        texture:SetTexture(statusTexturePath)
+                        
+                        -- ✅ APLICAR COLOR DE CLASE DEL PLAYER
+                        local _, class = UnitClass("player")
+                        local color = RAID_CLASS_COLORS[class]
+                        if color then
+                            texture:SetVertexColor(color.r, color.g, color.b, 1)
+                        else
+                            texture:SetVertexColor(1, 1, 1, 1)
+                        end
+                    else
+                        -- ✅ USAR TEXTURA NORMAL SIN CLASS COLOR
+                        local normalTexturePath = "Interface\\AddOns\\DragonUI\\Textures\\Unitframe\\UI-HUD-UnitFrame-Target-PortraitOn-Bar-Health"
+                        texture:SetTexture(normalTexturePath)
+                        texture:SetVertexColor(1, 1, 1, 1)
+                    end
+                    
+                    -- ✅ APLICAR COORDS DE TEXTURA
+                    texture:SetTexCoord(0, curHealth / maxHealth, 0, 1)
+                end
+                
+                healthBar:Show()
+            end
+            
+            -- ✅ MANA BAR CON NUESTRO SISTEMA DE TEXTURAS DE PODER
+            local manaBar = FocusFrameManaBar
+            if manaBar then
+                local powerType = UnitPowerType("player")
+                local curMana = UnitPower("player", powerType)
+                local maxMana = UnitPowerMax("player", powerType)
+                manaBar:SetMinMaxValues(0, maxMana)
+                manaBar:SetValue(curMana)
+                
+                -- ✅ APLICAR NUESTRA TEXTURA DE PODER PERSONALIZADA
+                local texture = manaBar:GetStatusBarTexture()
+                if texture then
+                    local powerName = POWER_MAP[powerType] or "Mana"
+                    local texturePath = TEXTURES.BAR_PREFIX .. powerName
+                    texture:SetTexture(texturePath)
+                    texture:SetDrawLayer("ARTWORK", 1)
+                    texture:SetVertexColor(1, 1, 1, 1)
+                    
+                    -- ✅ APLICAR COORDS DE TEXTURA
+                    if maxMana > 0 then
+                        texture:SetTexCoord(0, curMana / maxMana, 0, 1)
+                    end
+                end
+                
+                manaBar:Show()
+            end
+            
+            -- ✅ MOSTRAR DECORACIÓN ELITE SI EL PLAYER ES ESPECIAL (Focus no tiene famous NPCs, pero sí clasificación)
+            if frameElements.elite then
+                local classification = UnitClassification("player")
+                local coords = nil
+                
+                -- ✅ VERIFICAR SI EL PLAYER TIENE CLASIFICACIÓN ESPECIAL
+                if classification and classification ~= "normal" then
+                    coords = BOSS_COORDS[classification] or BOSS_COORDS.elite
+                end
+                
+                if coords then
+                    frameElements.elite:SetTexCoord(coords[1], coords[2], coords[3], coords[4])
+                    frameElements.elite:SetSize(coords[5], coords[6])
+                    frameElements.elite:SetPoint("CENTER", FocusFramePortrait, "CENTER", coords[7], coords[8])
+                    frameElements.elite:Show()
+                else
+                    frameElements.elite:Hide()
+                end
+            end
+        end
+        
+        FocusFrame.HideTest = function(self)
+            -- ✅ RESTAURAR STRATA ORIGINAL DEL FOCUSFRAME
+            self:SetFrameStrata("LOW")
+            self:SetFrameLevel(1) -- Nivel normal
+            
+            -- ✅ RESTAURAR COLORES ORIGINALES DE LOS TEXTOS
+            local nameText = FocusFrameTextureFrameName
+            if nameText and nameText.originalColor then
+                nameText:SetVertexColor(nameText.originalColor[1], nameText.originalColor[2], 
+                                       nameText.originalColor[3], nameText.originalColor[4])
+            end
+            
+            local levelText = FocusFrameTextureFrameLevelText
+            if levelText and levelText.originalColor then
+                levelText:SetVertexColor(levelText.originalColor[1], levelText.originalColor[2], 
+                                        levelText.originalColor[3], levelText.originalColor[4])
+            end
+            
+            -- ✅ SIMPLE: Solo ocultar si no hay focus real
+            if not UnitExists("focus") then
+                self:Hide()
+            end
+        end
+        
+        print("|cFF00FF00[DragonUI]|r Focus frame test methods added (RetailUI style)")
     end
     
     print("|cFF00FF00[DragonUI]|r FocusFrame configured successfully")

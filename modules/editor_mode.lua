@@ -13,7 +13,7 @@ local function createExitButton()
     -- Crear el botón
     exitEditorButton = CreateFrame("Button", "DragonUIExitEditorButton", UIParent, "UIPanelButtonTemplate");
     exitEditorButton:SetText("Exit Edit Mode");
-    exitEditorButton:SetSize(160, 32);
+    exitEditorButton:SetSize(100, 24);
     exitEditorButton:SetPoint("CENTER", UIParent, "CENTER", 0, 200); -- Posición flotante centrada
     exitEditorButton:SetFrameStrata("DIALOG"); -- Asegura que esté por encima de otros elementos
     exitEditorButton:SetFrameLevel(100);

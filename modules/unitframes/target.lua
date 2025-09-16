@@ -22,7 +22,8 @@ local function CreateUIFrame(width, height, name)
     local frame = CreateFrame("Frame", "DragonUI_" .. name .. "_Anchor", UIParent)
     frame:SetSize(width, height)
     frame:SetPoint("TOPLEFT", UIParent, "TOPLEFT", 250, -4)
-    frame:SetFrameStrata("LOW")
+    frame:SetFrameStrata("FULLSCREEN") -- ✅ CAMBIO: Strata más alto para editor
+    frame:SetFrameLevel(100) -- ✅ CAMBIO: Level muy alto para estar por encima
     
     -- ✅ AÑADIR: Texturas de editor (como player.lua)
     local editorTexture = frame:CreateTexture(nil, "BACKGROUND")
@@ -69,7 +70,7 @@ local function ApplyWidgetPosition()
         
         -- También aplicar al frame de Blizzard
         TargetFrame:ClearAllPoints()
-        TargetFrame:SetPoint("CENTER", Module.targetFrame, "CENTER", 0, 0)
+        TargetFrame:SetPoint("CENTER", Module.targetFrame, "CENTER", 20, -7)
         
         print("|cFF00FF00[DragonUI]|r Target frame positioned via widgets:", widgetConfig.posX, widgetConfig.posY)
     else
@@ -85,6 +86,21 @@ end
 -- ✅ FUNCIÓN PARA VERIFICAR SI EL TARGET FRAME DEBE ESTAR VISIBLE
 local function ShouldTargetFrameBeVisible()
     return UnitExists("target")
+end
+
+-- ✅ FUNCIONES DE TESTEO SIMPLIFICADAS (estilo RetailUI)
+local function ShowTargetFrameTest()
+    -- ✅ SISTEMA SIMPLE: Solo llamar al método ShowTest del frame
+    if TargetFrame and TargetFrame.ShowTest then
+        TargetFrame:ShowTest()
+    end
+end
+
+local function HideTargetFrameTest()
+    -- ✅ SISTEMA SIMPLE: Solo llamar al método HideTest del frame
+    if TargetFrame and TargetFrame.HideTest then
+        TargetFrame:HideTest()
+    end
 end
 
 -- Famous NPCs list 
@@ -446,7 +462,7 @@ local function InitializeFrame()
 
     -- ✅ CREAR OVERLAY FRAME PARA EL SISTEMA CENTRALIZADO
     if not Module.targetFrame then
-        Module.targetFrame = CreateUIFrame(232, 100, "TargetFrame")
+        Module.targetFrame = CreateUIFrame(200, 75, "TargetFrame")
         
         -- ✅ REGISTRO AUTOMÁTICO EN EL SISTEMA CENTRALIZADO
         addon:RegisterEditableFrame({
@@ -455,6 +471,8 @@ local function InitializeFrame()
             blizzardFrame = TargetFrame,
             configPath = {"widgets", "target"},
             hasTarget = ShouldTargetFrameBeVisible, -- Solo visible cuando hay target
+            showTest = ShowTargetFrameTest,         -- ✅ NUEVO: Mostrar frame fake
+            hideTest = HideTargetFrameTest,         -- ✅ NUEVO: Ocultar frame fake
             onHide = function()
                 ApplyWidgetPosition() -- Aplicar nueva configuración al salir del editor
             end,
@@ -628,6 +646,181 @@ local function InitializeFrame()
 
         Module.classificationHooked = true
         print("|cFF00FF00[DragonUI]|r Classification protection hooks installed")
+    end
+
+    -- ✅ MÉTODOS ShowTest Y HideTest EXACTAMENTE COMO RETAILUI
+    if not TargetFrame.ShowTest then
+        TargetFrame.ShowTest = function(self)
+            -- ✅ MOSTRAR FRAME CON DATOS DEL PLAYER Y NUESTRAS TEXTURAS PERSONALIZADAS
+            self:Show()
+            
+            -- ✅ ASEGURAR QUE EL TARGETFRAME ESTÉ EN STRATA BAJO PARA QUE EL EDITOR ESTÉ ENCIMA
+            self:SetFrameStrata("MEDIUM")
+            self:SetFrameLevel(10) -- Nivel bajo para que el frame verde esté encima
+            
+            -- ✅ ASEGURAR QUE NUESTRAS TEXTURAS PERSONALIZADAS ESTÉN VISIBLES
+            if frameElements.background then
+                frameElements.background:Show()
+            end
+            if frameElements.border then
+                frameElements.border:Show()
+            end
+            
+            -- ✅ PORTRAIT DEL PLAYER (como RetailUI)
+            if TargetFramePortrait then
+                SetPortraitTexture(TargetFramePortrait, "player")
+            end
+            
+            -- ✅ BACKGROUND CON COLOR DEL PLAYER Y NUESTRA TEXTURA
+            if TargetFrameNameBackground then
+                local r, g, b = UnitSelectionColor("player")
+                TargetFrameNameBackground:SetVertexColor(r, g, b, 0.8)
+                TargetFrameNameBackground:Show()
+            end
+            
+            -- ✅ NOMBRE Y NIVEL DEL PLAYER (conservar color original)
+            local nameText = TargetFrameTextureFrameName
+            if nameText then
+                -- ✅ GUARDAR COLOR ORIGINAL ANTES DE CAMBIAR
+                if not nameText.originalColor then
+                    local r, g, b, a = nameText:GetTextColor()
+                    nameText.originalColor = {r, g, b, a}
+                end
+                nameText:SetText(UnitName("player"))
+                -- ✅ NO CAMBIAR COLOR - mantener el original
+            end
+            
+            local levelText = TargetFrameTextureFrameLevelText  
+            if levelText then
+                -- ✅ GUARDAR COLOR ORIGINAL ANTES DE CAMBIAR
+                if not levelText.originalColor then
+                    local r, g, b, a = levelText:GetTextColor()
+                    levelText.originalColor = {r, g, b, a}
+                end
+                levelText:SetText(UnitLevel("player"))
+                -- ✅ NO CAMBIAR COLOR - mantener el original
+            end
+            
+            -- ✅ HEALTH BAR CON NUESTRO SISTEMA DE CLASS COLOR
+            local healthBar = TargetFrameHealthBar
+            if healthBar then
+                local curHealth = UnitHealth("player")
+                local maxHealth = UnitHealthMax("player")
+                healthBar:SetMinMaxValues(0, maxHealth)
+                healthBar:SetValue(curHealth)
+                
+                -- ✅ APLICAR NUESTRO SISTEMA DE CLASS COLOR
+                local texture = healthBar:GetStatusBarTexture()
+                if texture then
+                    local config = GetConfig()
+                    if config.classcolor then
+                        -- ✅ USAR TEXTURA STATUS PARA CLASS COLOR
+                        local statusTexturePath = "Interface\\AddOns\\DragonUI\\Textures\\Unitframe\\UI-HUD-UnitFrame-Target-PortraitOn-Bar-Health-Status"
+                        texture:SetTexture(statusTexturePath)
+                        
+                        -- ✅ APLICAR COLOR DE CLASE DEL PLAYER
+                        local _, class = UnitClass("player")
+                        local color = RAID_CLASS_COLORS[class]
+                        if color then
+                            texture:SetVertexColor(color.r, color.g, color.b, 1)
+                        else
+                            texture:SetVertexColor(1, 1, 1, 1)
+                        end
+                    else
+                        -- ✅ USAR TEXTURA NORMAL SIN CLASS COLOR
+                        local normalTexturePath = "Interface\\AddOns\\DragonUI\\Textures\\Unitframe\\UI-HUD-UnitFrame-Target-PortraitOn-Bar-Health"
+                        texture:SetTexture(normalTexturePath)
+                        texture:SetVertexColor(1, 1, 1, 1)
+                    end
+                    
+                    -- ✅ APLICAR COORDS DE TEXTURA
+                    texture:SetTexCoord(0, curHealth / maxHealth, 0, 1)
+                end
+                
+                healthBar:Show()
+            end
+            
+            -- ✅ MANA BAR CON NUESTRO SISTEMA DE TEXTURAS DE PODER
+            local manaBar = TargetFrameManaBar
+            if manaBar then
+                local powerType = UnitPowerType("player")
+                local curMana = UnitPower("player", powerType)
+                local maxMana = UnitPowerMax("player", powerType)
+                manaBar:SetMinMaxValues(0, maxMana)
+                manaBar:SetValue(curMana)
+                
+                -- ✅ APLICAR NUESTRA TEXTURA DE PODER PERSONALIZADA
+                local texture = manaBar:GetStatusBarTexture()
+                if texture then
+                    local powerName = POWER_MAP[powerType] or "Mana"
+                    local texturePath = TEXTURES.BAR_PREFIX .. powerName
+                    texture:SetTexture(texturePath)
+                    texture:SetDrawLayer("ARTWORK", 1)
+                    texture:SetVertexColor(1, 1, 1, 1)
+                    
+                    -- ✅ APLICAR COORDS DE TEXTURA
+                    if maxMana > 0 then
+                        texture:SetTexCoord(0, curMana / maxMana, 0, 1)
+                    end
+                end
+                
+                manaBar:Show()
+            end
+            
+            -- ✅ MOSTRAR DECORACIÓN ELITE SI EL PLAYER ES ESPECIAL
+            if frameElements.elite then
+                local classification = UnitClassification("player")
+                local name = UnitName("player")
+                local coords = nil
+                
+                -- ✅ VERIFICAR SI EL PLAYER ES FAMOSO O TIENE CLASIFICACIÓN ESPECIAL
+                if name and FAMOUS_NPCS[name] then
+                    coords = BOSS_COORDS.elite
+                elseif classification and classification ~= "normal" then
+                    coords = BOSS_COORDS[classification] or BOSS_COORDS.elite
+                end
+                
+                if coords then
+                    frameElements.elite:SetTexCoord(coords[1], coords[2], coords[3], coords[4])
+                    frameElements.elite:SetSize(coords[5], coords[6])
+                    frameElements.elite:SetPoint("CENTER", TargetFramePortrait, "CENTER", coords[7], coords[8])
+                    frameElements.elite:Show()
+                else
+                    frameElements.elite:Hide()
+                end
+            end
+            
+            -- ✅ OCULTAR THREAT INDICATORS (no aplican en fake frame)
+            if frameElements.threatNumeric then
+                frameElements.threatNumeric:Hide()
+            end
+        end
+        
+        TargetFrame.HideTest = function(self)
+            -- ✅ RESTAURAR STRATA ORIGINAL DEL TARGETFRAME
+            self:SetFrameStrata("LOW")
+            self:SetFrameLevel(1) -- Nivel normal
+            
+            -- ✅ RESTAURAR COLORES ORIGINALES DE LOS TEXTOS
+            local nameText = TargetFrameTextureFrameName
+            if nameText and nameText.originalColor then
+                nameText:SetVertexColor(nameText.originalColor[1], nameText.originalColor[2], 
+                                       nameText.originalColor[3], nameText.originalColor[4])
+            end
+            
+            local levelText = TargetFrameTextureFrameLevelText
+            if levelText and levelText.originalColor then
+                levelText:SetVertexColor(levelText.originalColor[1], levelText.originalColor[2], 
+                                        levelText.originalColor[3], levelText.originalColor[4])
+            end
+            
+            -- ✅ SIMPLE: Solo ocultar si no hay target real
+            if not UnitExists("target") then
+                self:Hide()
+            end
+        end
+        
+        print("|cFF00FF00[DragonUI]|r Target frame test methods added (RetailUI style)")
     end
 end
 

@@ -137,7 +137,7 @@ local ROLE_COORDS = {
 local function CreateUIFrame(width, height, name)
     local frame = CreateFrame("Frame", "DragonUI_" .. name .. "_Anchor", UIParent)
     frame:SetSize(width, height)
-    frame:SetPoint("TOPLEFT", UIParent, "TOPLEFT", 50, -50)
+    frame:SetPoint("TOPLEFT", UIParent, "TOPLEFT", 0, 0)
     frame:SetFrameStrata("LOW")
     
     -- ✅ AÑADIR: Texturas de editor (como minimap)
@@ -188,8 +188,8 @@ end
 -- Validate and clamp coordinates to screen bounds
 local function ValidateCoordinates(x, y)
     local screenWidth, screenHeight = GetScreenWidth(), GetScreenHeight()
-    local minX, maxX = -500, screenWidth + 500
-    local minY, maxY = -500, screenHeight + 500
+    local minX, maxX = -1500, screenWidth + 1500
+    local minY, maxY = -1500, screenHeight + 1500
 
     if x < minX or x > maxX or y < minY or y > maxY then
         print("|cFFFF0000[DragonUI]|r PlayerFrame coordinates out of bounds! Resetting...")
@@ -1204,7 +1204,7 @@ local function ApplyWidgetPosition()
     
     -- ✅ CLAVE: Anclar PlayerFrame al auxiliar (sistema RetailUI)
     PlayerFrame:ClearAllPoints()
-    PlayerFrame:SetPoint("CENTER", Module.playerFrame, "CENTER", 0, 0)
+    PlayerFrame:SetPoint("CENTER", Module.playerFrame, "CENTER", -15, -7)
 
     print("|cFF00FF00[DragonUI]|r Player frame positioned via widgets:", widgetConfig.posX, widgetConfig.posY)
 end
@@ -1301,7 +1301,7 @@ local function InitializePlayerFrame()
     end
 
     -- Create auxiliary frame
-    Module.playerFrame = CreateUIFrame(198, 71, "PlayerFrame")
+    Module.playerFrame = CreateUIFrame(200, 75, "PlayerFrame")
 
     -- ✅ REGISTRO AUTOMÁTICO EN EL SISTEMA CENTRALIZADO
     addon:RegisterEditableFrame({
