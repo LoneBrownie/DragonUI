@@ -13,6 +13,91 @@ local Module = {
 }
 
 -- ============================================================================
+-- UTILITY FUNCTIONS
+-- ============================================================================
+
+local function GetConfig()
+    local config = addon:GetConfigValue("unitframe", "focus") or {}
+    local defaults = addon.defaults and addon.defaults.profile.unitframe.focus or {}
+    return setmetatable(config, {__index = defaults})
+end
+
+
+-- ============================================================================
+-- UTILITY FUNCTIONS FOR CENTRALIZED SYSTEM
+-- ============================================================================
+
+-- Create auxiliary frame for anchoring (like player.lua/target.lua)
+local function CreateUIFrame(width, height, name)
+    local frame = CreateFrame("Frame", "DragonUI_" .. name .. "_Anchor", UIParent)
+    frame:SetSize(width, height)
+    frame:SetPoint("TOPLEFT", UIParent, "TOPLEFT", 250, -170)
+    frame:SetFrameStrata("LOW")
+    
+    -- ✅ AÑADIR: Texturas de editor (como player.lua)
+    local editorTexture = frame:CreateTexture(nil, "BACKGROUND")
+    editorTexture:SetAllPoints(frame)
+    editorTexture:SetTexture(0, 1, 0, 0.3) -- Verde semi-transparente
+    editorTexture:Hide() -- Oculto por defecto
+    frame.editorTexture = editorTexture
+    
+    local editorText = frame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    editorText:SetPoint("CENTER", frame, "CENTER")
+    editorText:SetText("Focus Frame")
+    editorText:SetTextColor(1, 1, 1, 1)
+    editorText:Hide() -- Oculto por defecto
+    frame.editorText = editorText
+    
+    -- ✅ AÑADIR: Funcionalidad de arrastre
+    frame:SetMovable(false) -- Deshabilitado por defecto
+    frame:EnableMouse(false) -- Deshabilitado por defecto
+    frame:SetScript("OnDragStart", function(self)
+        if self:IsMovable() then
+            self:StartMoving()
+        end
+    end)
+    frame:SetScript("OnDragStop", function(self)
+        self:StopMovingOrSizing()
+    end)
+    frame:RegisterForDrag("LeftButton")
+    
+    return frame
+end
+
+-- ✅ FUNCIÓN PARA APLICAR POSICIÓN DESDE WIDGETS (COMO PLAYER.LUA)
+local function ApplyWidgetPosition()
+    if not Module.focusFrame then
+        return
+    end
+
+    local widgetConfig = addon.db and addon.db.profile.widgets and addon.db.profile.widgets.focus
+    
+    if widgetConfig then
+        Module.focusFrame:ClearAllPoints()
+        Module.focusFrame:SetPoint(widgetConfig.anchor or "TOPLEFT", UIParent, widgetConfig.anchor or "TOPLEFT", 
+                                   widgetConfig.posX or 250, widgetConfig.posY or -170)
+        
+        -- También aplicar al frame de Blizzard
+        FocusFrame:ClearAllPoints()
+        FocusFrame:SetPoint("CENTER", Module.focusFrame, "CENTER", 0, 0)
+        
+        print("|cFF00FF00[DragonUI]|r Focus frame positioned via widgets:", widgetConfig.posX, widgetConfig.posY)
+    else
+        -- Fallback a posición por defecto
+        Module.focusFrame:ClearAllPoints()
+        Module.focusFrame:SetPoint("TOPLEFT", UIParent, "TOPLEFT", 250, -170)
+        FocusFrame:ClearAllPoints()
+        FocusFrame:SetPoint("CENTER", Module.focusFrame, "CENTER", 0, 0)
+        print("|cFF00FF00[DragonUI]|r Focus frame positioned with defaults")
+    end
+end
+
+-- ✅ FUNCIÓN PARA VERIFICAR SI EL FOCUS FRAME DEBE ESTAR VISIBLE
+local function ShouldFocusFrameBeVisible()
+    return UnitExists("focus")
+end
+
+-- ============================================================================
 -- CONFIGURATION & CONSTANTS
 -- ============================================================================
 
@@ -59,15 +144,6 @@ local updateCache = {
     lastPowerUpdate = 0
 }
 
--- ============================================================================
--- UTILITY FUNCTIONS
--- ============================================================================
-
-local function GetConfig()
-    local config = addon:GetConfigValue("unitframe", "focus") or {}
-    local defaults = addon.defaults and addon.defaults.profile.unitframe.focus or {}
-    return setmetatable(config, {__index = defaults})
-end
 
 -- ============================================================================
 -- BAR MANAGEMENT
@@ -238,6 +314,26 @@ local function InitializeFrame()
         return
     end
     
+    -- ✅ CREAR OVERLAY FRAME PARA EL SISTEMA CENTRALIZADO
+    if not Module.focusFrame then
+        Module.focusFrame = CreateUIFrame(232, 100, "FocusFrame")
+        
+        -- ✅ REGISTRO AUTOMÁTICO EN EL SISTEMA CENTRALIZADO
+        addon:RegisterEditableFrame({
+            name = "focus",
+            frame = Module.focusFrame,
+            blizzardFrame = FocusFrame,
+            configPath = {"widgets", "focus"},
+            hasTarget = ShouldFocusFrameBeVisible, -- Solo visible cuando hay focus
+            onHide = function()
+                ApplyWidgetPosition() -- Aplicar nueva configuración al salir del editor
+            end,
+            module = Module
+        })
+        
+        print("|cFF00FF00[DragonUI]|r Focus frame registered in centralized system")
+    end
+    
     -- Hide Blizzard elements
     local toHide = {
         FocusFrameTextureFrameTexture,
@@ -325,25 +421,24 @@ local function InitializeFrame()
     FocusFrame:SetClampedToScreen(false)
     FocusFrame:SetScale(config.scale or 1)
     
-    if config.override then
-        FocusFrame:SetPoint(config.anchor or "TOPLEFT", UIParent, 
-                           config.anchorParent or "TOPLEFT", config.x or 400, config.y or -250)
-    else
-        local defaults = addon.defaults and addon.defaults.profile.unitframe.focus or {}
-        FocusFrame:SetPoint("TOPLEFT", UIParent, "TOPLEFT", 
-                           defaults.x or 400, defaults.y or -250)
-    end
-    
-    -- Setup text system
-    local dragonFrame = _G["DragonUIUnitframeFrame"]
-    if dragonFrame and addon.TextSystem and not Module.textSystem then
-        Module.textSystem = addon.TextSystem.SetupFrameTextSystem(
-            "focus", "focus", dragonFrame,
-            FocusFrameHealthBar, FocusFrameManaBar, "FocusFrame"
-        )
-    end
+    -- ✅ APLICAR POSICIÓN DESDE WIDGETS SIEMPRE
+    ApplyWidgetPosition()
     
     Module.configured = true
+    
+    -- ✅ HOOK CRÍTICO: Proteger contra resets de Blizzard
+    if not Module.scaleHooked then
+        -- Proteger contra cualquier reset de escala que pueda hacer Blizzard
+        local originalSetScale = FocusFrame.SetScale
+        FocusFrame.SetScale = function(self, scale)
+            local config = GetConfig()
+            local correctScale = config.scale or 1
+            originalSetScale(self, correctScale)
+        end
+        Module.scaleHooked = true
+        print("|cFF00FF00[DragonUI]|r Focus frame scale protection enabled")
+    end
+    
     print("|cFF00FF00[DragonUI]|r FocusFrame configured successfully")
 end
 
@@ -355,17 +450,25 @@ local function OnEvent(self, event, ...)
     if event == "ADDON_LOADED" then
         local name = ...
         if name == "DragonUI" and not Module.initialized then
-            Module.focusFrame = CreateFrame("Frame", "DragonUI_FocusFrame_Anchor", UIParent)
-            Module.focusFrame:SetSize(192, 67)
-            Module.focusFrame:SetPoint("TOPLEFT", UIParent, "TOPLEFT", 400, -250)
             Module.initialized = true
         end
         
     elseif event == "PLAYER_ENTERING_WORLD" then
         InitializeFrame()
+        
+        -- ✅ CONFIGURAR TEXT SYSTEM AQUÍ PARA ASEGURAR QUE ESTÉ DISPONIBLE
+        if addon.TextSystem and not Module.textSystem and FocusFrame then
+            Module.textSystem = addon.TextSystem.SetupFrameTextSystem("focus", "focus", FocusFrame, FocusFrameHealthBar,
+                FocusFrameManaBar, "FocusFrame")
+            print("|cFF00FF00[DragonUI]|r Focus text system configured after world enter")
+        end
+        
         if UnitExists("focus") then
             UpdateNameBackground()
             UpdateClassification()
+            if Module.textSystem then
+                Module.textSystem.update()
+            end
         end
         
     elseif event == "PLAYER_FOCUS_CHANGED" then
@@ -386,6 +489,12 @@ local function OnEvent(self, event, ...)
         if unit == "focus" then
             UpdateNameBackground()
         end
+    
+    elseif event == "UNIT_HEALTH" or event == "UNIT_MAXHEALTH" or event == "UNIT_POWER_UPDATE" or event == "UNIT_MAXPOWER" then
+        local unit = ...
+        if unit == "focus" and UnitExists("focus") and Module.textSystem then
+            Module.textSystem.update()
+        end
     end
 end
 
@@ -397,6 +506,11 @@ if not Module.eventsFrame then
     Module.eventsFrame:RegisterEvent("PLAYER_FOCUS_CHANGED")
     Module.eventsFrame:RegisterEvent("UNIT_CLASSIFICATION_CHANGED")
     Module.eventsFrame:RegisterEvent("UNIT_FACTION")
+    -- ✅ EVENTOS CRÍTICOS PARA EL TEXT SYSTEM
+    Module.eventsFrame:RegisterEvent("UNIT_HEALTH")
+    Module.eventsFrame:RegisterEvent("UNIT_MAXHEALTH") 
+    Module.eventsFrame:RegisterEvent("UNIT_POWER_UPDATE")
+    Module.eventsFrame:RegisterEvent("UNIT_MAXPOWER")
     Module.eventsFrame:SetScript("OnEvent", OnEvent)
 end
 
@@ -408,6 +522,15 @@ local function RefreshFrame()
     if not Module.configured then
         InitializeFrame()
     end
+    
+    -- ✅ APLICAR CONFIGURACIÓN INMEDIATAMENTE (incluyendo scale)
+    local config = GetConfig()
+    
+    -- ✅ APLICAR SCALE INMEDIATAMENTE
+    FocusFrame:SetScale(config.scale or 1)
+    
+    -- ✅ APLICAR POSICIÓN DESDE WIDGETS INMEDIATAMENTE
+    ApplyWidgetPosition()
     
     if UnitExists("focus") then
         UpdateNameBackground()
@@ -424,11 +547,23 @@ local function ResetFrame()
         addon:SetConfigValue("unitframe", "focus", key, value)
     end
     
+    -- ✅ RESETEAR WIDGETS TAMBIÉN
+    if not addon.db.profile.widgets then
+        addon.db.profile.widgets = {}
+    end
+    addon.db.profile.widgets.focus = {
+        anchor = "TOPLEFT",
+        posX = 250,
+        posY = -170
+    }
+    
+    -- Re-apply position using widgets system
     local config = GetConfig()
     FocusFrame:ClearAllPoints()
     FocusFrame:SetScale(config.scale or 1)
-    FocusFrame:SetPoint("TOPLEFT", UIParent, "TOPLEFT", 
-                       defaults.x or 400, defaults.y or -250)
+    ApplyWidgetPosition()
+    
+    print("|cFF00FF00[DragonUI]|r Focus frame reset to defaults with widgets")
 end
 
 -- Export API
@@ -449,4 +584,34 @@ function addon:RefreshFocusFrame()
     RefreshFrame()
 end
 
-print("|cFF00FF00[DragonUI]|r Focus module loaded and optimized v1.0")
+-- ============================================================================
+-- CENTRALIZED SYSTEM SUPPORT FUNCTIONS (like player.lua/target.lua)
+-- ============================================================================
+
+-- ✅ FUNCIONES REQUERIDAS POR EL SISTEMA CENTRALIZADO
+function Module:LoadDefaultSettings()
+    if not addon.db.profile.widgets then
+        addon.db.profile.widgets = {}
+    end
+    addon.db.profile.widgets.focus = { 
+        anchor = "TOPLEFT", 
+        posX = 250, 
+        posY = -170 
+    }
+end
+
+function Module:UpdateWidgets()
+    if not addon.db or not addon.db.profile.widgets or not addon.db.profile.widgets.focus then
+        print("[DragonUI] Focus widgets config not found, loading defaults")
+        self:LoadDefaultSettings()
+        return
+    end
+    
+    ApplyWidgetPosition()
+    
+    local widgetOptions = addon.db.profile.widgets.focus
+    print(string.format("[DragonUI] Focus positioned at: %s (%d, %d)", 
+          widgetOptions.anchor, widgetOptions.posX, widgetOptions.posY))
+end
+
+print("|cFF00FF00[DragonUI]|r Focus module loaded and optimized v1.0 - CENTRALIZED SYSTEM")

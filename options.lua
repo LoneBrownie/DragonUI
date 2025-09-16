@@ -3179,8 +3179,8 @@ function addon:CreateOptionsTable()
                                 end,
                                 set = function(info, value)
                                     addon.db.profile.unitframe.focus.scale = value
-                                    if addon.RefreshUnitFrames then
-                                        addon.RefreshUnitFrames()
+                                    if addon.RefreshFocusFrame then
+                                        addon.RefreshFocusFrame()
                                     end
                                 end,
                                 order = 1
@@ -3194,8 +3194,8 @@ function addon:CreateOptionsTable()
                                 end,
                                 set = function(info, value)
                                     addon.db.profile.unitframe.focus.classcolor = value
-                                    if addon.RefreshUnitFrames then
-                                        addon.RefreshUnitFrames()
+                                    if addon.RefreshFocusFrame then
+                                        addon.RefreshFocusFrame()
                                     end
                                 end,
                                 order = 2
@@ -3209,8 +3209,8 @@ function addon:CreateOptionsTable()
                                 end,
                                 set = function(info, value)
                                     addon.db.profile.unitframe.focus.breakUpLargeNumbers = value
-                                    if addon.RefreshUnitFrames then
-                                        addon.RefreshUnitFrames()
+                                    if addon.RefreshFocusFrame then
+                                        addon.RefreshFocusFrame()
                                     end
                                 end,
                                 order = 3
@@ -3230,8 +3230,8 @@ function addon:CreateOptionsTable()
                                 end,
                                 set = function(info, value)
                                     addon.db.profile.unitframe.focus.textFormat = value
-                                    if addon.RefreshUnitFrames then
-                                        addon.RefreshUnitFrames()
+                                    if addon.RefreshFocusFrame then
+                                        addon.RefreshFocusFrame()
                                     end
                                 end,
                                 order = 4
@@ -3245,8 +3245,8 @@ function addon:CreateOptionsTable()
                                 end,
                                 set = function(info, value)
                                     addon.db.profile.unitframe.focus.showHealthTextAlways = value
-                                    if addon.RefreshUnitFrames then
-                                        addon.RefreshUnitFrames()
+                                    if addon.RefreshFocusFrame then
+                                        addon.RefreshFocusFrame()
                                     end
                                 end,
                                 order = 5
@@ -3260,8 +3260,8 @@ function addon:CreateOptionsTable()
                                 end,
                                 set = function(info, value)
                                     addon.db.profile.unitframe.focus.showManaTextAlways = value
-                                    if addon.RefreshUnitFrames then
-                                        addon.RefreshUnitFrames()
+                                    if addon.RefreshFocusFrame then
+                                        addon.RefreshFocusFrame()
                                     end
                                 end,
                                 order = 6
@@ -3275,54 +3275,13 @@ function addon:CreateOptionsTable()
                                 end,
                                 set = function(info, value)
                                     addon.db.profile.unitframe.focus.override = value
-                                    if addon.RefreshUnitFrames then
-                                        addon.RefreshUnitFrames()
+                                    if addon.RefreshFocusFrame then
+                                        addon.RefreshFocusFrame()
                                     end
                                 end,
                                 order = 6
                             },
-                            x = {
-                                type = 'range',
-                                name = "X Position",
-                                desc = "Horizontal position",
-                                min = -1000,
-                                max = 1000,
-                                step = 1,
-                                get = function()
-                                    return addon.db.profile.unitframe.focus.x
-                                end,
-                                set = function(info, value)
-                                    addon.db.profile.unitframe.focus.x = value
-                                    if addon.RefreshUnitFrames then
-                                        addon.RefreshUnitFrames()
-                                    end
-                                end,
-                                order = 7,
-                                disabled = function()
-                                    return not addon.db.profile.unitframe.focus.override
-                                end
-                            },
-                            y = {
-                                type = 'range',
-                                name = "Y Position",
-                                desc = "Vertical position",
-                                min = -1000,
-                                max = 1000,
-                                step = 1,
-                                get = function()
-                                    return addon.db.profile.unitframe.focus.y
-                                end,
-                                set = function(info, value)
-                                    addon.db.profile.unitframe.focus.y = value
-                                    if addon.RefreshUnitFrames then
-                                        addon.RefreshUnitFrames()
-                                    end
-                                end,
-                                order = 8,
-                                disabled = function()
-                                    return not addon.db.profile.unitframe.focus.override
-                                end
-                            }
+                            -- X/Y Position options removed - now using centralized widget system
                         }
                     },
 

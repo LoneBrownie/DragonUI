@@ -162,6 +162,13 @@ function addon:RefreshConfig()
         end
     end
 
+    if addon.RefreshFocusFrame then
+        local success, err = pcall(addon.RefreshFocusFrame);
+        if not success then
+            table.insert(failed, "RefreshFocusFrame")
+        end
+    end
+
     if addon.RefreshStance then
         local success, err = pcall(addon.RefreshStance);
         if not success then

@@ -19,6 +19,11 @@ local defaults = {
                 anchor = "TOPLEFT",
                 posX = 250,
                 posY = -4
+            },
+            focus = {
+                anchor = "TOPLEFT",
+                posX = 250,
+                posY = -170
             }
         },
         -- Quest Tracker
@@ -300,12 +305,7 @@ local defaults = {
                 textFormat = 'both', -- Changed to 'numeric' - Current Value Only by default
                 showHealthTextAlways = false, -- true = always visible, false = only on hover
                 showManaTextAlways = false, -- true = always visible, false = only on hover
-                scale = 0.9,
-                override = false,
-                anchor = 'TOPLEFT',
-                anchorParent = 'TOPLEFT',
-                x = 250,
-                y = -170
+                scale = 1.0
             },
             pet = {
                 breakUpLargeNumbers = true,
