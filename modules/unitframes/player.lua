@@ -148,20 +148,7 @@ local function GetPlayerConfig()
     return config
 end
 
--- Validate and clamp coordinates to screen bounds
-local function ValidateCoordinates(x, y)
-    local screenWidth, screenHeight = GetScreenWidth(), GetScreenHeight()
-    local minX, maxX = -1500, screenWidth + 1500
-    local minY, maxY = -1500, screenHeight + 1500
 
-    if x < minX or x > maxX or y < minY or y > maxY then
-        print("|cFFFF0000[DragonUI]|r PlayerFrame coordinates out of bounds! Resetting...")
-        -- Usar defaults de database en lugar de DEFAULTS locales
-        local dbDefaults = addon.defaults and addon.defaults.profile.unitframe.player or {}
-        return dbDefaults.x or -19, dbDefaults.y or -4, false
-    end
-    return x, y, true
-end
 
 -- ============================================================================
 -- BLIZZARD FRAME MANAGEMENT
