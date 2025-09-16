@@ -305,7 +305,7 @@ local defaults = {
                 textFormat = 'both', -- Changed to 'numeric' - Current Value Only by default
                 showHealthTextAlways = false, -- true = always visible, false = only on hover
                 showManaTextAlways = false, -- true = always visible, false = only on hover
-                scale = 1.0
+                scale = 0.9
             },
             pet = {
                 breakUpLargeNumbers = true,
