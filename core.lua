@@ -169,6 +169,13 @@ function addon:RefreshConfig()
         end
     end
 
+    if addon.RefreshPartyFrames then
+        local success, err = pcall(addon.RefreshPartyFrames);
+        if not success then
+            table.insert(failed, "RefreshPartyFrames")
+        end
+    end
+
     if addon.RefreshStance then
         local success, err = pcall(addon.RefreshStance);
         if not success then

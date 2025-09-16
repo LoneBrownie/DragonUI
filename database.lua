@@ -24,6 +24,11 @@ local defaults = {
                 anchor = "TOPLEFT",
                 posX = 250,
                 posY = -170
+            },
+            party = {
+                anchor = "TOPLEFT",
+                posX = 10,
+                posY = -200
             }
         },
         -- Quest Tracker
@@ -330,11 +335,7 @@ local defaults = {
                 orientation = 'vertical',
                 padding = 10,
                 scale = 1.0,
-                override = false,
-                anchor = 'TOPLEFT',
-                anchorParent = 'TOPLEFT',
-                x = 10,
-                y = -200
+               
             },
             tot = {
                 classcolor = false,

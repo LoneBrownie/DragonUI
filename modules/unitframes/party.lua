@@ -6,7 +6,8 @@ local addon = select(2, ...)
 -- ===============================================================
 -- EARLY EXIT CHECK
 -- ===============================================================
-if not addon.db or not addon.db.profile or not addon.db.profile.unitframe or not addon.db.profile.unitframe.party then
+-- ✅ SIMPLIFICADO: Solo verificar que addon.db existe, no específicamente unitframe.party
+if not addon or not addon.db then
     return -- Exit early if database not ready
 end
 
@@ -35,6 +36,8 @@ local PartyFrames = {}
 addon.PartyFrames = PartyFrames
 
 PartyFrames.textElements = {}
+PartyFrames.anchor = nil
+PartyFrames.initialized = false
 
 -- ===============================================================
 -- CONSTANTS AND CONFIGURATION
@@ -54,12 +57,213 @@ local TEXTURES = {
 }
 
 -- ===============================================================
+-- CENTRALIZED SYSTEM INTEGRATION
+-- ===============================================================
+
+-- Create auxiliary frame for anchoring (like target.lua)
+local function CreatePartyAnchorFrame()
+    if PartyFrames.anchor then
+        return PartyFrames.anchor
+    end
+
+    local frame = CreateFrame("Frame", "DragonUI_Party_Anchor", UIParent)
+    frame:SetSize(120, 200) -- Size to encompass all 4 party frames
+    frame:SetPoint("TOPLEFT", UIParent, "TOPLEFT", 10, -200) -- Default position
+    frame:SetFrameStrata("LOW")
+    
+    -- ✅ AÑADIR: Texturas de editor (como target.lua)
+    local editorTexture = frame:CreateTexture(nil, "BACKGROUND")
+    editorTexture:SetAllPoints(frame)
+    editorTexture:SetTexture(0, 1, 0, 0.3) -- Verde semi-transparente para distinguir del target
+    editorTexture:Hide() -- Oculto por defecto
+    frame.editorTexture = editorTexture
+    
+    local editorText = frame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    editorText:SetPoint("CENTER", frame, "CENTER")
+    editorText:SetText("Party Frames")
+    editorText:SetTextColor(1, 1, 1, 1)
+    editorText:Hide() -- Oculto por defecto
+    frame.editorText = editorText
+    
+    -- ✅ AÑADIR: Funcionalidad de arrastre
+    frame:SetMovable(false) -- Deshabilitado por defecto
+    frame:EnableMouse(false) -- Deshabilitado por defecto
+    frame:SetScript("OnDragStart", function(self)
+        if not InCombatLockdown() then
+            self:StartMoving()
+        end
+    end)
+    frame:SetScript("OnDragStop", function(self)
+        self:StopMovingOrSizing()
+    end)
+    frame:RegisterForDrag("LeftButton")
+    
+    PartyFrames.anchor = frame
+    return frame
+end
+
+-- ✅ FUNCIÓN PARA APLICAR POSICIÓN DESDE WIDGETS (COMO target.lua)
+local function ApplyWidgetPosition()
+    if not PartyFrames.anchor then
+        print("|cFFFF0000[DragonUI]|r Party frames: No anchor frame available")
+        return
+    end
+
+    -- ✅ ASEGURAR QUE EXISTE LA CONFIGURACIÓN
+    if not addon.db or not addon.db.profile or not addon.db.profile.widgets then
+        print("|cFFFF0000[DragonUI]|r Party frames: No database available for positioning")
+        return
+    end
+    
+    local widgetConfig = addon.db.profile.widgets.party
+    
+    if widgetConfig and widgetConfig.posX and widgetConfig.posY then
+        -- ✅ USAR EL ANCHOR GUARDADO, NO SIEMPRE TOPLEFT
+        local anchor = widgetConfig.anchor or "TOPLEFT"
+        PartyFrames.anchor:ClearAllPoints()
+        PartyFrames.anchor:SetPoint(anchor, UIParent, anchor, widgetConfig.posX, widgetConfig.posY)
+        print("|cFF00FF00[DragonUI]|r Party frames positioned via widgets:", anchor, widgetConfig.posX, widgetConfig.posY)
+    else
+        -- ✅ CREAR CONFIGURACIÓN POR DEFECTO SI NO EXISTE
+        if not addon.db.profile.widgets.party then
+            addon.db.profile.widgets.party = {
+                anchor = "TOPLEFT",
+                posX = 10,
+                posY = -200
+            }
+        end
+        PartyFrames.anchor:ClearAllPoints()
+        PartyFrames.anchor:SetPoint("TOPLEFT", UIParent, "TOPLEFT", 10, -200)
+        print("|cFF00FF00[DragonUI]|r Party frames positioned with defaults: TOPLEFT 10 -200")
+    end
+end
+
+-- ✅ FUNCIONES REQUERIDAS POR EL SISTEMA CENTRALIZADO
+function PartyFrames:LoadDefaultSettings()
+    -- ✅ ASEGURAR QUE EXISTE LA CONFIGURACIÓN EN WIDGETS
+    if not addon.db.profile.widgets then
+        addon.db.profile.widgets = {}
+    end
+    
+    if not addon.db.profile.widgets.party then
+        addon.db.profile.widgets.party = {
+            anchor = "TOPLEFT",
+            posX = 10,
+            posY = -200
+        }
+        print("|cFF00FF00[DragonUI]|r Party frames: Created default widget settings")
+    end
+    
+    -- ✅ ASEGURAR QUE EXISTE LA CONFIGURACIÓN EN UNITFRAME
+    if not addon.db.profile.unitframe then
+        addon.db.profile.unitframe = {}
+    end
+    
+    if not addon.db.profile.unitframe.party then
+        addon.db.profile.unitframe.party = {
+            enabled = true,
+            classcolor = false,
+            textFormat = 'both',
+            breakUpLargeNumbers = true,
+            showHealthTextAlways = false,
+            showManaTextAlways = false,
+            orientation = 'vertical',
+            padding = 10,
+            scale = 1.0,
+            override = false,
+            anchor = 'TOPLEFT',
+            anchorParent = 'TOPLEFT',
+            x = 10,
+            y = -200
+        }
+        print("|cFF00FF00[DragonUI]|r Party frames: Created default unitframe settings")
+    end
+end
+
+function PartyFrames:UpdateWidgets()
+    ApplyWidgetPosition()
+    -- ✅ REPOSICIONAR TODOS LOS PARTY FRAMES RELATIVOS AL ANCHOR ACTUALIZADO
+    if not InCombatLockdown() then
+        for i = 1, MAX_PARTY_MEMBERS do
+            local frame = _G['PartyMemberFrame' .. i]
+            if frame and PartyFrames.anchor then
+                frame:ClearAllPoints()
+                local yOffset = (i - 1) * -50
+                frame:SetPoint("TOPLEFT", PartyFrames.anchor, "TOPLEFT", 0, yOffset)
+            end
+        end
+    end
+end
+
+-- ✅ FUNCIÓN PARA VERIFICAR SI LOS PARTY FRAMES DEBEN ESTAR VISIBLES
+local function ShouldPartyFramesBeVisible()
+    return GetNumPartyMembers() > 0
+end
+
+-- ✅ FUNCIONES DE TESTEO PARA EL EDITOR
+local function ShowPartyFramesTest()
+    -- Mostrar los party frames aunque no haya grupo
+    for i = 1, MAX_PARTY_MEMBERS do
+        local frame = _G['PartyMemberFrame' .. i]
+        if frame then
+            frame:Show()
+        end
+    end
+end
+
+local function HidePartyFramesTest()
+    -- Ocultar frames vacíos cuando no hay party
+    for i = 1, MAX_PARTY_MEMBERS do
+        local frame = _G['PartyMemberFrame' .. i]
+        if frame and not UnitExists("party" .. i) then
+            frame:Hide()
+        end
+    end
+end
+
+-- ===============================================================
 -- HELPER FUNCTIONS
 -- ===============================================================
 
 -- Get settings helper
 local function GetSettings()
-    return addon.db and addon.db.profile and addon.db.profile.unitframe and addon.db.profile.unitframe.party
+    -- ✅ VERIFICACIÓN ROBUSTA CON VALORES POR DEFECTO
+    if not addon.db or not addon.db.profile then
+        return {
+            scale = 1.0,
+            classcolor = false,
+            breakUpLargeNumbers = true
+        }
+    end
+    
+    local settings = addon.db.profile.unitframe and addon.db.profile.unitframe.party
+    
+    -- ✅ SI NO EXISTE LA CONFIGURACIÓN, CREARLA CON DEFAULTS
+    if not settings then
+        if not addon.db.profile.unitframe then
+            addon.db.profile.unitframe = {}
+        end
+        
+        addon.db.profile.unitframe.party = {
+            enabled = true,
+            classcolor = false,
+            textFormat = 'both',
+            breakUpLargeNumbers = true,
+            showHealthTextAlways = false,
+            showManaTextAlways = false,
+            orientation = 'vertical',
+            padding = 10,
+            scale = 1.0,
+            override = false,
+            anchor = 'TOPLEFT',
+            anchorParent = 'TOPLEFT',
+            x = 10,
+            y = -200
+        }
+        settings = addon.db.profile.unitframe.party
+    end
+    
+    return settings
 end
 
 -- Format numbers helper
@@ -370,11 +574,24 @@ local function StylePartyFrames()
         return
     end
 
+    -- ✅ CREAR ANCHOR FRAME SI NO EXISTE
+    CreatePartyAnchorFrame()
+    
+    -- ✅ APLICAR POSICIÓN DEL WIDGET
+    ApplyWidgetPosition()
+
     for i = 1, MAX_PARTY_MEMBERS do
         local frame = _G['PartyMemberFrame' .. i]
         if frame then
             -- ✅ Scale and texture setup
             frame:SetScale(settings.scale or 1)
+
+            -- ✅ POSICIONAMIENTO RELATIVO AL ANCHOR
+            if not InCombatLockdown() then
+                frame:ClearAllPoints()
+                local yOffset = (i - 1) * -50 -- Stack vertical con 50px de separación
+                frame:SetPoint("TOPLEFT", PartyFrames.anchor, "TOPLEFT", 0, yOffset)
+            end
 
             -- Hide background
             local bg = _G[frame:GetName() .. 'Background']
@@ -762,6 +979,16 @@ local function SetupPartyHooks()
     -- Hook principal para mantener estilos (SIMPLIFIED)
     hooksecurefunc("PartyMemberFrame_UpdateMember", function(frame)
         if frame and frame:GetName():match("^PartyMemberFrame%d+$") then
+            -- ✅ MANTENER POSICIONAMIENTO RELATIVO AL ANCHOR
+            if PartyFrames.anchor and not InCombatLockdown() then
+                local frameIndex = frame:GetID()
+                if frameIndex and frameIndex >= 1 and frameIndex <= 4 then
+                    frame:ClearAllPoints()
+                    local yOffset = (frameIndex - 1) * -50
+                    frame:SetPoint("TOPLEFT", PartyFrames.anchor, "TOPLEFT", 0, yOffset)
+                end
+            end
+
             -- Re-hide textures (always needed)
             local texture = _G[frame:GetName() .. 'Texture']
             if texture then
@@ -844,6 +1071,14 @@ end
 
 -- ✅ FUNCIÓN SIMPLIFICADA COMPATIBLE CON ACE3
 function PartyFrames:UpdateSettings()
+    -- ✅ VERIFICAR CONFIGURACIÓN INICIAL
+    if not addon.db or not addon.db.profile or not addon.db.profile.widgets or not addon.db.profile.widgets.party then
+        self:LoadDefaultSettings()
+    end
+    
+    -- ✅ APLICAR POSICIÓN DEL WIDGET PRIMERO
+    ApplyWidgetPosition()
+    
     -- ✅ SOLO APLICAR ESTILOS BASE - ACE3 SE ENCARGA DEL CLASS COLOR
     StylePartyFrames()
     
@@ -864,13 +1099,69 @@ addon.RefreshPartyFrames = function()
     end
 end
 
+-- ✅ NUEVA FUNCIÓN: Refresh que se llama desde core.lua
+function addon:RefreshPartyFrames()
+    if PartyFrames and PartyFrames.UpdateSettings then
+        PartyFrames:UpdateSettings()
+    end
+end
+
+-- ===============================================================
+-- CENTRALIZED SYSTEM REGISTRATION AND INITIALIZATION
+-- ===============================================================
+
+local function InitializePartyFramesForEditor()
+    if PartyFrames.initialized then
+        return
+    end
+
+    -- ✅ CREAR ANCHOR FRAME
+    CreatePartyAnchorFrame()
+    
+    -- ✅ SIEMPRE ASEGURAR QUE EXISTE LA CONFIGURACIÓN
+    PartyFrames:LoadDefaultSettings()
+    
+    -- ✅ APLICAR POSICIÓN INICIAL
+    ApplyWidgetPosition()
+    
+    -- ✅ REGISTRAR CON EL SISTEMA CENTRALIZADO
+    if addon and addon.RegisterEditableFrame then
+        addon:RegisterEditableFrame({
+            name = "party",
+            frame = PartyFrames.anchor,
+            configPath = {"widgets", "party"}, -- ✅ AÑADIR configPath requerido por core.lua
+            showTest = ShowPartyFramesTest,
+            hideTest = HidePartyFramesTest,
+            hasTarget = ShouldPartyFramesBeVisible -- ✅ USAR hasTarget en lugar de shouldShow
+        })
+        print("|cFF00FF00[DragonUI]|r Party frames registered in centralized system")
+    end
+
+    PartyFrames.initialized = true
+end
+
 -- ===============================================================
 -- INITIALIZATION
 -- ===============================================================
 
 -- ✅ Initialize everything in correct order
-StylePartyFrames() -- First: visual properties only
-SetupPartyHooks() -- Second: safe hooks only
+InitializePartyFramesForEditor() -- First: register with centralized system
+StylePartyFrames() -- Second: visual properties and positioning
+SetupPartyHooks() -- Third: safe hooks only
+
+-- ✅ LISTENER PARA CUANDO EL ADDON ESTÉ COMPLETAMENTE CARGADO
+local readyFrame = CreateFrame("Frame")
+readyFrame:RegisterEvent("ADDON_LOADED")
+readyFrame:SetScript("OnEvent", function(self, event, addonName)
+    if addonName == "DragonUI" then
+        -- Aplicar posición después de que el addon esté completamente cargado
+        if PartyFrames and PartyFrames.UpdateSettings then
+            PartyFrames:UpdateSettings()
+        end
+        self:UnregisterEvent("ADDON_LOADED")
+    end
+end)
+
 local connectionFrame = CreateFrame("Frame")
 connectionFrame:RegisterEvent("PARTY_MEMBER_DISABLE")
 connectionFrame:RegisterEvent("PARTY_MEMBER_ENABLE")
@@ -888,5 +1179,5 @@ end)
 -- MODULE LOADED CONFIRMATION
 -- ===============================================================
 
-print("|cFF00FF00[DragonUI]|r Party frames module loaded (taint-free)")
+print("|cFF00FF00[DragonUI]|r Party frames module loaded (taint-free) - CENTRALIZED SYSTEM")
 
