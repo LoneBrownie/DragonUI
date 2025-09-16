@@ -29,6 +29,12 @@ local defaults = {
                 anchor = "TOPLEFT",
                 posX = 10,
                 posY = -200
+            },
+            -- ✅ PLAYER CASTBAR WIDGET
+            playerCastbar = {
+                anchor = "BOTTOM",
+                posX = 0,
+                posY = 230
             }
         },
         -- Quest Tracker
@@ -231,7 +237,7 @@ local defaults = {
                 enabled = true,
                 scale = 1,
                 x_position = -20,
-                y_position = -20,
+                y_position = -10,
                 text_mode = "simple", -- "simple" (centered spell name only) or "detailed" (name + time)
                 precision_time = 1,
                 precision_max = 1,
@@ -254,7 +260,7 @@ local defaults = {
                 enabled = true,
                 scale = 1,
                 x_position = -20,
-                y_position = -20,
+                y_position = 0,
                 text_mode = "simple", -- "simple" (centered spell name only) or "detailed" (name + time)
                 precision_time = 1,
                 precision_max = 1,

@@ -1746,38 +1746,6 @@ function addon:CreateOptionsTable()
                                 end,
                                 order = 1
                             },
-                            x_position = {
-                                type = 'range',
-                                name = "X Position",
-                                desc = "Horizontal position",
-                                min = -500,
-                                max = 500,
-                                step = 1,
-                                get = function()
-                                    return addon.db.profile.castbar.x_position
-                                end,
-                                set = function(info, val)
-                                    addon.db.profile.castbar.x_position = val
-                                    addon.RefreshCastbar()
-                                end,
-                                order = 2
-                            },
-                            y_position = {
-                                type = 'range',
-                                name = "Y Position",
-                                desc = "Vertical position",
-                                min = 0,
-                                max = 600,
-                                step = 1,
-                                get = function()
-                                    return addon.db.profile.castbar.y_position
-                                end,
-                                set = function(info, val)
-                                    addon.db.profile.castbar.y_position = val
-                                    addon.RefreshCastbar()
-                                end,
-                                order = 3
-                            },
                             sizeX = {
                                 type = 'range',
                                 name = "Width",
@@ -1985,47 +1953,7 @@ function addon:CreateOptionsTable()
                                 end,
                                 order = 1
                             },
-                            x_position = {
-                                type = 'range',
-                                name = "X Position",
-                                desc = "Horizontal position relative to anchor point",
-                                min = -500,
-                                max = 500,
-                                step = 1,
-                                get = function()
-                                    return addon.db.profile.castbar.target and
-                                               addon.db.profile.castbar.target.x_position or -20
-                                end,
-                                set = function(info, val)
-                                    if not addon.db.profile.castbar.target then
-                                        addon.db.profile.castbar.target = {}
-                                    end
-                                    addon.db.profile.castbar.target.x_position = val
-                                    addon.RefreshTargetCastbar()
-                                end,
-                                order = 2
-                            },
-                            y_position = {
-                                type = 'range',
-                                name = "Y Position",
-                                desc = "Vertical position relative to anchor point",
-                                min = -500,
-                                max = 500,
-                                step = 1,
-                                get = function()
-                                    return addon.db.profile.castbar.target and
-                                               addon.db.profile.castbar.target.y_position or -20
-                                end,
-                                set = function(info, val)
-                                    if not addon.db.profile.castbar.target then
-                                        addon.db.profile.castbar.target = {}
-                                    end
-                                    addon.db.profile.castbar.target.y_position = val
-                                    addon.RefreshTargetCastbar()
-                                end,
-                                order = 3
-                            },
-                            sizeX = {
+                                                       sizeX = {
                                 type = 'range',
                                 name = "Width",
                                 desc = "Width of the target castbar",
@@ -2303,42 +2231,7 @@ function addon:CreateOptionsTable()
                                 end,
                                 order = 1
                             },
-                            x_position = {
-                                type = 'range',
-                                name = "X Position",
-                                desc = "Horizontal position relative to anchor point",
-                                min = -1500,
-                                max = 1500,
-                                step = 1,
-                                get = function()
-                                    return addon.db.profile.castbar.focus.x_position or 0
-                                end,
-                                set = function(info, value)
-                                    addon.db.profile.castbar.focus.x_position = value
-                                    if addon.RefreshFocusCastbar then
-                                        addon.RefreshFocusCastbar()
-                                    end
-                                end,
-                                order = 2
-                            },
-                            y_position = {
-                                type = 'range',
-                                name = "Y Position",
-                                desc = "Vertical position relative to anchor point",
-                                min = -1500,
-                                max = 1500,
-                                step = 1,
-                                get = function()
-                                    return addon.db.profile.castbar.focus.y_position or 0
-                                end,
-                                set = function(info, value)
-                                    addon.db.profile.castbar.focus.y_position = value
-                                    if addon.RefreshFocusCastbar then
-                                        addon.RefreshFocusCastbar()
-                                    end
-                                end,
-                                order = 3
-                            },
+                            
                             sizeX = {
                                 type = 'range',
                                 name = "Width",

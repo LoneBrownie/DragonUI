@@ -842,6 +842,11 @@ function CastbarModule:OnUpdate(unitType, castbar, elapsed)
     
     if not cfg or not cfg.enabled then return end
     
+    -- ✅ NO PROCESAR SI ESTÁ EN MODO TESTING
+    if state.testMode then
+        return
+    end
+    
     -- Check if unit still exists
     if unitType ~= "player" and not UnitExists(unitType) then
         if state.casting or state.isChanneling then
@@ -1066,6 +1071,11 @@ function CastbarModule:HideCastbar(unitType)
     local frames = self.frames[unitType]
     local state = self.states[unitType]
     
+    -- ✅ NO OCULTAR SI ESTÁ EN MODO TESTING (EXCEPTO CUANDO SE LLAMA DESDE HideTest)
+    if state.testMode and not state.forcingHide then
+        return
+    end
+    
     if frames.castbar then frames.castbar:Hide() end
     if frames.background then frames.background:Hide() end
     if frames.textBackground then frames.textBackground:Hide() end
@@ -1238,4 +1248,243 @@ if TargetFrameSpellBar then
             addon.core:ScheduleTimer(ApplyTargetAuraOffset, 0.05)
         end
     end)
+end
+
+-- ============================================================================
+-- EDITOR MODE INTEGRATION - SOLO PLAYER CASTBAR
+-- ============================================================================
+
+-- ✅ FUNCIÓN PARA APLICAR POSICIÓN DESDE WIDGETS (SIMPLIFICADA)
+local function ApplyPlayerCastbarWidget()
+    local castbar = CastbarModule.frames.player and CastbarModule.frames.player.castbar
+    if not castbar then
+        return
+    end
+
+    local widgetConfig = addon.db and addon.db.profile.widgets and addon.db.profile.widgets.playerCastbar
+    
+    if widgetConfig then
+        -- ✅ MOVER LA CASTBAR REAL A LA POSICIÓN DE WIDGETS
+        castbar:ClearAllPoints()
+        castbar:SetPoint(widgetConfig.anchor or "BOTTOM", UIParent, widgetConfig.anchor or "BOTTOM", 
+                        widgetConfig.posX or 0, widgetConfig.posY or 230)
+        
+        print("|cFF00FF00[DragonUI]|r Player castbar positioned via widgets:", widgetConfig.posX, widgetConfig.posY)
+    else
+        -- Fallback a posición por defecto
+        castbar:ClearAllPoints()
+        castbar:SetPoint("BOTTOM", UIParent, "BOTTOM", 0, 230)
+        print("|cFF00FF00[DragonUI]|r Player castbar positioned with defaults")
+    end
+    
+    -- ✅ ASEGURAR QUE EL OVERLAY SIGUE A LA CASTBAR (si existe)
+    local overlayFrame = _G["PlayerCastbarEditor"]
+    if overlayFrame then
+        overlayFrame:ClearAllPoints()
+        overlayFrame:SetPoint("CENTER", castbar, "CENTER", 0, 0)
+        print("|cFF00FF00[DragonUI]|r Overlay frame synced to castbar position")
+    end
+end
+
+-- ✅ FUNCIONES DE TESTEO SIMPLIFICADAS (como target.lua)
+local function ShowPlayerCastbarTest()
+    local castbar = CastbarModule.frames.player and CastbarModule.frames.player.castbar
+    if not castbar then
+        return
+    end
+
+    -- ✅ MARCAR COMO MODO TESTING PARA EVITAR INTERFERENCIAS
+    CastbarModule.states.player.testMode = true
+    CastbarModule.states.player.spellName = "Fire Ball"
+    CastbarModule.states.player.maxValue = 3.0
+    CastbarModule.states.player.currentValue = 1.5 -- 50% progreso
+    CastbarModule.states.player.isChanneling = false
+    CastbarModule.states.player.casting = false -- NO activar casting real
+    CastbarModule.states.player.holdTime = 0 -- Sin hold time
+    
+    -- Configurar la barra con valores fake
+    castbar:SetMinMaxValues(0, 3.0)
+    castbar:SetValue(1.5) -- 50% progreso
+    castbar:SetStatusBarTexture(TEXTURES.standard)
+    castbar:SetStatusBarColor(1, 0.7, 0, 1) -- Color naranja normal
+    castbar:Show()
+    
+    -- Mostrar background si existe
+    if CastbarModule.frames.player.background then
+        CastbarModule.frames.player.background:Show()
+    end
+    
+    -- Mostrar text background si existe
+    if CastbarModule.frames.player.textBackground then
+        CastbarModule.frames.player.textBackground:Show()
+    end
+    
+    -- ✅ CONFIGURAR TEXTO FAKE
+    if CastbarModule.frames.player.castTextCentered then
+        CastbarModule.frames.player.castTextCentered:SetText("Fire Ball")
+        CastbarModule.frames.player.castTextCentered:Show()
+    end
+    
+    -- ✅ CONFIGURAR TIEMPO FAKE
+    if CastbarModule.frames.player.castTimeText then
+        CastbarModule.frames.player.castTimeText:SetText("1.5 / 3.0")
+        CastbarModule.frames.player.castTimeText:Show()
+    end
+    
+    -- ✅ OCULTAR ELEMENTOS QUE NO NECESITAMOS EN EL FAKE
+    if CastbarModule.frames.player.icon then
+        CastbarModule.frames.player.icon:Hide()
+    end
+    if CastbarModule.frames.player.spark then
+        CastbarModule.frames.player.spark:Hide()
+    end
+    if CastbarModule.frames.player.flash then
+        CastbarModule.frames.player.flash:Hide()
+    end
+    
+    print("|cFF00FF00[DragonUI]|r Player castbar fake frame shown (test mode)")
+end
+
+local function HidePlayerCastbarTest()
+    -- ✅ PERMITIR FORZAR OCULTAR DURANTE TEST MODE
+    CastbarModule.states.player.forcingHide = true
+    
+    -- ✅ LIMPIAR ESTADO FAKE Y DESACTIVAR TEST MODE
+    CastbarModule.states.player.testMode = false
+    CastbarModule.states.player.casting = false
+    CastbarModule.states.player.isChanneling = false
+    CastbarModule.states.player.spellName = ""
+    CastbarModule.states.player.currentValue = 0
+    CastbarModule.states.player.maxValue = 0
+    CastbarModule.states.player.holdTime = 0
+    
+    -- ✅ OCULTAR COMPLETAMENTE LA CASTBAR FAKE
+    CastbarModule:HideCastbar("player")
+    
+    -- ✅ LIMPIAR FLAG DE FORZAR OCULTAR
+    CastbarModule.states.player.forcingHide = false
+    
+    print("|cFF00FF00[DragonUI]|r Player castbar fake frame hidden (test mode off)")
+end
+
+-- ✅ REGISTRO EN SISTEMA CENTRALIZADO (SIMPLIFICADO COMO TARGET.LUA)
+local function RegisterPlayerCastbarInEditor()
+    if not addon.CreateUIFrame then
+        print("|cFFFF0000[DragonUI]|r CreateUIFrame not available for player castbar registration")
+        return
+    end
+
+    local castbar = CastbarModule.frames.player and CastbarModule.frames.player.castbar
+    if not castbar then
+        print("|cFFFF0000[DragonUI]|r No player castbar found")
+        return
+    end
+
+    -- Crear overlay frame simple 
+    local overlayFrame = addon.CreateUIFrame(castbar:GetWidth(), castbar:GetHeight(), "PlayerCastbarEditor")
+    overlayFrame:SetFrameLevel(castbar:GetFrameLevel() + 10)
+    
+    -- ✅ POSICIONAR OVERLAY PRIMERO (asegurar que sea visible)
+    overlayFrame:ClearAllPoints()
+    overlayFrame:SetPoint("CENTER", castbar, "CENTER", 0, 0)
+    
+    -- ✅ CUSTOM DRAG SCRIPTS PARA SINCRONIZAR FAKE CASTBAR EN TIEMPO REAL
+    overlayFrame:SetScript("OnDragStart", function(self, button)
+        self:StartMoving()
+        
+        -- ✅ ACTIVAR OnUpdate PARA SINCRONIZACIÓN DURANTE ARRASTRE
+        self.isDragging = true
+        self:SetScript("OnUpdate", function(updateSelf)
+            if updateSelf.isDragging and CastbarModule.states.player.testMode then
+                -- Sincronizar la fake castbar con la posición del overlay
+                local point, _, relativePoint, x, y = updateSelf:GetPoint()
+                if castbar and point then
+                    castbar:ClearAllPoints()
+                    castbar:SetPoint(point, UIParent, relativePoint, x, y)
+                end
+            end
+        end)
+    end)
+    
+    overlayFrame:SetScript("OnDragStop", function(self)
+        self:StopMovingOrSizing()
+        
+        -- ✅ DESACTIVAR OnUpdate 
+        self.isDragging = false
+        self:SetScript("OnUpdate", nil)
+        
+        -- ✅ SINCRONIZACIÓN FINAL
+        local point, _, relativePoint, x, y = self:GetPoint()
+        if castbar and point then
+            castbar:ClearAllPoints()
+            castbar:SetPoint(point, UIParent, relativePoint, x, y)
+        end
+        
+        print("|cFF00FF00[DragonUI]|r Player castbar synchronized after drag:", x, y)
+    end)
+    
+    print("|cFF00FF00[DragonUI]|r Overlay frame created and positioned with drag sync")
+
+    -- Registrar en sistema centralizado (como target.lua)
+    addon:RegisterEditableFrame({
+        name = "PlayerCastbar",
+        frame = overlayFrame,
+        blizzardFrame = castbar, -- ✅ EL FRAME REAL DE LA CASTBAR
+        configPath = {"widgets", "playerCastbar"},
+        showTest = ShowPlayerCastbarTest, -- ✅ FUNCIÓN SIMPLE
+        hideTest = HidePlayerCastbarTest, -- ✅ FUNCIÓN SIMPLE
+        onHide = ApplyPlayerCastbarWidget, -- ✅ APLICAR AL SALIR
+        hasTarget = function() return true end -- Player castbar siempre disponible
+    })
+
+    print("|cFF00FF00[DragonUI]|r Player castbar registered in centralized system")
+end
+
+-- ✅ INICIALIZAR SISTEMA EDITOR CUANDO EL ADDON ESTÉ LISTO
+local function InitializePlayerCastbarEditor()
+    if addon.RegisterEditableFrame and addon.CreateUIFrame then
+        if IsEnabled("player") then
+            RegisterPlayerCastbarInEditor()
+        end
+    else
+        -- Reintentar más tarde usando AceTimer (compatible 3.3.5a)
+        if addon.core and addon.core.ScheduleTimer then
+            addon.core:ScheduleTimer(InitializePlayerCastbarEditor, 1.0)
+        end
+    end
+end
+
+-- Inicializar cuando el addon esté completamente cargado
+if addon.core and addon.core.RegisterMessage then
+    addon.core:RegisterMessage("DRAGONUI_READY", function()
+        if addon.core.ScheduleTimer then
+            addon.core:ScheduleTimer(InitializePlayerCastbarEditor, 0.5)
+        else
+            InitializePlayerCastbarEditor()
+        end
+    end)
+else
+    -- Fallback si no está disponible el sistema de mensajes
+    if addon.core and addon.core.ScheduleTimer then
+        addon.core:ScheduleTimer(InitializePlayerCastbarEditor, 2.0)
+    else
+        InitializePlayerCastbarEditor()
+    end
+end
+
+-- ✅ HOOK PARA APLICAR WIDGETS AL REFRESCAR PLAYER CASTBAR
+local originalRefreshPlayerCastbar = CastbarModule.RefreshCastbar
+function CastbarModule:RefreshCastbar(unitType)
+    -- Llamar función original
+    originalRefreshPlayerCastbar(self, unitType)
+    
+    -- Solo aplicar widgets para player castbar
+    if unitType == "player" then
+        ApplyPlayerCastbarWidget()
+        
+        -- Registrar en editor si no estaba registrado
+        if IsEnabled("player") and addon.EditableFrames and not addon.EditableFrames["PlayerCastbar"] then
+            RegisterPlayerCastbarInEditor()
+        end
+    end
 end
