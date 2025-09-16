@@ -66,41 +66,15 @@ local function CreatePartyAnchorFrame()
         return PartyFrames.anchor
     end
 
-    local frame = CreateFrame("Frame", "DragonUI_Party_Anchor", UIParent)
-    frame:SetSize(120, 200) -- Size to encompass all 4 party frames
-    frame:SetPoint("TOPLEFT", UIParent, "TOPLEFT", 10, -200) -- Default position
-    frame:SetFrameStrata("FULLSCREEN")
-    frame:SetFrameLevel(100)
+    -- ✅ USAR FUNCIÓN CENTRALIZADA DE CORE.LUA
+    PartyFrames.anchor = addon.CreateUIFrame(120, 200, "PartyFrames")
     
-    -- ✅ AÑADIR: Texturas de editor (como target.lua)
-    local editorTexture = frame:CreateTexture(nil, "BACKGROUND")
-    editorTexture:SetAllPoints(frame)
-    editorTexture:SetTexture(0, 1, 0, 0.3) -- Verde semi-transparente para distinguir del target
-    editorTexture:Hide() -- Oculto por defecto
-    frame.editorTexture = editorTexture
+    -- ✅ PERSONALIZAR TEXTO PARA PARTY FRAMES
+    if PartyFrames.anchor.editorText then
+        PartyFrames.anchor.editorText:SetText("Party Frames")
+    end
     
-    local editorText = frame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    editorText:SetPoint("CENTER", frame, "CENTER")
-    editorText:SetText("Party Frames")
-    editorText:SetTextColor(1, 1, 1, 1)
-    editorText:Hide() -- Oculto por defecto
-    frame.editorText = editorText
-    
-    -- ✅ AÑADIR: Funcionalidad de arrastre
-    frame:SetMovable(false) -- Deshabilitado por defecto
-    frame:EnableMouse(false) -- Deshabilitado por defecto
-    frame:SetScript("OnDragStart", function(self)
-        if not InCombatLockdown() then
-            self:StartMoving()
-        end
-    end)
-    frame:SetScript("OnDragStop", function(self)
-        self:StopMovingOrSizing()
-    end)
-    frame:RegisterForDrag("LeftButton")
-    
-    PartyFrames.anchor = frame
-    return frame
+    return PartyFrames.anchor
 end
 
 -- ✅ FUNCIÓN PARA APLICAR POSICIÓN DESDE WIDGETS (COMO target.lua)

@@ -133,43 +133,6 @@ local ROLE_COORDS = {
 -- UTILITY FUNCTIONS
 -- ============================================================================
 
--- Create auxiliary frame for anchoring
-local function CreateUIFrame(width, height, name)
-    local frame = CreateFrame("Frame", "DragonUI_" .. name .. "_Anchor", UIParent)
-    frame:SetSize(width, height)
-    frame:SetPoint("TOPLEFT", UIParent, "TOPLEFT", 0, 0)
-    frame:SetFrameStrata("LOW")
-    
-    -- ✅ AÑADIR: Texturas de editor (como minimap)
-    local editorTexture = frame:CreateTexture(nil, "BACKGROUND")
-    editorTexture:SetAllPoints(frame)
-    editorTexture:SetTexture(0, 1, 0, 0.3) -- Verde semi-transparente
-    editorTexture:Hide() -- Oculto por defecto
-    frame.editorTexture = editorTexture
-    
-    local editorText = frame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    editorText:SetPoint("CENTER", frame, "CENTER")
-    editorText:SetText("Player Frame")
-    editorText:SetTextColor(1, 1, 1, 1)
-    editorText:Hide() -- Oculto por defecto
-    frame.editorText = editorText
-    
-    -- ✅ AÑADIR: Funcionalidad de arrastre
-    frame:SetMovable(false) -- Deshabilitado por defecto
-    frame:EnableMouse(false) -- Deshabilitado por defecto
-    frame:SetScript("OnDragStart", function(self)
-        if self:IsMovable() then
-            self:StartMoving()
-        end
-    end)
-    frame:SetScript("OnDragStop", function(self)
-        self:StopMovingOrSizing()
-    end)
-    frame:RegisterForDrag("LeftButton")
-    
-    return frame
-end
-
 -- Get player configuration with fallback to defaults
 local function GetPlayerConfig()
     local config = addon:GetConfigValue("unitframe", "player") or {}
@@ -1301,7 +1264,7 @@ local function InitializePlayerFrame()
     end
 
     -- Create auxiliary frame
-    Module.playerFrame = CreateUIFrame(200, 75, "PlayerFrame")
+    Module.playerFrame = addon.CreateUIFrame(200, 75, "PlayerFrame")
 
     -- ✅ REGISTRO AUTOMÁTICO EN EL SISTEMA CENTRALIZADO
     addon:RegisterEditableFrame({

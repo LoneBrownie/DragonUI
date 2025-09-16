@@ -563,5 +563,8 @@ function addon:GetEditableFrameInfo(frameName)
     return self.EditableFrames[frameName]
 end
 
+-- ✅ EXPORTAR CreateUIFrame AL NAMESPACE ADDON PARA COMPATIBILIDAD
+addon.CreateUIFrame = CreateUIFrame
+
 ---------------------------------------------------
 ---------------------------------------------------

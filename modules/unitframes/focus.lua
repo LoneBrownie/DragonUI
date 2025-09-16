@@ -27,44 +27,6 @@ end
 -- UTILITY FUNCTIONS FOR CENTRALIZED SYSTEM
 -- ============================================================================
 
--- Create auxiliary frame for anchoring (like player.lua/target.lua)
-local function CreateUIFrame(width, height, name)
-    local frame = CreateFrame("Frame", "DragonUI_" .. name .. "_Anchor", UIParent)
-    frame:SetSize(width, height)
-    frame:SetPoint("TOPLEFT", UIParent, "TOPLEFT", 250, -170)
-    frame:SetFrameStrata("FULLSCREEN") -- ✅ CAMBIO: Strata más alto para editor
-    frame:SetFrameLevel(100) -- ✅ CAMBIO: Level muy alto para estar por encima
-    
-    -- ✅ AÑADIR: Texturas de editor (como player.lua)
-    local editorTexture = frame:CreateTexture(nil, "BACKGROUND")
-    editorTexture:SetAllPoints(frame)
-    editorTexture:SetTexture(0, 1, 0, 0.3) -- Verde semi-transparente
-    editorTexture:Hide() -- Oculto por defecto
-    frame.editorTexture = editorTexture
-    
-    local editorText = frame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    editorText:SetPoint("CENTER", frame, "CENTER")
-    editorText:SetText("Focus Frame")
-    editorText:SetTextColor(1, 1, 1, 1)
-    editorText:Hide() -- Oculto por defecto
-    frame.editorText = editorText
-    
-    -- ✅ AÑADIR: Funcionalidad de arrastre
-    frame:SetMovable(false) -- Deshabilitado por defecto
-    frame:EnableMouse(false) -- Deshabilitado por defecto
-    frame:SetScript("OnDragStart", function(self)
-        if self:IsMovable() then
-            self:StartMoving()
-        end
-    end)
-    frame:SetScript("OnDragStop", function(self)
-        self:StopMovingOrSizing()
-    end)
-    frame:RegisterForDrag("LeftButton")
-    
-    return frame
-end
-
 -- ✅ FUNCIÓN PARA APLICAR POSICIÓN DESDE WIDGETS (COMO PLAYER.LUA)
 local function ApplyWidgetPosition()
     if not Module.focusFrame then
@@ -332,7 +294,7 @@ local function InitializeFrame()
     
     -- ✅ CREAR OVERLAY FRAME PARA EL SISTEMA CENTRALIZADO
     if not Module.focusFrame then
-        Module.focusFrame = CreateUIFrame(180, 70, "FocusFrame")
+        Module.focusFrame = addon.CreateUIFrame(180, 70, "FocusFrame")
         
         -- ✅ REGISTRO AUTOMÁTICO EN EL SISTEMA CENTRALIZADO
         addon:RegisterEditableFrame({
