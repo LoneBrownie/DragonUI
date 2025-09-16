@@ -323,18 +323,11 @@ function CreateUIFrame(width, height, frameName)
         local texture = frame:CreateTexture(nil, 'BACKGROUND')
         texture:SetAllPoints(frame)
         -- ✅ CAMBIO: Usar textura sólida en lugar de border_buttons.tga
-        texture:SetTexture(0, 1, 0, 0.5) -- Verde semi-transparente
+        texture:SetTexture(0, 1, 0, 0.3) -- Verde semi-transparente
         texture:Hide()
         frame.editorTexture = texture
 
-        -- ✅ OPCIONAL: Agregar borde para mejor visibilidad
-        local border = frame:CreateTexture(nil, 'BORDER')
-        border:SetAllPoints(frame)
-        border:SetTexture(1, 1, 1, 0.3) -- Borde blanco sutil
-        border:SetPoint("TOPLEFT", frame, "TOPLEFT", -1, 1)
-        border:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", 1, -1)
-        border:Hide()
-        frame.editorBorder = border
+        
     end
 
     -- ✅ TEXTO COMO RETAILUI
