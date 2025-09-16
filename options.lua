@@ -3004,66 +3004,6 @@ function addon:CreateOptionsTable()
                                     end
                                 end,
                                 order = 7
-                            },
-                            override = {
-                                type = 'toggle',
-                                name = "Override Position",
-                                desc = "Override default positioning",
-                                get = function()
-                                    return addon.db.profile.unitframe.target.override
-                                end,
-                                set = function(info, value)
-                                    addon.db.profile.unitframe.target.override = value
-                                    -- ✅ AUTO-REFRESH
-                                    if addon.TargetFrame and addon.TargetFrame.RefreshTargetFrame then
-                                        addon.TargetFrame.RefreshTargetFrame()
-                                    end
-                                end,
-                                order = 8
-                            },
-                            x = {
-                                type = 'range',
-                                name = "X Position",
-                                desc = "Horizontal position",
-                                min = -1000,
-                                max = 1000,
-                                step = 1,
-                                get = function()
-                                    return addon.db.profile.unitframe.target.x
-                                end,
-                                set = function(info, value)
-                                    addon.db.profile.unitframe.target.x = value
-                                    -- ✅ AUTO-REFRESH INMEDIATO
-                                    if addon.TargetFrame and addon.TargetFrame.RefreshTargetFrame then
-                                        addon.TargetFrame.RefreshTargetFrame()
-                                    end
-                                end,
-                                order = 9,
-                                disabled = function()
-                                    return not addon.db.profile.unitframe.target.override
-                                end
-                            },
-                            y = {
-                                type = 'range',
-                                name = "Y Position",
-                                desc = "Vertical position",
-                                min = -1000,
-                                max = 1000,
-                                step = 1,
-                                get = function()
-                                    return addon.db.profile.unitframe.target.y
-                                end,
-                                set = function(info, value)
-                                    addon.db.profile.unitframe.target.y = value
-                                    -- ✅ AUTO-REFRESH INMEDIATO
-                                    if addon.TargetFrame and addon.TargetFrame.RefreshTargetFrame then
-                                        addon.TargetFrame.RefreshTargetFrame()
-                                    end
-                                end,
-                                order = 10,
-                                disabled = function()
-                                    return not addon.db.profile.unitframe.target.override
-                                end
                             }
                         }
                     },

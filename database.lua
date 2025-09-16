@@ -14,6 +14,11 @@ local defaults = {
                 anchor = "TOPLEFT",
                 posX = -19,
                 posY = -4
+            },
+            target = {
+                anchor = "TOPLEFT",
+                posX = 250,
+                posY = -4
             }
         },
         -- Quest Tracker
@@ -287,12 +292,7 @@ local defaults = {
                 showManaTextAlways = false,
                 enableNumericThreat = true,
                 enableThreatGlow = true,
-                scale = 1.0,
-                override = false,
-                anchor = 'TOPLEFT',
-                anchorParent = 'TOPLEFT',
-                x = 250,
-                y = -4
+                scale = 1.0
             },
             focus = {
                 classcolor = false,

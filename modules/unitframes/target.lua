@@ -13,6 +13,80 @@ local Module = {
     eventsFrame = nil
 }
 
+-- ============================================================================
+-- UTILITY FUNCTIONS FOR CENTRALIZED SYSTEM
+-- ============================================================================
+
+-- Create auxiliary frame for anchoring (like player.lua)
+local function CreateUIFrame(width, height, name)
+    local frame = CreateFrame("Frame", "DragonUI_" .. name .. "_Anchor", UIParent)
+    frame:SetSize(width, height)
+    frame:SetPoint("TOPLEFT", UIParent, "TOPLEFT", 250, -4)
+    frame:SetFrameStrata("LOW")
+    
+    -- ✅ AÑADIR: Texturas de editor (como player.lua)
+    local editorTexture = frame:CreateTexture(nil, "BACKGROUND")
+    editorTexture:SetAllPoints(frame)
+    editorTexture:SetTexture(0, 1, 0, 0.3) -- Verde semi-transparente
+    editorTexture:Hide() -- Oculto por defecto
+    frame.editorTexture = editorTexture
+    
+    local editorText = frame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    editorText:SetPoint("CENTER", frame, "CENTER")
+    editorText:SetText("Target Frame")
+    editorText:SetTextColor(1, 1, 1, 1)
+    editorText:Hide() -- Oculto por defecto
+    frame.editorText = editorText
+    
+    -- ✅ AÑADIR: Funcionalidad de arrastre
+    frame:SetMovable(false) -- Deshabilitado por defecto
+    frame:EnableMouse(false) -- Deshabilitado por defecto
+    frame:SetScript("OnDragStart", function(self)
+        if self:IsMovable() then
+            self:StartMoving()
+        end
+    end)
+    frame:SetScript("OnDragStop", function(self)
+        self:StopMovingOrSizing()
+    end)
+    frame:RegisterForDrag("LeftButton")
+    
+    return frame
+end
+
+-- ✅ FUNCIÓN PARA APLICAR POSICIÓN DESDE WIDGETS (COMO PLAYER.LUA)
+local function ApplyWidgetPosition()
+    if not Module.targetFrame then
+        return
+    end
+
+    local widgetConfig = addon.db and addon.db.profile.widgets and addon.db.profile.widgets.target
+    
+    if widgetConfig then
+        Module.targetFrame:ClearAllPoints()
+        Module.targetFrame:SetPoint(widgetConfig.anchor or "TOPLEFT", UIParent, widgetConfig.anchor or "TOPLEFT", 
+                                   widgetConfig.posX or 250, widgetConfig.posY or -4)
+        
+        -- También aplicar al frame de Blizzard
+        TargetFrame:ClearAllPoints()
+        TargetFrame:SetPoint("CENTER", Module.targetFrame, "CENTER", 0, 0)
+        
+        print("|cFF00FF00[DragonUI]|r Target frame positioned via widgets:", widgetConfig.posX, widgetConfig.posY)
+    else
+        -- Fallback a posición por defecto
+        Module.targetFrame:ClearAllPoints()
+        Module.targetFrame:SetPoint("TOPLEFT", UIParent, "TOPLEFT", 250, -4)
+        TargetFrame:ClearAllPoints()
+        TargetFrame:SetPoint("CENTER", Module.targetFrame, "CENTER", 0, 0)
+        print("|cFF00FF00[DragonUI]|r Target frame positioned with defaults")
+    end
+end
+
+-- ✅ FUNCIÓN PARA VERIFICAR SI EL TARGET FRAME DEBE ESTAR VISIBLE
+local function ShouldTargetFrameBeVisible()
+    return UnitExists("target")
+end
+
 -- Famous NPCs list 
 local FAMOUS_NPCS = {
     -- Developer character
@@ -370,6 +444,26 @@ local function InitializeFrame()
         return
     end
 
+    -- ✅ CREAR OVERLAY FRAME PARA EL SISTEMA CENTRALIZADO
+    if not Module.targetFrame then
+        Module.targetFrame = CreateUIFrame(232, 100, "TargetFrame")
+        
+        -- ✅ REGISTRO AUTOMÁTICO EN EL SISTEMA CENTRALIZADO
+        addon:RegisterEditableFrame({
+            name = "target",
+            frame = Module.targetFrame,
+            blizzardFrame = TargetFrame,
+            configPath = {"widgets", "target"},
+            hasTarget = ShouldTargetFrameBeVisible, -- Solo visible cuando hay target
+            onHide = function()
+                ApplyWidgetPosition() -- Aplicar nueva configuración al salir del editor
+            end,
+            module = Module
+        })
+        
+        print("|cFF00FF00[DragonUI]|r Target frame registered in centralized system")
+    end
+
     -- Hide Blizzard elements ONCE
     local toHide = {TargetFrameTextureFrameTexture, TargetFrameBackground, TargetFrameFlash,
                     _G.TargetFrameNumericalThreat, TargetFrame.threatNumericIndicator, TargetFrame.threatIndicator}
@@ -496,20 +590,8 @@ local function InitializeFrame()
     TargetFrame:SetClampedToScreen(false)
     TargetFrame:SetScale(config.scale or 1)
 
-    if config.override then
-        TargetFrame:SetPoint(config.anchor or "TOPLEFT", UIParent, config.anchorParent or "TOPLEFT", config.x or 20,
-            config.y or -4)
-    else
-        local defaults = addon.defaults and addon.defaults.profile.unitframe.target or {}
-        TargetFrame:SetPoint("TOPLEFT", UIParent, "TOPLEFT", defaults.x or 20, defaults.y or -4)
-    end
-
-    -- Setup text system ONCE
-    local dragonFrame = _G["DragonUIUnitframeFrame"]
-    if dragonFrame and addon.TextSystem and not Module.textSystem then
-        Module.textSystem = addon.TextSystem.SetupFrameTextSystem("target", "target", dragonFrame, TargetFrameHealthBar,
-            TargetFrameManaBar, "TargetFrame")
-    end
+    -- ✅ APLICAR POSICIÓN DESDE WIDGETS SIEMPRE
+    ApplyWidgetPosition()
 
     Module.configured = true
     -- ✅ HOOK CRÍTICO: Proteger contra resets de Blizzard (SIN C_Timer)
@@ -558,18 +640,26 @@ local function OnEvent(self, event, ...)
     if event == "ADDON_LOADED" then
         local name = ...
         if name == "DragonUI" and not Module.initialized then
-            Module.targetFrame = CreateFrame("Frame", "DragonUI_TargetFrame_Anchor", UIParent)
-            Module.targetFrame:SetSize(192, 67)
-            Module.targetFrame:SetPoint("TOPLEFT", UIParent, "TOPLEFT", 250, -50)
             Module.initialized = true
         end
 
     elseif event == "PLAYER_ENTERING_WORLD" then
         InitializeFrame()
+        
+        -- ✅ CONFIGURAR TEXT SYSTEM AQUÍ PARA ASEGURAR QUE ESTÉ DISPONIBLE
+        if addon.TextSystem and not Module.textSystem then
+            Module.textSystem = addon.TextSystem.SetupFrameTextSystem("target", "target", TargetFrame, TargetFrameHealthBar,
+                TargetFrameManaBar, "TargetFrame")
+            print("|cFF00FF00[DragonUI]|r Target text system configured after world enter")
+        end
+        
         if UnitExists("target") then
             UpdateNameBackground()
             UpdateClassification()
             UpdateThreat()
+            if Module.textSystem then
+                Module.textSystem.update()
+            end
         end
 
     elseif event == "PLAYER_TARGET_CHANGED" then
@@ -586,6 +676,9 @@ local function OnEvent(self, event, ...)
     if unit == "target" and UnitExists("target") then
         UpdateClassification()
         UpdateTargetHealthBarColor() -- ✅ ACTUALIZAR COLOR TAMBIÉN
+        if Module.textSystem then
+            Module.textSystem.update()
+        end
     end
 
     elseif event == "UNIT_CLASSIFICATION_CHANGED" then
@@ -609,6 +702,12 @@ local function OnEvent(self, event, ...)
             -- ✅ SIN C_Timer - Actualización directa
             UpdateClassification()
         end
+    
+    elseif event == "UNIT_HEALTH" or event == "UNIT_MAXHEALTH" or event == "UNIT_POWER_UPDATE" or event == "UNIT_MAXPOWER" then
+        local unit = ...
+        if unit == "target" and UnitExists("target") and Module.textSystem then
+            Module.textSystem.update()
+        end
     end
 
 end
@@ -628,6 +727,11 @@ if not Module.eventsFrame then
     Module.eventsFrame:RegisterEvent("UNIT_LEVEL")
     Module.eventsFrame:RegisterEvent("UNIT_NAME_UPDATE")
     Module.eventsFrame:RegisterEvent("UNIT_PORTRAIT_UPDATE")
+    -- ✅ EVENTOS CRÍTICOS PARA EL TEXT SYSTEM
+    Module.eventsFrame:RegisterEvent("UNIT_HEALTH")
+    Module.eventsFrame:RegisterEvent("UNIT_MAXHEALTH") 
+    Module.eventsFrame:RegisterEvent("UNIT_POWER_UPDATE")
+    Module.eventsFrame:RegisterEvent("UNIT_MAXPOWER")
     Module.eventsFrame:SetScript("OnEvent", OnEvent)
 end
 
@@ -652,14 +756,8 @@ local function RefreshFrame()
     -- ✅ APLICAR SCALE INMEDIATAMENTE
     TargetFrame:SetScale(config.scale or 1)
     
-    -- ✅ APLICAR POSICIÓN INMEDIATAMENTE
-    TargetFrame:ClearAllPoints()
-    if config.override then
-        TargetFrame:SetPoint(config.anchor or "TOPLEFT", UIParent, config.anchorParent or "TOPLEFT", config.x or 20, config.y or -4)
-    else
-        local defaults = addon.defaults and addon.defaults.profile.unitframe.target or {}
-        TargetFrame:SetPoint("TOPLEFT", UIParent, "TOPLEFT", defaults.x or 20, defaults.y or -4)
-    end
+    -- ✅ APLICAR POSICIÓN DESDE WIDGETS INMEDIATAMENTE
+    ApplyWidgetPosition()
 
     -- Only update dynamic content
     if UnitExists("target") then
@@ -679,11 +777,23 @@ local function ResetFrame()
         addon:SetConfigValue("unitframe", "target", key, value)
     end
 
-    -- Re-apply position only
+    -- ✅ RESETEAR WIDGETS TAMBIÉN
+    if not addon.db.profile.widgets then
+        addon.db.profile.widgets = {}
+    end
+    addon.db.profile.widgets.target = {
+        anchor = "TOPLEFT",
+        posX = 250,
+        posY = -4
+    }
+
+    -- Re-apply position using widgets system
     local config = GetConfig()
     TargetFrame:ClearAllPoints()
     TargetFrame:SetScale(config.scale or 1)
-    TargetFrame:SetPoint("TOPLEFT", UIParent, "TOPLEFT", defaults.x or 20, defaults.y or -4)
+    ApplyWidgetPosition()
+    
+    print("|cFF00FF00[DragonUI]|r Target frame reset to defaults with widgets")
 end
 
 -- Export API
@@ -707,8 +817,37 @@ function addon:RefreshTargetFrame()
     RefreshFrame()
 end
 
+-- ============================================================================
+-- CENTRALIZED SYSTEM SUPPORT FUNCTIONS (like player.lua)
+-- ============================================================================
 
-print("|cFF00FF00[DragonUI]|r Target module loaded and optimized v2.0")
+-- ✅ FUNCIONES REQUERIDAS POR EL SISTEMA CENTRALIZADO
+function Module:LoadDefaultSettings()
+    if not addon.db.profile.widgets then
+        addon.db.profile.widgets = {}
+    end
+    addon.db.profile.widgets.target = { 
+        anchor = "TOPLEFT", 
+        posX = 250, 
+        posY = -4 
+    }
+end
+
+function Module:UpdateWidgets()
+    if not addon.db or not addon.db.profile.widgets or not addon.db.profile.widgets.target then
+        print("[DragonUI] Target widgets config not found, loading defaults")
+        self:LoadDefaultSettings()
+        return
+    end
+    
+    ApplyWidgetPosition()
+    
+    local widgetOptions = addon.db.profile.widgets.target
+    print(string.format("[DragonUI] Target positioned at: %s (%d, %d)", 
+          widgetOptions.anchor, widgetOptions.posX, widgetOptions.posY))
+end
+
+print("|cFF00FF00[DragonUI]|r Target module loaded and optimized v2.0 - CENTRALIZED SYSTEM")
 
 -- ✅ HOOK AUTOMÁTICO PARA CLASS COLOR (compatible con Ace3)
 local function SetupTargetClassColorHooks()
