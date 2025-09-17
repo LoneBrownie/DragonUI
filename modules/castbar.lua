@@ -624,12 +624,16 @@ function CastbarModule:HandleCastStart(unitType, unit)
         state.graceTime = 0
     end
     
-    local _, _, duration = ParseCastTimes(startTime, endTime)
-    state.currentValue = 0
+    local start, finish, duration = ParseCastTimes(startTime, endTime)
     state.maxValue = duration
     
+    -- ✅ FIX: Calcular progreso actual basado en tiempo transcurrido
+    local currentTime = GetTime()
+    local elapsed = currentTime - start
+    state.currentValue = max(0, min(elapsed, duration))
+    
     frames.castbar:SetMinMaxValues(0, state.maxValue)
-    frames.castbar:SetValue(0)
+    frames.castbar:SetValue(state.currentValue)  -- ✅ Usar progreso calculado
     frames.castbar:Show()
     
     if frames.background and frames.background ~= frames.textBackground then
@@ -645,8 +649,10 @@ function CastbarModule:HandleCastStart(unitType, unit)
     frames.castbar:SetStatusBarColor(1, 0.7, 0, 1)
     ForceStatusBarLayer(frames.castbar)
     
+    -- ✅ FIX: Actualizar clipping con progreso real
     if frames.castbar.UpdateTextureClipping then
-        frames.castbar:UpdateTextureClipping(0, false)
+        local progress = state.currentValue / state.maxValue
+        frames.castbar:UpdateTextureClipping(progress, false)
     end
     
     SetCastText(unitType, name)
@@ -669,6 +675,14 @@ function CastbarModule:HandleCastStart(unitType, unit)
     end
     
     UpdateTimeText(unitType)
+    
+    -- ✅ FIX: Actualizar posición del spark con progreso real
+    if frames.spark and frames.spark:IsShown() then
+        local progress = state.currentValue / state.maxValue
+        local actualWidth = frames.castbar:GetWidth() * progress
+        frames.spark:ClearAllPoints()
+        frames.spark:SetPoint('CENTER', frames.castbar, 'LEFT', actualWidth, 0)
+    end
     
     if unitType ~= "player" and frames.shield and cfg and cfg.showIcon then
         if notInterruptible and not isTradeSkill then
@@ -698,12 +712,16 @@ function CastbarModule:HandleChannelStart(unitType, unit)
         state.graceTime = 0
     end
     
-    local _, _, duration = ParseCastTimes(startTime, endTime)
+    local start, finish, duration = ParseCastTimes(startTime, endTime)
     state.maxValue = duration
-    state.currentValue = duration -- Channels start full
+    
+    -- ✅ FIX: Calcular progreso actual para channels (restante)
+    local currentTime = GetTime()
+    local elapsed = currentTime - start
+    state.currentValue = max(0, duration - elapsed)  -- Channels van hacia abajo
     
     frames.castbar:SetMinMaxValues(0, state.maxValue)
-    frames.castbar:SetValue(state.currentValue)
+    frames.castbar:SetValue(state.currentValue)  -- ✅ Usar progreso calculado
     frames.castbar:Show()
     
     if frames.background and frames.background ~= frames.textBackground then
@@ -722,8 +740,10 @@ function CastbarModule:HandleChannelStart(unitType, unit)
         frames.castbar:SetStatusBarColor(1, 1, 1, 1)
     end
     
+    -- ✅ FIX: Actualizar clipping con progreso real
     if frames.castbar.UpdateTextureClipping then
-        frames.castbar:UpdateTextureClipping(1, true)
+        local progress = state.currentValue / state.maxValue
+        frames.castbar:UpdateTextureClipping(progress, true)
     end
     
     SetCastText(unitType, name)
@@ -747,6 +767,14 @@ function CastbarModule:HandleChannelStart(unitType, unit)
     
     UpdateTimeText(unitType)
     UpdateChannelTicks(frames.castbar, frames.ticks, name)
+    
+    -- ✅ FIX: Actualizar posición del spark con progreso real para channels
+    if frames.spark and frames.spark:IsShown() then
+        local progress = state.currentValue / state.maxValue
+        local actualWidth = frames.castbar:GetWidth() * progress
+        frames.spark:ClearAllPoints()
+        frames.spark:SetPoint('CENTER', frames.castbar, 'LEFT', actualWidth, 0)
+    end
     
     if unitType ~= "player" and frames.shield and cfg and cfg.showIcon then
         if notInterruptible and not isTradeSkill then
