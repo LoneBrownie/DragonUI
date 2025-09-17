@@ -34,6 +34,11 @@ local defaults = {
                 anchor = "TOPRIGHT",
                 posX = -260,
                 posY = -20
+            },
+            playerCastbar = {
+                anchor = "BOTTOM",
+                posX = 0,
+                posY = 270
             }
         },
         -- Quest Tracker

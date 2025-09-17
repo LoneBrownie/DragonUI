@@ -797,7 +797,7 @@ function CastbarModule:HandleCastStop(unitType, isInterrupted)
     local cfg = GetConfig(unitType)
     if not cfg then return end
     
-    -- ✅ MEJORADO: Lógica más robusta como RetailUI
+    -- ✅ MEJORADO: Lógica más robusta
     if isInterrupted and not state.selfInterrupt then
         -- Verdadera interrupción
         if frames.shield then frames.shield:Hide() end
@@ -990,7 +990,21 @@ function CastbarModule:RefreshCastbar(unitType)
     local xPos = cfg.x_position or 0
     local yPos = cfg.y_position or 200
     
-    if unitType ~= "player" then
+    if unitType == "player" then
+        -- ✅ USAR ANCHOR FRAME PARA PLAYER CASTBAR (SISTEMA CENTRALIZADO)
+        if self.anchor then
+            anchorFrame = self.anchor
+            anchorPoint = "CENTER"
+            relativePoint = "CENTER"
+            xPos = 0  -- Relativo al anchor, no offset adicional
+            yPos = 0
+        else
+            -- Fallback si no hay anchor (modo legacy)
+            anchorFrame = UIParent
+            anchorPoint = "BOTTOM"
+            relativePoint = "BOTTOM"
+        end
+    elseif unitType ~= "player" then
         anchorFrame = _G[cfg.anchorFrame] or (unitType == "target" and TargetFrame or FocusFrame) or UIParent
         anchorPoint = cfg.anchor or "CENTER"
         relativePoint = cfg.anchorParent or "BOTTOM"
@@ -1140,7 +1154,7 @@ function CastbarModule:HandleCastingEvent(event, unit)
     elseif event == 'UNIT_SPELLCAST_CHANNEL_START' then
         self:HandleChannelStart(unitType, unit)
     elseif event == 'UNIT_SPELLCAST_STOP' or event == 'UNIT_SPELLCAST_CHANNEL_STOP' then
-        -- ✅ UNIFICADO: Misma lógica para ambos eventos como RetailUI
+        -- ✅ UNIFICADO: Misma lógica para ambos eventos
         local state = self.states[unitType]
         
         -- Para channels, marcar como terminado naturalmente
@@ -1150,7 +1164,7 @@ function CastbarModule:HandleCastingEvent(event, unit)
         
         self:HandleCastStop(unitType, false)  -- Siempre completado naturalmente
     elseif event == 'UNIT_SPELLCAST_FAILED' then
-        -- ✅ NUEVO: Manejo de fallos (como RetailUI)
+        -- ✅ NUEVO: Manejo de fallos 
         local state = self.states[unitType]
         if unitType == "player" then
             state.castSucceeded = false
@@ -1271,3 +1285,208 @@ if TargetFrameSpellBar then
         end
     end)
 end
+
+-- ============================================================================
+-- CENTRALIZED SYSTEM INTEGRATION
+-- ============================================================================
+
+-- Variables para el sistema centralizado
+CastbarModule.anchor = nil
+CastbarModule.initialized = false
+
+-- Create auxiliary frame for anchoring (como party.lua)
+local function CreateCastbarAnchorFrame()
+    if CastbarModule.anchor then
+        return CastbarModule.anchor
+    end
+
+    -- ✅ USAR FUNCIÓN CENTRALIZADA DE CORE.LUA
+    CastbarModule.anchor = addon.CreateUIFrame(256, 16, "PlayerCastbar")
+    
+    -- ✅ PERSONALIZAR TEXTO PARA CASTBAR
+    if CastbarModule.anchor.editorText then
+        CastbarModule.anchor.editorText:SetText("Player Castbar")
+    end
+    
+    return CastbarModule.anchor
+end
+
+-- ✅ FUNCIÓN PARA APLICAR POSICIÓN DESDE WIDGETS (COMO party.lua)
+local function ApplyWidgetPosition()
+    if not CastbarModule.anchor then
+        print("|cFFFF0000[DragonUI]|r Castbar anchor frame not created")
+        return
+    end
+
+    -- ✅ ASEGURAR QUE EXISTE LA CONFIGURACIÓN
+    if not addon.db or not addon.db.profile or not addon.db.profile.widgets then
+        print("|cFFFF0000[DragonUI]|r No widgets configuration found")
+        return
+    end
+    
+    local widgetConfig = addon.db.profile.widgets.playerCastbar
+    
+    if widgetConfig and widgetConfig.posX and widgetConfig.posY then
+        local anchor = widgetConfig.anchor or "BOTTOM"
+        CastbarModule.anchor:ClearAllPoints()
+        CastbarModule.anchor:SetPoint(anchor, UIParent, anchor, widgetConfig.posX, widgetConfig.posY)
+        print("|cFF00FF00[DragonUI]|r Player castbar positioned via widgets:", anchor, widgetConfig.posX, widgetConfig.posY)
+    else
+        -- ✅ POSICIÓN POR DEFECTO COMO RETAILUI
+        CastbarModule.anchor:ClearAllPoints()
+        CastbarModule.anchor:SetPoint("BOTTOM", UIParent, "BOTTOM", 0, 270)
+        print("|cFF00FF00[DragonUI]|r Player castbar positioned with defaults: BOTTOM 0 270")
+    end
+end
+
+-- ✅ FUNCIONES REQUERIDAS POR EL SISTEMA CENTRALIZADO
+function CastbarModule:LoadDefaultSettings()
+    -- ✅ ASEGURAR QUE EXISTE LA CONFIGURACIÓN EN WIDGETS
+    if not addon.db.profile.widgets then
+        addon.db.profile.widgets = {}
+    end
+    
+    if not addon.db.profile.widgets.playerCastbar then
+        addon.db.profile.widgets.playerCastbar = {
+            anchor = "BOTTOM",
+            posX = 0,
+            posY = 270
+        }
+        print("|cFF00FF00[DragonUI]|r Player castbar: Created default widget settings")
+    end
+    
+    -- ✅ ASEGURAR QUE EXISTE LA CONFIGURACIÓN EN CASTBAR
+    if not addon.db.profile.castbar then
+        addon.db.profile.castbar = {}
+    end
+    
+    if not addon.db.profile.castbar.enabled then
+        -- La configuración del castbar ya existe en database.lua
+        -- Solo aseguramos que esté inicializada
+        print("|cFF00FF00[DragonUI]|r Player castbar: Using existing castbar settings")
+    end
+end
+
+function CastbarModule:UpdateWidgets()
+    ApplyWidgetPosition()
+    -- ✅ REPOSICIONAR EL CASTBAR DEL PLAYER RELATIVO AL ANCHOR ACTUALIZADO
+    if not InCombatLockdown() then
+        -- El castbar del player debería seguir al anchor
+        self:RefreshCastbar("player")
+    end
+end
+
+-- ✅ FUNCIÓN PARA VERIFICAR SI EL CASTBAR DEBE ESTAR VISIBLE
+local function ShouldPlayerCastbarBeVisible()
+    local cfg = GetConfig("player")
+    return cfg and cfg.enabled
+end
+
+-- ✅ FUNCIONES DE TESTEO PARA EL EDITOR
+local function ShowPlayerCastbarTest()
+    -- Mostrar el castbar aunque no haya casting
+    local frames = CastbarModule.frames.player
+    if frames.castbar then
+        -- Simular un cast de prueba
+        frames.castbar:SetMinMaxValues(0, 1)
+        frames.castbar:SetValue(0.5)
+        frames.castbar:Show()
+        
+        if frames.textBackground then
+            frames.textBackground:Show()
+        end
+        
+        -- Mostrar texto de prueba
+        CastbarModule:ShowCastbar("player", "Healing Wave", 0.5, 1, 1.5, false, false)
+    end
+end
+
+local function HidePlayerCastbarTest()
+    -- Ocultar el castbar de prueba
+    CastbarModule:HideCastbar("player")
+end
+
+-- ✅ FUNCIÓN AUXILIAR PARA MOSTRAR CASTBAR (USADA EN TESTS)
+function CastbarModule:ShowCastbar(unitType, spellName, currentValue, maxValue, duration, isChanneling, isInterrupted)
+    local frames = self.frames[unitType]
+    if not frames.castbar then
+        self:RefreshCastbar(unitType)
+        frames = self.frames[unitType]
+    end
+    
+    if not frames.castbar then return end
+    
+    local state = self.states[unitType]
+    state.casting = not isChanneling
+    state.isChanneling = isChanneling
+    state.spellName = spellName
+    state.maxValue = maxValue
+    state.currentValue = currentValue
+    
+    frames.castbar:SetMinMaxValues(0, maxValue)
+    frames.castbar:SetValue(currentValue)
+    frames.castbar:Show()
+    
+    if isInterrupted then
+        frames.castbar:SetStatusBarTexture(TEXTURES.interrupted)
+        frames.castbar:SetStatusBarColor(1, 0, 0, 1)
+        SetCastText(unitType, "Interrupted")
+    else
+        if isChanneling then
+            frames.castbar:SetStatusBarTexture(TEXTURES.channel)
+            frames.castbar:SetStatusBarColor(0, 1, 0, 1)
+        else
+            frames.castbar:SetStatusBarTexture(TEXTURES.standard)
+            frames.castbar:SetStatusBarColor(1, 0.7, 0, 1)
+        end
+        SetCastText(unitType, spellName)
+    end
+    
+    if frames.textBackground then
+        frames.textBackground:Show()
+    end
+    
+    ForceStatusBarLayer(frames.castbar)
+end
+
+-- ✅ FUNCIÓN DE INICIALIZACIÓN DEL SISTEMA CENTRALIZADO
+local function InitializeCastbarForEditor()
+    -- Crear el anchor frame
+    CreateCastbarAnchorFrame()
+    
+    -- ✅ REGISTRO COMPLETO CON TODAS LAS FUNCIONES (COMO party.lua)
+    addon:RegisterEditableFrame({
+        name = "PlayerCastbar",
+        frame = CastbarModule.anchor,
+        configPath = {"widgets", "playerCastbar"},  -- ✅ CORREGIDO: Array en lugar de string
+        hasTarget = ShouldPlayerCastbarBeVisible,  -- ✅ Visibilidad condicional
+        showTest = ShowPlayerCastbarTest,  -- ✅ CORREGIDO: Minúscula como party.lua
+        hideTest = HidePlayerCastbarTest,  -- ✅ CORREGIDO: Minúscula como party.lua
+        onHide = function() CastbarModule:UpdateWidgets() end,  -- ✅ AÑADIDO: Para aplicar cambios
+        LoadDefaultSettings = function() CastbarModule:LoadDefaultSettings() end,
+        UpdateWidgets = function() CastbarModule:UpdateWidgets() end
+    })
+    
+    CastbarModule.initialized = true
+    print("|cFF00FF00[DragonUI]|r Player castbar registered with centralized system")
+end
+
+-- ============================================================================
+-- INITIALIZATION
+-- ============================================================================
+
+-- ✅ Initialize centralized system for editor
+InitializeCastbarForEditor()
+
+-- ✅ LISTENER PARA CUANDO EL ADDON ESTÉ COMPLETAMENTE CARGADO
+local readyFrame = CreateFrame("Frame")
+readyFrame:RegisterEvent("ADDON_LOADED")
+readyFrame:SetScript("OnEvent", function(self, event, addonName)
+    if addonName == "DragonUI" then
+        -- Aplicar posición del widget cuando el addon esté listo
+        if CastbarModule.UpdateWidgets then
+            CastbarModule:UpdateWidgets()
+        end
+        self:UnregisterEvent("ADDON_LOADED")
+    end
+end)
