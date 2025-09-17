@@ -325,11 +325,11 @@ function CreateUIFrame(width, height, frameName)
     frame:SetFrameLevel(100)
     frame:SetFrameStrata('FULLSCREEN')
 
-    -- ✅ TEXTURA VERDE COMO RETAILUI
+    --  TEXTURA VERDE COMO RETAILUI
     do
         local texture = frame:CreateTexture(nil, 'BACKGROUND')
         texture:SetAllPoints(frame)
-        -- ✅ CAMBIO: Usar textura sólida en lugar de border_buttons.tga
+        --  CAMBIO: Usar textura sólida en lugar de border_buttons.tga
         texture:SetTexture(0, 1, 0, 0.3) -- Verde semi-transparente
         texture:Hide()
         frame.editorTexture = texture
@@ -337,7 +337,7 @@ function CreateUIFrame(width, height, frameName)
         
     end
 
-    -- ✅ TEXTO COMO RETAILUI
+    --  TEXTO COMO RETAILUI
     do
         local fontString = frame:CreateFontString(nil, "BORDER", 'GameFontNormal')
         fontString:SetAllPoints(frame)
@@ -349,7 +349,7 @@ function CreateUIFrame(width, height, frameName)
     return frame
 end
 
--- ✅ FRAMES REGISTRY COMO RETAILUI
+--  FRAMES REGISTRY COMO RETAILUI
 addon.frames = {}
 
 function ShowUIFrame(frame)
@@ -389,7 +389,7 @@ function SaveUIFramePosition(frame, configPath1, configPath2)
 
     local anchor, _, relativePoint, posX, posY = frame:GetPoint(1) -- Primer punto
 
-    -- ✅ MANEJAR RUTAS ANIDADAS (widgets.player)
+    --  MANEJAR RUTAS ANIDADAS (widgets.player)
     if configPath2 then
         -- Caso: SaveUIFramePosition(frame, "widgets", "player")
         if not addon.db.profile[configPath1] then
@@ -482,19 +482,19 @@ end
 -- SISTEMA CENTRALIZADO DE FRAMES EDITABLES (EXTENDIDO)
 ---------------------------------------------------
 
--- ✅ REGISTRO GLOBAL DE TODOS LOS FRAMES EDITABLES
+--  REGISTRO GLOBAL DE TODOS LOS FRAMES EDITABLES
 addon.EditableFrames = {}
 
--- ✅ FUNCIÓN PARA REGISTRAR FRAMES AUTOMÁTICAMENTE
+--  FUNCIÓN PARA REGISTRAR FRAMES AUTOMÁTICAMENTE
 function addon:RegisterEditableFrame(frameInfo)
     local frameData = {
         name = frameInfo.name,                    -- "player", "minimap", "target"
         frame = frameInfo.frame,                  -- El frame auxiliar
-        blizzardFrame = frameInfo.blizzardFrame,  -- ✅ NUEVO: Frame real de Blizzard (opcional)
+        blizzardFrame = frameInfo.blizzardFrame,  --  NUEVO: Frame real de Blizzard (opcional)
         configPath = frameInfo.configPath,       -- {"widgets", "player"} o {"unitframe", "target"}
         onShow = frameInfo.onShow,               -- Función opcional al mostrar editor
         onHide = frameInfo.onHide,               -- Función opcional al ocultar editor
-        -- ✅ NUEVO: Funciones para mostrar/ocultar con datos fake
+        --  NUEVO: Funciones para mostrar/ocultar con datos fake
         showTest = frameInfo.showTest,           -- Función para mostrar con datos fake
         hideTest = frameInfo.hideTest,           -- Función para ocultar frame fake
         hasTarget = frameInfo.hasTarget,         -- Función para verificar si debe estar visible
@@ -511,7 +511,7 @@ function addon:ShowAllEditableFrames()
         if frameData.frame then
             HideUIFrame(frameData.frame) -- Mostrar overlay verde
             
-            -- ✅ NUEVO: Mostrar frame con datos fake si es necesario
+            --  NUEVO: Mostrar frame con datos fake si es necesario
             if frameData.showTest then
                 frameData.showTest()
             end
@@ -524,13 +524,13 @@ function addon:ShowAllEditableFrames()
     print("|cFF00FF00[DragonUI]|r All editable frames shown for editing")
 end
 
--- ✅ FUNCIÓN PARA OCULTAR TODOS LOS FRAMES Y GUARDAR POSICIONES
+--  FUNCIÓN PARA OCULTAR TODOS LOS FRAMES Y GUARDAR POSICIONES
 function addon:HideAllEditableFrames(refresh)
     for name, frameData in pairs(self.EditableFrames) do
         if frameData.frame then
             ShowUIFrame(frameData.frame) -- Ocultar overlay verde
             
-            -- ✅ NUEVO: Ocultar frame fake si no debe estar visible
+            --  NUEVO: Ocultar frame fake si no debe estar visible
             if frameData.hideTest then
                 frameData.hideTest()
             end
@@ -552,7 +552,7 @@ function addon:HideAllEditableFrames(refresh)
     print("|cFF00FF00[DragonUI]|r All editable frames hidden, positions saved")
 end
 
--- ✅ FUNCIÓN PARA VERIFICAR SI UN FRAME DEBE ESTAR VISIBLE
+--  FUNCIÓN PARA VERIFICAR SI UN FRAME DEBE ESTAR VISIBLE
 function addon:ShouldFrameBeVisible(frameName)
     local frameData = self.EditableFrames[frameName]
     if not frameData then return false end
@@ -565,12 +565,12 @@ function addon:ShouldFrameBeVisible(frameName)
     return true
 end
 
--- ✅ FUNCIÓN PARA OBTENER INFORMACIÓN DE UN FRAME REGISTRADO
+--  FUNCIÓN PARA OBTENER INFORMACIÓN DE UN FRAME REGISTRADO
 function addon:GetEditableFrameInfo(frameName)
     return self.EditableFrames[frameName]
 end
 
--- ✅ EXPORTAR CreateUIFrame AL NAMESPACE ADDON PARA COMPATIBILIDAD
+--  EXPORTAR CreateUIFrame AL NAMESPACE ADDON PARA COMPATIBILIDAD
 addon.CreateUIFrame = CreateUIFrame
 
 ---------------------------------------------------
