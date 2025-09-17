@@ -37,8 +37,13 @@ local defaults = {
             },
             pet = {
                 anchor = "TOPLEFT",
-                posX =65,
-                posY = -70
+                posX =63,
+                posY = -80
+            },
+            petbar = {
+                anchor = "BOTTOM",
+                posX = 1,
+                posY = 149
             },
             playerCastbar = {
                 anchor = "BOTTOM",
@@ -168,8 +173,7 @@ local defaults = {
                 y_offset = -44 -- Additional Y offset for fine-tuning position
             },
             pet = {
-                x_position = -134,
-                y_offset = 0, -- Additional Y offset for fine-tuning position
+
                 grid = false -- Disable grid by default (matches original Dragonflight port)
             },
             vehicle = {

@@ -1397,7 +1397,7 @@ local function ShowPlayerCastbarTest()
         end
         
         -- Mostrar texto de prueba
-        CastbarModule:ShowCastbar("player", "Healing Wave", 0.5, 1, 1.5, false, false)
+        CastbarModule:ShowCastbar("player", "Fire ball", 0.5, 1, 1.5, false, false)
     end
 end
 

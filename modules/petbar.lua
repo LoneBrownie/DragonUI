@@ -15,124 +15,77 @@ local CreateFrame = CreateFrame;
 local UIParent = UIParent;
 local hooksecurefunc = hooksecurefunc;
 
--- @param: config number - these will be read dynamically
--- local offsetX = config.additional.pet.x_position;
--- local nobar = config.additional.y_position;
--- local exOffs = config.additional.leftbar_offset;
--- local exOffs2 = config.additional.rightbar_offset;
--- local leftOffset, rightOffset = nobar + exOffs, nobar + exOffs2;
+-- ✅ MIGRACIÓN A SISTEMA DE WIDGETS - CreateUIFrame como RetailUI
+local petbarFrame = CreateUIFrame(326, 30, "Petbar")
 
-local anchor = CreateFrame('Frame', 'pUiPetBarHolder', UIParent)
--- Set initial position - will be updated by petbar_update when config is ready
-anchor:SetPoint('TOPLEFT', UIParent, 'BOTTOM', -134, 100) -- Fallback position using current database default
-anchor:SetSize(37, 37)
 
--- method update position using relative anchoring
-function anchor:petbar_update()
-	if not InCombatLockdown() and not UnitAffectingCombat('player') then
-		-- Read config values dynamically each time
-		local offsetX = config.additional.pet.x_position;
-		local offsetY = config.additional.pet.y_offset or 0;  -- Additional Y offset for fine-tuning
-		
-		-- Check if pretty_actionbar addon is loaded and use its positioning system
-		if IsAddOnLoaded('pretty_actionbar') and _G.pUiMainBar then
-			-- Use pretty_actionbar's exact logic (replicated from working port)
-			local mainBar = _G.pUiMainBar;
-			local leftbar = MultiBarBottomLeft:IsShown();
-			local rightbar = MultiBarBottomRight:IsShown();
-			
-			-- Values from configuration (compatible with pretty_actionbar)
-			local nobar = 52;          -- Hardcoded optimal position for pretty_actionbar compatibility
-			local leftbarOffset = config.additional.leftbar_offset or 90;  -- Offset when bottom left is shown  
-			local rightbarOffset = config.additional.rightbar_offset or 40; -- Offset when bottom right is shown
-			local leftOffset = nobar + leftbarOffset;   -- 142
-			local rightOffset = nobar + rightbarOffset; -- 92
-			
-			self:ClearAllPoints();
-			
-			if leftbar and rightbar then
-				-- Both bars shown, use leftOffset (positions above bottom right which is highest)
-				self:SetPoint('TOPLEFT', mainBar, 'TOPLEFT', offsetX, leftOffset + offsetY);
-			elseif leftbar then
-				-- Only left bar shown, use rightOffset (lower position)
-				self:SetPoint('TOPLEFT', mainBar, 'TOPLEFT', offsetX, rightOffset + offsetY);
-			elseif rightbar then
-				-- Only right bar shown, use leftOffset (higher position)
-				self:SetPoint('TOPLEFT', mainBar, 'TOPLEFT', offsetX, leftOffset + offsetY);
-			else
-				-- No extra bars, use default position
-				self:SetPoint('TOPLEFT', mainBar, 'TOPLEFT', offsetX, nobar + offsetY);
-			end
-		else
-			-- Fallback to standard Blizzard frames (relative anchoring)
-			local leftbar = MultiBarBottomLeft:IsShown();
-			local rightbar = MultiBarBottomRight:IsShown();
-			local anchorFrame, anchorPoint, relativePoint, yOffset;
-			
-			if leftbar or rightbar then
-				-- If extra bars are shown, anchor above the highest one
-				if leftbar and rightbar then
-					-- Both bars shown, bottom right is higher, so anchor to it
-					anchorFrame = MultiBarBottomRight;
-				elseif leftbar then
-					anchorFrame = MultiBarBottomLeft;
-				else
-					anchorFrame = MultiBarBottomRight;
-				end
-				anchorPoint = 'TOP';
-				relativePoint = 'BOTTOM';
-				yOffset = 5 + offsetY; -- Add custom Y offset
-			else
-				-- No extra bars, anchor above main bar
-				anchorFrame = pUiMainBar or MainMenuBar;
-				anchorPoint = 'TOP';
-				relativePoint = 'BOTTOM';
-				yOffset = 5 + offsetY; -- Add custom Y offset
-			end
-			
-			self:ClearAllPoints();
-			self:SetPoint(relativePoint, anchorFrame, anchorPoint, offsetX, yOffset);
-		end
-	end
-end
+-- ✅ OBJETO EDITOR PARA INTEGRACIÓN CON SISTEMA CENTRALIZADO
+local PetbarEditor = {
+    ShowPetbarTest = function()
+        -- ✅ EN EDITOR MODE: Siempre mostrar para permitir edición
+        -- ✅ El sistema centralizado ya maneja la visibilidad con hasTarget
+        HideUIFrame(petbarFrame, {})
+        print("|cFF00FF00[DragonUI]|r Petbar editor mode activated")
+    end,
+    
+    HidePetbarTest = function(refresh)
+        -- ✅ EN EDITOR MODE: Siempre guardar posición 
+        SaveUIFramePosition(petbarFrame, "widgets", "petbar") -- ✅ CORREGIDO: Usar formato de 2 parámetros
+        ShowUIFrame(petbarFrame)
+        
+        if refresh and addon.RefreshPetbar then
+            addon.RefreshPetbar()
+        end
+        print("|cFF00FF00[DragonUI]|r Petbar editor mode deactivated, position saved")
+    end
+}
 
--- Force pet bar initialization regardless of conditions
-local function ForcePetBarInitialization()
-    if config and config.additional then
-        -- Force anchor update
-        if anchor and anchor.petbar_update then
-            anchor:petbar_update()
+-- ✅ APLICAR POSICIÓN DESDE WIDGETS AL INICIALIZAR
+local function ApplyPetbarPosition()
+    -- ✅ NO REPOSICIONAR SI ESTAMOS EN EDITOR MODE O DURANTE DRAG
+    if addon.EditorMode and addon.EditorMode:IsActive() then
+        return -- No aplicar posición durante editor mode
+    end
+    
+    if addon.db and addon.db.profile.widgets and addon.db.profile.widgets.petbar then
+        local config = addon.db.profile.widgets.petbar
+        if config.anchor and config.posX and config.posY then
+            petbarFrame:ClearAllPoints()
+            petbarFrame:SetPoint(config.anchor, UIParent, config.anchor, config.posX, config.posY)
         end
-        --[[ -- REMOVED to prevent ADDON_ACTION_BLOCKED errors
-        -- Show the pet bar frame if it exists
-        if _G.pUiPetBar then
-            _G.pUiPetBar:Show()
-        end
-        -- Show anchor frame
-        if anchor then
-            anchor:Show()
-        end
-        --]]
     end
 end
 
--- Delayed initialization to ensure everything is loaded
+-- ✅ INICIALIZACIÓN USANDO SISTEMA DE WIDGETS
+local function InitializePetbar()
+    if config and config.additional then
+        -- ✅ APLICAR POSICIÓN DESDE WIDGETS CONFIG
+        --ApplyPetbarPosition()
+        
+        -- Show petbar frame
+        if petbarFrame then
+            petbarFrame:Show()
+        end
+    end
+end
+
+-- ✅ INICIALIZACIÓN SIMPLIFICADA
 local function DelayedPetInit()
 	local delayFrame = CreateFrame("Frame")
 	local elapsed = 0
 	local attempts = 0
-	local maxAttempts = 20 -- Try for up to 10 seconds
+	local maxAttempts = 10 -- Reducido a 5 segundos
 	
 	delayFrame:SetScript("OnUpdate", function(self, dt)
 		elapsed = elapsed + dt
-		if elapsed >= 0.5 then -- Every 0.5 seconds
+		if elapsed >= 0.5 then -- Cada 0.5 segundos
 			elapsed = 0
 			attempts = attempts + 1
 			
-			-- Try to initialize
-			ForcePetBarInitialization()
+			-- ✅ USAR NUEVA FUNCIÓN DE INICIALIZACIÓN
+			InitializePetbar()
 			
-			-- Stop after max attempts
+			-- Parar después del máximo de intentos
 			if attempts >= maxAttempts then
 				delayFrame:SetScript("OnUpdate", nil)
 			end
@@ -140,25 +93,15 @@ local function DelayedPetInit()
 	end)
 end
 
--- Set initial position when DragonUI is fully initialized
-addon.core.RegisterMessage(addon, "DRAGONUI_READY", ForcePetBarInitialization);
+-- ✅ USAR NUEVA FUNCIÓN DE INICIALIZACIÓN
+addon.core.RegisterMessage(addon, "DRAGONUI_READY", InitializePetbar)
 
-local MultiBarBottomLeft = _G["MultiBarBottomLeft"]
-local MultiBarBottomRight = _G["MultiBarBottomRight"]
+-- ✅ ELIMINAMOS LOS HOOKS DEL SISTEMA LEGACY - YA NO NECESITAMOS POSICIONAMIENTO MANUAL
+-- El sistema de widgets maneja la posición directamente
 
-for _,bar in pairs({MultiBarBottomLeft,MultiBarBottomRight}) do
-	if bar then
-		bar:HookScript('OnShow',function()
-			anchor:petbar_update();
-		end);
-		bar:HookScript('OnHide',function()
-			anchor:petbar_update();
-		end);
-	end
-end;
-
-local petbar = CreateFrame('Frame', 'pUiPetBar', UIParent, 'SecureHandlerStateTemplate')
-petbar:SetAllPoints(anchor)
+local petbar = CreateFrame('Frame', 'pUiPetBar', petbarFrame, 'SecureHandlerStateTemplate') -- ✅ CHILD del petbarFrame
+petbar:SetAllPoints(petbarFrame) -- ✅ ANCHOR AL NUEVO FRAME DE WIDGETS
+petbar:SetFrameStrata("MEDIUM") -- ✅ DEBAJO del overlay verde que está en FULLSCREEN
 
 local function petbutton_updatestate(self, event)
 	local petActionButton, petActionIcon, petAutoCastableTexture, petAutoCastShine
@@ -230,8 +173,8 @@ end
 local function petbutton_position()
 	if InCombatLockdown() then return end
 	
-	-- Ensure pet bar frame exists
-	if not pUiPetBar then
+	-- ✅ USAR NUEVO FRAME DE WIDGETS
+	if not pUiPetBar or not petbarFrame then
 		print("DragonUI: Pet bar frame not available")
 		return
 	end
@@ -326,7 +269,7 @@ petbar:SetScript('OnEvent',OnEvent);
 -- Initialization tracking similar to RetailUI
 local petBarInitialized = false
 
--- Additional late initialization when player is fully loaded (moved here so petbutton_position is defined)
+-- ✅ INICIALIZACIÓN TARDÍA USANDO NUEVO SISTEMA
 event:RegisterEvents(function()
 	-- Force initialization after a short delay when player enters world
 	local initFrame = CreateFrame("Frame")
@@ -335,22 +278,24 @@ event:RegisterEvents(function()
 		elapsed = elapsed + dt
 		if elapsed >= 1.0 then -- Wait 1 second after entering world
 			self:SetScript("OnUpdate", nil)
-			-- Force button positioning explicitly (now petbutton_position is defined)
-			if _G.pUiPetBar and not petBarInitialized then
+			-- ✅ USAR NUEVO FRAME DE WIDGETS
+			if petbarFrame and not petBarInitialized then
 				petbutton_position()
 				petBarInitialized = true
 			end
-			ForcePetBarInitialization()
+			InitializePetbar() -- ✅ NUEVA FUNCIÓN
 			DelayedPetInit() -- Start the delayed retry system
 		end
 	end)
 end, 'PLAYER_ENTERING_WORLD');
 
--- Refresh function for pet bar configuration changes
+-- ✅ REFRESH FUNCTION USANDO SISTEMA DE WIDGETS
 function addon.RefreshPetbar()
-
 	if InCombatLockdown() then return end
-	if not pUiPetBar then return end
+	if not pUiPetBar or not petbarFrame then return end
+	
+	-- ✅ APLICAR POSICIÓN DESDE WIDGETS (solo si no estamos en editor mode)
+	ApplyPetbarPosition()
 	
 	-- Update button size and spacing
 	local btnsize = config.additional.size;
@@ -401,11 +346,6 @@ function addon.RefreshPetbar()
 			end
 		end
 	end
-	
-	-- Update position using relative anchoring (no more absolute Y coordinates)
-	if anchor then
-		anchor:petbar_update();
-	end
 end
 
 -- Reset petbar initialization (for debugging or force re-init)
@@ -426,8 +366,28 @@ function addon.GetPetbarStatus()
 	return {
 		initialized = petBarInitialized,
 		frameExists = pUiPetBar ~= nil,
+		widgetFrameExists = petbarFrame ~= nil,
 		inCombat = InCombatLockdown(),
 		hasPet = UnitExists("pet"),
 		updateHooked = petbar.updateHooked or false
 	}
 end
+
+-- ✅ REGISTRO EN SISTEMA CENTRALIZADO - INTEGRACIÓN COMPLETA
+local function RegisterPetbarEditor()
+    if addon.RegisterEditableFrame and petbarFrame then
+        addon:RegisterEditableFrame({
+            name = "Petbar",
+            frame = petbarFrame,
+            configPath = {"widgets", "petbar"}, -- ✅ CORREGIDO: Array como otros frames
+            showTest = PetbarEditor.ShowPetbarTest, 
+            hideTest = PetbarEditor.HidePetbarTest  
+        })
+        print("|cFF00FF00[DragonUI]|r Petbar registered with centralized editor system")
+    else
+        print("|cFFFF0000[DragonUI]|r Failed to register Petbar - system not ready")
+    end
+end
+
+-- ✅ REGISTRAR INMEDIATAMENTE COMO CASTBAR - NO ESPERAR EVENTOS
+RegisterPetbarEditor()

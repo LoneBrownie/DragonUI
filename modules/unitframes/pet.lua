@@ -443,7 +443,7 @@ local function CreatePetAnchorFrame()
     end
 
     -- ✅ USAR FUNCIÓN CENTRALIZADA DE CORE.LUA
-    PetFrameModule.anchor = addon.CreateUIFrame(128, 64, "PetFrame")
+    PetFrameModule.anchor = addon.CreateUIFrame(130, 44, "PetFrame")
     
     -- ✅ PERSONALIZAR TEXTO PARA PET FRAME
     if PetFrameModule.anchor.editorText then
@@ -555,9 +555,33 @@ local function ShowPetFrameTest()
 end
 
 local function HidePetFrameTest()
-    -- Ocultar el PET frame de prueba si no hay mascota real
-    if PetFrame and not UnitExists("pet") then
-        PetFrame:Hide()
+    -- Restaurar el estado normal del PET frame
+    if PetFrame then
+        if UnitExists("pet") then
+            -- Si hay mascota real, restaurar valores reales
+            if PetName then
+                PetName:SetText(UnitName("pet") or "")
+            end
+            
+            -- Forzar actualización de las barras con valores reales
+            if PetFrameHealthBar then
+                PetFrameHealthBar:SetMinMaxValues(0, UnitHealthMax("pet"))
+                PetFrameHealthBar:SetValue(UnitHealth("pet"))
+            end
+            
+            if PetFrameManaBar then
+                PetFrameManaBar:SetMinMaxValues(0, UnitPowerMax("pet"))
+                PetFrameManaBar:SetValue(UnitPower("pet"))
+            end
+        else
+            -- Si no hay mascota real, ocultar todo
+            PetFrame:Hide()
+            
+            -- Limpiar los valores de prueba
+            if PetName then
+                PetName:SetText("")
+            end
+        end
     end
 end
 
