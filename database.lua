@@ -34,11 +34,6 @@ local defaults = {
                 anchor = "TOPRIGHT",
                 posX = -260,
                 posY = -20
-            },
-            playerCastbar = {
-                anchor = "BOTTOM",
-                posX = 0,
-                posY = 230
             }
         },
         -- Quest Tracker
@@ -204,11 +199,6 @@ local defaults = {
         castbar = {
             enabled = true,
             scale = 1,
-            anchorFrame = "UIParent",
-            anchor = "BOTTOM",
-            anchorParent = "BOTTOM",
-            x_position = 0,
-            y_position = 230,
             text_mode = "simple",
             precision_time = 1,
             precision_max = 1,
