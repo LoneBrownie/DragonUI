@@ -84,7 +84,7 @@ for _, unitType in ipairs({"player", "target", "focus"}) do
         holdTime = 0,
         castSucceeded = false,
         graceTime = 0,
-        selfInterrupt = false  -- ✅ NUEVO: Flag para interrupciones naturales
+        selfInterrupt = false  -- ✅ Flag para interrupciones naturales
     }
     CastbarModule.frames[unitType] = {}
     CastbarModule.lastRefreshTime[unitType] = 0
@@ -797,7 +797,7 @@ function CastbarModule:HandleCastStop(unitType, isInterrupted)
     local cfg = GetConfig(unitType)
     if not cfg then return end
     
-    -- ✅ NUEVO: Lógica simplificada como en RetailUI
+    -- ✅ MEJORADO: Lógica más robusta como RetailUI
     if isInterrupted and not state.selfInterrupt then
         -- Verdadera interrupción
         if frames.shield then frames.shield:Hide() end
@@ -818,16 +818,16 @@ function CastbarModule:HandleCastStop(unitType, isInterrupted)
         state.isChanneling = false
         state.holdTime = cfg.holdTimeInterrupt or 0.8
     else
-        -- Completado naturalmente (incluso si isInterrupted=true pero selfInterrupt=true)
+        -- Completado naturalmente O selfInterrupt=true
         if unitType == "player" then
             state.castSucceeded = true
         else
             self:FinishSpell(unitType)
         end
-        
-        -- Reset flag para próximo cast
-        state.selfInterrupt = false
     end
+    
+    -- ✅ NUEVO: Reset flag al final (siempre)
+    state.selfInterrupt = false
 end
 
 function CastbarModule:FinishSpell(unitType)
@@ -911,12 +911,9 @@ function CastbarModule:OnUpdate(unitType, castbar, elapsed)
     
     -- Update casting/channeling
     if state.casting or state.isChanneling then
-        -- Check for silent interruption
-        local unit = unitType == "player" and "player" or unitType
-        if not UnitCastingInfo(unit) and not UnitChannelInfo(unit) then
-            self:HandleCastStop(unitType, true)
-            return
-        end
+        -- ✅ ELIMINADO: Ya no verificamos UnitCastingInfo/UnitChannelInfo aquí
+        -- Esto causaba falsos "interrupted" con lag porque el OnUpdate
+        -- corría antes que los eventos llegaran del servidor
         
         -- Update progress
         if state.casting and not state.isChanneling then
@@ -1142,15 +1139,24 @@ function CastbarModule:HandleCastingEvent(event, unit)
         end
     elseif event == 'UNIT_SPELLCAST_CHANNEL_START' then
         self:HandleChannelStart(unitType, unit)
-    elseif event == 'UNIT_SPELLCAST_STOP' then
-        self:HandleCastStop(unitType, false)  -- Cast completado naturalmente
-    elseif event == 'UNIT_SPELLCAST_CHANNEL_STOP' then
-        -- ✅ NUEVO: Marcar como terminado naturalmente (como RetailUI)
+    elseif event == 'UNIT_SPELLCAST_STOP' or event == 'UNIT_SPELLCAST_CHANNEL_STOP' then
+        -- ✅ UNIFICADO: Misma lógica para ambos eventos como RetailUI
         local state = self.states[unitType]
-        if state.isChanneling then
-            state.selfInterrupt = true  -- Flag para evitar mostrar "Interrupted"
+        
+        -- Para channels, marcar como terminado naturalmente
+        if event == 'UNIT_SPELLCAST_CHANNEL_STOP' and state.isChanneling then
+            state.selfInterrupt = true
         end
-        self:HandleCastStop(unitType, false)  -- Channel completado naturalmente
+        
+        self:HandleCastStop(unitType, false)  -- Siempre completado naturalmente
+    elseif event == 'UNIT_SPELLCAST_FAILED' then
+        -- ✅ NUEVO: Manejo de fallos (como RetailUI)
+        local state = self.states[unitType]
+        if unitType == "player" then
+            state.castSucceeded = false
+        else
+            self:FinishSpell(unitType)
+        end
     elseif event == 'UNIT_SPELLCAST_INTERRUPTED' then
         self:HandleCastStop(unitType, true)  -- Verdadera interrupción
     end
