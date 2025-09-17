@@ -35,6 +35,11 @@ local defaults = {
                 posX = -260,
                 posY = -20
             },
+            pet = {
+                anchor = "TOPLEFT",
+                posX =65,
+                posY = -70
+            },
             playerCastbar = {
                 anchor = "BOTTOM",
                 posX = 0,
@@ -309,10 +314,7 @@ local defaults = {
                 enableThreatGlow = false,
                 scale = 1.0,
                 override = true,
-                anchor = 'TOPRIGHT',
-                anchorParent = 'BOTTOMRIGHT',
-                x = -1275,
-                y = 750
+
             },
             party = {
                 enabled = true,
