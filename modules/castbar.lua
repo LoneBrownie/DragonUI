@@ -83,7 +83,8 @@ for _, unitType in ipairs({"player", "target", "focus"}) do
         spellName = "",
         holdTime = 0,
         castSucceeded = false,
-        graceTime = 0
+        graceTime = 0,
+        selfInterrupt = false  -- ✅ NUEVO: Flag para interrupciones naturales
     }
     CastbarModule.frames[unitType] = {}
     CastbarModule.lastRefreshTime[unitType] = 0
@@ -618,6 +619,7 @@ function CastbarModule:HandleCastStart(unitType, unit)
     state.isChanneling = false
     state.holdTime = 0
     state.spellName = name
+    state.selfInterrupt = false  -- ✅ Reset flag
     
     if unitType == "player" then
         state.castSucceeded = false
@@ -706,6 +708,7 @@ function CastbarModule:HandleChannelStart(unitType, unit)
     state.isChanneling = true
     state.holdTime = 0
     state.spellName = name
+    state.selfInterrupt = false  -- ✅ Reset flag
     
     if unitType == "player" then
         state.castSucceeded = false
@@ -794,16 +797,9 @@ function CastbarModule:HandleCastStop(unitType, isInterrupted)
     local cfg = GetConfig(unitType)
     if not cfg then return end
     
-    local completionPercentage = 0
-    if state.maxValue and state.maxValue > 0 then
-        if state.isChanneling then
-            completionPercentage = (state.maxValue - state.currentValue) / state.maxValue
-        else
-            completionPercentage = state.currentValue / state.maxValue
-        end
-    end
-    
-    if isInterrupted then
+    -- ✅ NUEVO: Lógica simplificada como en RetailUI
+    if isInterrupted and not state.selfInterrupt then
+        -- Verdadera interrupción
         if frames.shield then frames.shield:Hide() end
         HideAllTicks(frames.ticks)
         
@@ -821,14 +817,16 @@ function CastbarModule:HandleCastStop(unitType, isInterrupted)
         state.casting = false
         state.isChanneling = false
         state.holdTime = cfg.holdTimeInterrupt or 0.8
-    elseif completionPercentage >= (state.isChanneling and 0.9 or 0.95) then
+    else
+        -- Completado naturalmente (incluso si isInterrupted=true pero selfInterrupt=true)
         if unitType == "player" then
             state.castSucceeded = true
         else
             self:FinishSpell(unitType)
         end
-    else
-        self:HandleCastStop(unitType, true)
+        
+        -- Reset flag para próximo cast
+        state.selfInterrupt = false
     end
 end
 
@@ -1107,6 +1105,7 @@ function CastbarModule:HideCastbar(unitType)
     state.holdTime = 0
     state.maxValue = 0
     state.currentValue = 0
+    state.selfInterrupt = false  -- ✅ Reset flag
     
     if unitType == "player" then
         state.castSucceeded = false
@@ -1144,17 +1143,16 @@ function CastbarModule:HandleCastingEvent(event, unit)
     elseif event == 'UNIT_SPELLCAST_CHANNEL_START' then
         self:HandleChannelStart(unitType, unit)
     elseif event == 'UNIT_SPELLCAST_STOP' then
-        self:HandleCastStop(unitType, false)
+        self:HandleCastStop(unitType, false)  -- Cast completado naturalmente
     elseif event == 'UNIT_SPELLCAST_CHANNEL_STOP' then
+        -- ✅ NUEVO: Marcar como terminado naturalmente (como RetailUI)
         local state = self.states[unitType]
-        local isInterrupted = false
-        if state.isChanneling and state.maxValue > 0 then
-            local completion = (state.maxValue - state.currentValue) / state.maxValue
-            isInterrupted = completion < 0.9
+        if state.isChanneling then
+            state.selfInterrupt = true  -- Flag para evitar mostrar "Interrupted"
         end
-        self:HandleCastStop(unitType, isInterrupted)
+        self:HandleCastStop(unitType, false)  -- Channel completado naturalmente
     elseif event == 'UNIT_SPELLCAST_INTERRUPTED' then
-        self:HandleCastStop(unitType, true)
+        self:HandleCastStop(unitType, true)  -- Verdadera interrupción
     end
 end
 
