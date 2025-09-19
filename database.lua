@@ -1,6 +1,6 @@
 local addon = select(2, ...);
 
--- Default values for new profiles (only used when creating new profiles)
+-- Default values for new profiles (only used         bagsbar = { anchor = "BOTTOMRIGHT", posX = 1, posY = 41 },hen creating new profiles)
 local defaults = {
     profile = {
         -- Widgets
@@ -75,7 +75,9 @@ local defaults = {
                 anchor = "BOTTOM",
                 posX = -10,
                 posY = 97
-            }
+            },
+            micromenu = { anchor = "BOTTOMRIGHT", posX = -166, posY = 5 },
+        bagsbar = { anchor = "BOTTOMRIGHT", posX = 0, posY = 0}
         },
         -- Quest Tracker
         questtracker = {

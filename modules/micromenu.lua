@@ -489,7 +489,7 @@ end
 -- Create global bags bar
 _G.pUiBagsBar = CreateFrame('Frame', 'pUiBagsBar', UIParent);
 local pUiBagsBar = _G.pUiBagsBar;
-MainMenuBarBackpackButton:SetParent(pUiBagsBar);
+-- NO parentar automáticamente - se hará en el setup cuando sea necesario
 KeyRingButton:SetParent(_G.CharacterBag3Slot);
 
 function MainMenuMicroButtonMixin:bagbuttons_setup()
@@ -502,8 +502,10 @@ function MainMenuMicroButtonMixin:bagbuttons_setup()
     MainMenuBarBackpackButton:GetHighlightTexture():set_atlas('bag-main-highlight-2x')
     MainMenuBarBackpackButton:GetCheckedTexture():set_atlas('bag-main-highlight-2x')
     MainMenuBarBackpackButtonIconTexture:set_atlas('bag-main-2x')
-    MainMenuBarBackpackButton:SetClearPoint('BOTTOMRIGHT', UIParent, 'BOTTOMRIGHT', 1, 41)
-    MainMenuBarBackpackButton.SetPoint = addon._noop
+    
+    -- NO posicionar MainMenuBarBackpackButton aquí si va a usar overlay - será posicionado por el overlay
+    -- MainMenuBarBackpackButton:ClearAllPoints()
+    -- MainMenuBarBackpackButton:SetPoint('BOTTOMRIGHT', UIParent, 'BOTTOMRIGHT', 1, 41)
 
     MainMenuBarBackpackButtonCount:SetClearPoint('CENTER', MainMenuBarBackpackButton, 'BOTTOM', 0, 14)
     CharacterBag0Slot:SetClearPoint('RIGHT', MainMenuBarBackpackButton, 'LEFT', -14, -2)
@@ -598,6 +600,58 @@ function MainMenuMicroButtonMixin:bagbuttons_setup()
         local count = _G[bags:GetName() .. 'Count']
         count:SetClearPoint('CENTER', 0, -10);
         count:SetDrawLayer('OVERLAY')
+    end
+
+    if not pUiBagsBar.registeredInEditor then
+        -- Crear frame contenedor usando el sistema estándar
+        local bagsFrame = addon.CreateUIFrame(210, 50, "BagsBar")
+        
+        -- Aplicar posición desde database o usar default
+        local bagsConfig = addon.db and addon.db.profile.widgets and addon.db.profile.widgets.bagsbar
+        if bagsConfig and bagsConfig.anchor then
+            bagsFrame:SetPoint(bagsConfig.anchor or "BOTTOMRIGHT", UIParent, bagsConfig.anchor or "BOTTOMRIGHT", 
+                              bagsConfig.posX or 1, bagsConfig.posY or 41)
+            print("|cFF00FF00[DragonUI]|r Applied bagsbar position from database: " .. (bagsConfig.anchor or "BOTTOMRIGHT") .. 
+                  " (" .. (bagsConfig.posX or 1) .. "," .. (bagsConfig.posY or 41) .. ")")
+        else
+            bagsFrame:SetPoint("BOTTOMRIGHT", UIParent, "BOTTOMRIGHT", 1, 41)
+            print("|cFF00FF00[DragonUI]|r Applied bagsbar default position")
+        end
+        
+        -- Asegurar que el frame de bolsas real siga al frame contenedor
+        MainMenuBarBackpackButton:SetParent(UIParent)
+        MainMenuBarBackpackButton:ClearAllPoints()
+        MainMenuBarBackpackButton:SetPoint("CENTER", bagsFrame, "CENTER", 80, 0)  -- Centrado en el overlay
+        
+        -- Hook para que las bolsas sigan al contenedor cuando se mueva
+        bagsFrame:HookScript("OnDragStop", function(self)
+            MainMenuBarBackpackButton:ClearAllPoints()
+            MainMenuBarBackpackButton:SetPoint("CENTER", self, "CENTER", 80, 0)
+        end)
+        
+        bagsFrame:HookScript("OnShow", function(self)
+            MainMenuBarBackpackButton:ClearAllPoints()
+            MainMenuBarBackpackButton:SetPoint("CENTER", self, "CENTER", 80, 0)
+        end)
+        
+        -- Hook continuo para mantener la posición
+        bagsFrame:HookScript("OnUpdate", function(self)
+            if not MainMenuBarBackpackButton:GetPoint() then
+                MainMenuBarBackpackButton:ClearAllPoints()
+                MainMenuBarBackpackButton:SetPoint("CENTER", self, "CENTER", 80, 0)
+            end
+        end)
+        
+        addon:RegisterEditableFrame({
+            name = "bagsbar",
+            frame = bagsFrame,
+            blizzardFrame = MainMenuBarBackpackButton,
+            configPath = {"widgets", "bagsbar"},
+            module = addon.BagsModule or {}
+        })
+        
+        pUiBagsBar.registeredInEditor = true
+        print("|cFF00FF00[DragonUI]|r Registered bagsbar frame")
     end
 
     EnsureLootAnimationToMainBag()
@@ -708,6 +762,58 @@ local function setupMicroButtons(xOffset)
     menu:SetSize(10, 10)
     menu:ClearAllPoints()
     menu:SetPoint('BOTTOMLEFT', UIParent, 'BOTTOMRIGHT', xPosition, yPosition)
+
+    if not menu.registeredInEditor then
+        -- Crear frame contenedor usando el sistema estándar
+        local microMenuFrame = addon.CreateUIFrame(240, 40, "MicroMenu")
+        
+        -- Aplicar posición desde database o usar default
+        local microMenuConfig = addon.db and addon.db.profile.widgets and addon.db.profile.widgets.micromenu
+        if microMenuConfig and microMenuConfig.anchor then
+            microMenuFrame:SetPoint(microMenuConfig.anchor or "BOTTOMRIGHT", UIParent, microMenuConfig.anchor or "BOTTOMRIGHT", 
+                                   microMenuConfig.posX or (xOffset + config.x_position), microMenuConfig.posY or config.y_position)
+            print("|cFF00FF00[DragonUI]|r Applied micromenu position from database: " .. (microMenuConfig.anchor or "BOTTOMRIGHT") .. 
+                  " (" .. (microMenuConfig.posX or (xOffset + config.x_position)) .. "," .. (microMenuConfig.posY or config.y_position) .. ")")
+        else
+            microMenuFrame:SetPoint("BOTTOMRIGHT", UIParent, "BOTTOMRIGHT", xOffset + config.x_position, config.y_position)
+            print("|cFF00FF00[DragonUI]|r Applied micromenu default position")
+        end
+        
+        -- Asegurar que el menú real siga al frame contenedor
+        menu:SetParent(UIParent)
+        menu:ClearAllPoints()
+        menu:SetPoint("CENTER", microMenuFrame, "CENTER", -140, -70)  -- Ajustar posición: izquierda y arriba
+        
+        -- Hook para que el menú siga al contenedor cuando se mueva
+        microMenuFrame:HookScript("OnDragStop", function(self)
+            menu:ClearAllPoints()
+            menu:SetPoint("CENTER", self, "CENTER", -140, -70)
+        end)
+        
+        microMenuFrame:HookScript("OnShow", function(self)
+            menu:ClearAllPoints()
+            menu:SetPoint("CENTER", self, "CENTER", -140, -70)
+        end)
+        
+        -- Hook continuo para mantener la posición
+        microMenuFrame:HookScript("OnUpdate", function(self)
+            if not menu:GetPoint() then
+                menu:ClearAllPoints()
+                menu:SetPoint("CENTER", self, "CENTER", -140, -70)
+            end
+        end)
+        
+        addon:RegisterEditableFrame({
+            name = "micromenu",
+            frame = microMenuFrame,
+            blizzardFrame = menu,
+            configPath = {"widgets", "micromenu"},
+            module = addon.MicroMenuModule or {}
+        })
+        
+        menu.registeredInEditor = true
+        print("|cFF00FF00[DragonUI]|r Registered micromenu frame")
+    end
 
     for _, button in pairs(MICRO_BUTTONS) do
         local buttonName = button:GetName():gsub('MicroButton', '')
@@ -913,39 +1019,70 @@ function addon.RefreshMicromenuPosition()
     local configMode = useGrayscale and "grayscale" or "normal"
     local config = addon.db.profile.micromenu[configMode]
 
-    local microMenu = _G.pUiMicroMenu
-    microMenu:SetScale(config.scale_menu);
-    local xOffset = IsAddOnLoaded('ezCollections') and -180 or -166
-    microMenu:ClearAllPoints();
-    microMenu:SetPoint('BOTTOMLEFT', UIParent, 'BOTTOMRIGHT', xOffset + config.x_position, config.y_position);
+    local frameInfo = addon:GetEditableFrameInfo("micromenu")
+    if frameInfo and frameInfo.frame then
+        -- Mover el contenedor, el menú lo seguirá automáticamente
+        local xOffset = IsAddOnLoaded('ezCollections') and -180 or -166
+        frameInfo.frame:ClearAllPoints()
+        frameInfo.frame:SetPoint("BOTTOMRIGHT", UIParent, "BOTTOMRIGHT", xOffset + config.x_position, config.y_position)
+        
+        -- Asegurar que el menú siga al contenedor con posicionamiento corregido
+        _G.pUiMicroMenu:ClearAllPoints()
+        _G.pUiMicroMenu:SetPoint("CENTER", frameInfo.frame, "CENTER", -50, 10)
+    else
+        -- Fallback al método anterior si no hay contenedor
+        local microMenu = _G.pUiMicroMenu
+        microMenu:SetScale(config.scale_menu);
+        local xOffset = IsAddOnLoaded('ezCollections') and -180 or -166
+        microMenu:ClearAllPoints();
+        microMenu:SetPoint('BOTTOMLEFT', UIParent, 'BOTTOMRIGHT', xOffset + config.x_position, config.y_position);
+    end
 
     updateMicroButtonSpacing();
 end
 
 function addon.RefreshBagsPosition()
-    if not addon.db or not addon.db.profile or not addon.db.profile.bags then
-        return
-    end
-
     if not _G.pUiBagsBar then
         return
     end
 
-    local bagsConfig = addon.db.profile.bags
+    local frameInfo = addon:GetEditableFrameInfo("bagsbar")
+    if frameInfo and frameInfo.frame then
+        -- Aplicar posición desde database o usar default
+        local bagsConfig = addon.db and addon.db.profile.widgets and addon.db.profile.widgets.bagsbar
+        if bagsConfig and bagsConfig.anchor then
+            frameInfo.frame:ClearAllPoints()
+            frameInfo.frame:SetPoint(bagsConfig.anchor or "BOTTOMRIGHT", UIParent, bagsConfig.anchor or "BOTTOMRIGHT", 
+                                   bagsConfig.posX or 1, bagsConfig.posY or 41)
+        else
+            frameInfo.frame:ClearAllPoints()
+            frameInfo.frame:SetPoint("BOTTOMRIGHT", UIParent, "BOTTOMRIGHT", 1, 41)
+        end
+        
+        -- Asegurar que las bolsas sigan al contenedor con posicionamiento corregido
+        MainMenuBarBackpackButton:ClearAllPoints()
+        MainMenuBarBackpackButton:SetPoint("CENTER", frameInfo.frame, "CENTER", 0, 0)
+    else
+        -- Fallback al método anterior si no hay contenedor
+        if not addon.db or not addon.db.profile or not addon.db.profile.bags then
+            return
+        end
 
-    _G.pUiBagsBar:SetScale(bagsConfig.scale)
+        local bagsConfig = addon.db.profile.bags
+        _G.pUiBagsBar:SetScale(bagsConfig.scale)
 
-    local originalSetPoint = MainMenuBarBackpackButton.SetPoint
-    if MainMenuBarBackpackButton.SetPoint == addon._noop then
-        MainMenuBarBackpackButton.SetPoint = UIParent.SetPoint
-    end
+        local originalSetPoint = MainMenuBarBackpackButton.SetPoint
+        if MainMenuBarBackpackButton.SetPoint == addon._noop then
+            MainMenuBarBackpackButton.SetPoint = UIParent.SetPoint
+        end
 
-    MainMenuBarBackpackButton:ClearAllPoints()
-    MainMenuBarBackpackButton:SetPoint('BOTTOMRIGHT', UIParent, 'BOTTOMRIGHT', bagsConfig.x_position,
-        bagsConfig.y_position)
+        MainMenuBarBackpackButton:ClearAllPoints()
+        MainMenuBarBackpackButton:SetPoint('BOTTOMRIGHT', UIParent, 'BOTTOMRIGHT', bagsConfig.x_position,
+            bagsConfig.y_position)
 
-    if originalSetPoint == addon._noop then
-        MainMenuBarBackpackButton.SetPoint = originalSetPoint
+        if originalSetPoint == addon._noop then
+            MainMenuBarBackpackButton.SetPoint = originalSetPoint
+        end
     end
 end
 
@@ -1222,4 +1359,19 @@ addon.package:RegisterEvents(function()
     if addon.RefreshBags then
         addon.RefreshBags();
     end
+    
+    addon.core:ScheduleTimer(function()
+        -- Verificar si los frames necesitan ser registrados
+        if _G.pUiMicroMenu and not _G.pUiMicroMenu.registeredInEditor then
+            -- Force re-setup to register frames
+            setupMicroButtons(xOffset)
+        end
+        
+        if _G.pUiBagsBar and not _G.pUiBagsBar.registeredInEditor then
+            -- Force bags setup
+            if MainMenuMicroButtonMixin.bagbuttons_setup then
+                MainMenuMicroButtonMixin:bagbuttons_setup()
+            end
+        end
+    end, 0.5)
 end, 'PLAYER_LOGIN');
