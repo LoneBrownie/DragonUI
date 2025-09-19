@@ -69,12 +69,12 @@ local defaults = {
             bottombarleft = {
                 anchor = "BOTTOM",
                 posX = -10,
-                posY = 59
+                posY = 56
             },
             bottombarright = {
                 anchor = "BOTTOM",
                 posX = -10,
-                posY = 99
+                posY = 97
             }
         },
         -- Quest Tracker

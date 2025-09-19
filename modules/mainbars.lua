@@ -467,7 +467,7 @@ local function SetupActionBarContainers()
         
         local texture = overlayFrame:CreateTexture(nil, 'OVERLAY')
         texture:SetAllPoints(overlayFrame)
-        texture:SetTexture(0, 1, 0, 0.7) -- Green more visible
+        texture:SetTexture(0, 1, 0, 0.3) -- Green more visible
         texture:SetDrawLayer('OVERLAY', 7) -- High layer within overlay frame
         texture:Hide()
         pUiMainBar.editorTexture = texture
@@ -475,7 +475,6 @@ local function SetupActionBarContainers()
         local fontString = overlayFrame:CreateFontString(nil, "OVERLAY", 'GameFontNormalLarge')
         fontString:SetPoint("CENTER", overlayFrame, "CENTER")
         fontString:SetText("MainBar")
-        fontString:SetTextColor(1, 1, 1, 1) -- White text for better visibility
         fontString:SetShadowColor(0, 0, 0, 1)
         fontString:SetShadowOffset(2, -2)
         fontString:SetDrawLayer('OVERLAY', 8) -- Above the texture
@@ -494,9 +493,16 @@ local function SetupActionBarContainers()
     pUiMainBar.originalStrata = pUiMainBar:GetFrameStrata()
     pUiMainBar.originalLevel = pUiMainBar:GetFrameLevel()
     
-    -- Ensure main bar has proper default position and is movable
+    -- Ensure main bar has proper position from database or use default
+    local mainbarConfig = addon.db.profile.widgets.mainbar
     if not pUiMainBar:GetPoint() then
-        pUiMainBar:SetPoint("BOTTOM", UIParent, "BOTTOM", 0, 75)
+        if mainbarConfig and mainbarConfig.anchor then
+            pUiMainBar:SetPoint(mainbarConfig.anchor or "BOTTOM", UIParent, mainbarConfig.anchor or "BOTTOM", mainbarConfig.posX or 0, mainbarConfig.posY or 22)
+            print("|cFF00FF00[DragonUI]|r Applied mainbar position from database: " .. (mainbarConfig.anchor or "BOTTOM") .. " (" .. (mainbarConfig.posX or 0) .. "," .. (mainbarConfig.posY or 22) .. ")")
+        else
+            pUiMainBar:SetPoint("BOTTOM", UIParent, "BOTTOM", 0, 75)
+            print("|cFF00FF00[DragonUI]|r Applied mainbar default position")
+        end
     end
     pUiMainBar:SetMovable(true)
     pUiMainBar:EnableMouse(true)
@@ -514,8 +520,20 @@ local function SetupActionBarContainers()
     print("|cFF00FF00[DragonUI]|r Registered mainbar frame")
     
     -- 2. Right bar container
-    local rightBarFrame = addon.CreateUIFrame(40, 500, "RightBar")
-    rightBarFrame:SetPoint("RIGHT", UIParent, "RIGHT", -10, -70) -- Default position
+    local rightBarFrame = addon.CreateUIFrame(40, 490, "RightBar")
+
+    
+
+    
+    -- Use database position or default
+    local rightbarConfig = addon.db.profile.widgets.rightbar
+    if rightbarConfig and rightbarConfig.anchor then
+        rightBarFrame:SetPoint(rightbarConfig.anchor or "RIGHT", UIParent, rightbarConfig.anchor or "RIGHT", rightbarConfig.posX or -10, rightbarConfig.posY or -70)
+        print("|cFF00FF00[DragonUI]|r Applied rightbar position from database: " .. (rightbarConfig.anchor or "RIGHT") .. " (" .. (rightbarConfig.posX or -10) .. "," .. (rightbarConfig.posY or -70) .. ")")
+    else
+        rightBarFrame:SetPoint("RIGHT", UIParent, "RIGHT", -10, -70) -- Default position
+        print("|cFF00FF00[DragonUI]|r Applied rightbar default position")
+    end
     
     -- Ensure overlay is above action buttons
     if rightBarFrame.editorTexture then
@@ -545,8 +563,17 @@ local function SetupActionBarContainers()
     print("|cFF00FF00[DragonUI]|r Registered rightbar frame")
     
     -- 3. Left bar container
-    local leftBarFrame = addon.CreateUIFrame(40, 500, "LeftBar")
-    leftBarFrame:SetPoint("RIGHT", UIParent, "RIGHT", -45, -70) -- Default position
+    local leftBarFrame = addon.CreateUIFrame(40, 490, "LeftBar")
+    
+    -- Use database position or default
+    local leftbarConfig = addon.db.profile.widgets.leftbar
+    if leftbarConfig and leftbarConfig.anchor then
+        leftBarFrame:SetPoint(leftbarConfig.anchor or "RIGHT", UIParent, leftbarConfig.anchor or "RIGHT", leftbarConfig.posX or -45, leftbarConfig.posY or -70)
+        print("|cFF00FF00[DragonUI]|r Applied leftbar position from database: " .. (leftbarConfig.anchor or "RIGHT") .. " (" .. (leftbarConfig.posX or -45) .. "," .. (leftbarConfig.posY or -70) .. ")")
+    else
+        leftBarFrame:SetPoint("RIGHT", UIParent, "RIGHT", -45, -70) -- Default position
+        print("|cFF00FF00[DragonUI]|r Applied leftbar default position")
+    end
     
     -- Ensure overlay is above action buttons
     if leftBarFrame.editorTexture then
@@ -576,16 +603,25 @@ local function SetupActionBarContainers()
     print("|cFF00FF00[DragonUI]|r Registered leftbar frame")
     
     -- 4. Bottom left bar container - INDEPENDENT FROM MAINBAR
-    local bottomLeftBarFrame = addon.CreateUIFrame(500, 40, "BottomBarLeft")
-    bottomLeftBarFrame:SetPoint("BOTTOM", UIParent, "BOTTOM", 0, 120) -- Default position
+    local bottomLeftBarFrame = addon.CreateUIFrame(490, 40, "BottomBarLeft")
+    
+    -- Use database position or default
+    local bottomleftConfig = addon.db.profile.widgets.bottombarleft
+    if bottomleftConfig and bottomleftConfig.anchor then
+        bottomLeftBarFrame:SetPoint(bottomleftConfig.anchor or "BOTTOM", UIParent, bottomleftConfig.anchor or "BOTTOM", bottomleftConfig.posX or 0, bottomleftConfig.posY or 120)
+        print("|cFF00FF00[DragonUI]|r Applied bottombarleft position from database: " .. (bottomleftConfig.anchor or "BOTTOM") .. " (" .. (bottomleftConfig.posX or 0) .. "," .. (bottomleftConfig.posY or 120) .. ")")
+    else
+        bottomLeftBarFrame:SetPoint("BOTTOM", UIParent, "BOTTOM", 0, 120) -- Default position
+        print("|cFF00FF00[DragonUI]|r Applied bottombarleft default position")
+    end
     
     -- Make overlay more visible and ensure it's above action bars
     if bottomLeftBarFrame.editorTexture then
-        bottomLeftBarFrame.editorTexture:SetTexture(1, 0.8, 0, 0.8) -- Orange more visible
+        bottomLeftBarFrame.editorTexture:SetTexture(0, 1, 0, 0.3) 
         bottomLeftBarFrame.editorTexture:SetDrawLayer('OVERLAY', 30) -- Very high layer
     end
     if bottomLeftBarFrame.editorText then
-        bottomLeftBarFrame.editorText:SetTextColor(1, 1, 1, 1) -- White text with shadow
+
         bottomLeftBarFrame.editorText:SetShadowColor(0, 0, 0, 1)
         bottomLeftBarFrame.editorText:SetShadowOffset(2, -2)
         bottomLeftBarFrame.editorText:SetDrawLayer('OVERLAY', 31)
@@ -622,16 +658,24 @@ local function SetupActionBarContainers()
     print("|cFF00FF00[DragonUI]|r Registered bottombarleft frame")
     
     -- 5. Bottom right bar container - INDEPENDENT FROM MAINBAR
-    local bottomRightBarFrame = addon.CreateUIFrame(500, 40, "BottomBarRight")
-    bottomRightBarFrame:SetPoint("BOTTOM", UIParent, "BOTTOM", 0, 160) -- Default position
+    local bottomRightBarFrame = addon.CreateUIFrame(490, 40, "BottomBarRight")
+    
+    -- Use database position or default
+    local bottomrightConfig = addon.db.profile.widgets.bottombarright
+    if bottomrightConfig and bottomrightConfig.anchor then
+        bottomRightBarFrame:SetPoint(bottomrightConfig.anchor or "BOTTOM", UIParent, bottomrightConfig.anchor or "BOTTOM", bottomrightConfig.posX or 0, bottomrightConfig.posY or 160)
+        print("|cFF00FF00[DragonUI]|r Applied bottombarright position from database: " .. (bottomrightConfig.anchor or "BOTTOM") .. " (" .. (bottomrightConfig.posX or 0) .. "," .. (bottomrightConfig.posY or 160) .. ")")
+    else
+        bottomRightBarFrame:SetPoint("BOTTOM", UIParent, "BOTTOM", 0, 160) -- Default position
+        print("|cFF00FF00[DragonUI]|r Applied bottombarright default position")
+    end
     
     -- Make overlay more visible and ensure it's above action bars
     if bottomRightBarFrame.editorTexture then
-        bottomRightBarFrame.editorTexture:SetTexture(1, 0.5, 0, 0.8) -- Orange more visible
+        bottomRightBarFrame.editorTexture:SetTexture(0, 1, 0, 0.3) 
         bottomRightBarFrame.editorTexture:SetDrawLayer('OVERLAY', 30) -- Very high layer
     end
     if bottomRightBarFrame.editorText then
-        bottomRightBarFrame.editorText:SetTextColor(1, 1, 1, 1) -- White text with shadow
         bottomRightBarFrame.editorText:SetShadowColor(0, 0, 0, 1)
         bottomRightBarFrame.editorText:SetShadowOffset(2, -2)
         bottomRightBarFrame.editorText:SetDrawLayer('OVERLAY', 31)
@@ -670,8 +714,28 @@ local function SetupActionBarContainers()
     print("|cFF00FF00[DragonUI]|r Action bars integrated with centralized UI system")
 end
 
--- Set up containers when the module loads
-SetupActionBarContainers()
+
+
+-- ✅ NEW: Set up containers after database is initialized
+local function InitializeActionBars()
+    if addon.db and addon.db.profile then
+        SetupActionBarContainers()
+        print("|cFF00FF00[DragonUI]|r Action bars initialized with database positions")
+    else
+        print("|cFFFF0000[DragonUI]|r Database not ready, deferring action bar setup")
+    end
+end
+
+-- Hook into addon initialization to setup action bars at the right time
+local initFrame = CreateFrame("Frame")
+initFrame:RegisterEvent("ADDON_LOADED")
+initFrame:SetScript("OnEvent", function(self, event, addonName)
+    if addonName == "DragonUI" then
+        -- Give OnInitialize time to run first
+        addon.core:ScheduleTimer(InitializeActionBars, 0.1)
+        self:UnregisterEvent("ADDON_LOADED")
+    end
+end)
 
 -- Function to ensure bottom bars follow their containers when moved
 local function EnsureBottomBarsFollowContainers()
@@ -748,43 +812,8 @@ end
 -- Setup the following system after containers are registered
 addon.core:ScheduleTimer(SetupActionBarFollowing, 1)
 
--- Apply positions from database after registration
-local function ApplyActionBarPositions()
-    -- Apply positions using the centralized system for each registered frame
-    local registeredFrames = {
-        "mainbar", "rightbar", "leftbar", "bottombarleft", "bottombarright"
-    }
-    
-    print("|cFF00FF00[DragonUI]|r Applying action bar positions...")
-    
-    for _, frameName in pairs(registeredFrames) do
-        local frameInfo = addon:GetEditableFrameInfo(frameName)
-        if frameInfo and frameInfo.frame then
-            -- Check if we have saved position data
-            local config = addon.db.profile.widgets[frameName]
-            if config and config.anchor then
-                frameInfo.frame:ClearAllPoints()
-                frameInfo.frame:SetPoint(config.anchor or "CENTER", UIParent, config.anchor or "CENTER", config.posX or 0, config.posY or 0)
-                print("|cFF00FF00[DragonUI]|r Applied position to " .. frameName .. ": " .. (config.anchor or "CENTER") .. " (" .. (config.posX or 0) .. "," .. (config.posY or 0) .. ")")
-            else
-                print("|cFFFF0000[DragonUI]|r No saved position for " .. frameName .. ", using defaults")
-            end
-        else
-            print("|cFFFF0000[DragonUI]|r Frame info not found for " .. frameName)
-        end
-    end
-end
-
--- Apply positions after a short delay to ensure everything is initialized
-local positionFrame = CreateFrame("Frame")
-positionFrame:RegisterEvent("PLAYER_LOGIN")
-positionFrame:SetScript("OnEvent", function(self, event)
-    if event == "PLAYER_LOGIN" then
-        -- Apply positions after addon is fully loaded
-        addon.core:ScheduleTimer(ApplyActionBarPositions, 0.5)
-        self:UnregisterEvent("PLAYER_LOGIN")
-    end
-end)
+-- ✅ REMOVED: ApplyActionBarPositions function no longer needed
+-- Positions are now applied directly in SetupActionBarContainers using database values
 
 -- configuration refresh function
 function addon.RefreshMainbars()
