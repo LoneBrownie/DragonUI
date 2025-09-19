@@ -120,6 +120,9 @@ function EditorMode:Show()
     -- ✅ NUEVO: USAR SISTEMA CENTRALIZADO - UNA SOLA LÍNEA
     addon:ShowAllEditableFrames()
     
+    -- Refresh AceConfig to update button state
+    self:RefreshOptionsUI()
+    
     print("|cFF00FF00[DragonUI]|r Editor mode activated")
 end
 
@@ -131,7 +134,21 @@ function EditorMode:Hide()
     -- ✅ NUEVO: USAR SISTEMA CENTRALIZADO - UNA SOLA LÍNEA
     addon:HideAllEditableFrames(true) -- true = refresh and save positions
     
+    -- Refresh AceConfig to update button state
+    self:RefreshOptionsUI()
+    
     print("|cFF00FF00[DragonUI]|r Editor mode deactivated")
+end
+
+function EditorMode:RefreshOptionsUI()
+    -- Refresh AceConfig interface to update button states
+    -- Use scheduler to ensure it happens after state changes are complete
+    addon.core:ScheduleTimer(function()
+        local AceConfigRegistry = LibStub("AceConfigRegistry-3.0", true)
+        if AceConfigRegistry then
+            AceConfigRegistry:NotifyChange("DragonUI")
+        end
+    end, 0.1)
 end
 
 function EditorMode:Toggle()
@@ -143,11 +160,13 @@ function EditorMode:Toggle()
 end
 
 function EditorMode:IsActive()
+    -- Use grid visibility as the true indicator of editor state
     return gridOverlay and gridOverlay:IsShown()
 end
 
 -- ✅ COMANDO SLASH
 SLASH_DRAGONUI_EDITOR1 = "/duiedit"
+SLASH_DRAGONUI_EDITOR2 = "/dragonedit"
 SlashCmdList["DRAGONUI_EDITOR"] = function()
     EditorMode:Toggle()
 end

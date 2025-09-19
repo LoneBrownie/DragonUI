@@ -24,12 +24,16 @@ function addon:CreateOptionsTable()
             toggle_editor_mode = {
                 type = 'execute',
                 name = function()
-                    -- El nombre del botón cambia dinámicamente
-                    if addon.EditorMode and addon.EditorMode:IsActive() then
-                        return "|cffFF6347Editor Mode Active|r"
-                    else
-                        return "|cff00FF00Move UI Elements|r"
+                    -- El nombre del botón cambia dinámicamente y maneja la lógica de estado
+                    if addon.EditorMode then
+                        local success, isActive = pcall(function() 
+                            return addon.EditorMode:IsActive() 
+                        end)
+                        if success and isActive then
+                            return "|cffFF6347Exit Editor Mode|r"
+                        end
                     end
+                    return "|cff00FF00Move UI Elements|r"
                 end,
                 desc = "Unlock UI elements to move them with your mouse. A button will appear to exit this mode.",
                 func = function()
@@ -44,10 +48,8 @@ function addon:CreateOptionsTable()
                         addon.EditorMode:Toggle()
                     end
                 end,
-                -- Se deshabilita mientras el modo editor está activo para evitar conflictos
-                disabled = function()
-                    return addon.EditorMode and addon.EditorMode:IsActive()
-                end,
+                -- FORCE button to be enabled initially to avoid AceConfig timing issues
+                disabled = false,
                 order = 0 -- El orden más bajo para que aparezca primero
             },
             -- ✅ SEPARADOR VISUAL
@@ -124,154 +126,40 @@ function addon:CreateOptionsTable()
                             -- ✅ AÑADIMOS UNA DESCRIPCIÓN INTELIGENTE
                             editor_mode_desc = {
                                 type = 'description',
-                                name = "|cffFFD700Tip:|r Use the |cff00FF00/duiedit|r command to unlock and move the bars with your mouse.",
+                                name = "|cffFFD700Tip:|r Use the |cff00FF00/duiedit|r or |cff00FF00/dragonedit|r command to unlock and move the bars with your mouse.",
                                 order = 4.51,
-                                -- Solo se muestra si NINGUNA barra ha sido movida manualmente.
-                                hidden = function()
-                                    local db = addon.db.profile.mainbars
-                                    return db.player.override or db.left.override or db.right.override
-                                end
                             },
                             reset_positions = {
                                 type = 'execute',
                                 name = "Reset Bar Positions",
-                                desc = "Resets all action bars to their default positions.",
+                                desc = "Resets all action bars to their default positions using the centralized system.",
                                 func = function()
-                                    local db = addon.db.profile.mainbars
-                                    db.player.override = false
-                                    db.left.override = false
-                                    db.right.override = false
-                                    -- Opcional: resetear también las coordenadas a 0.
-                                    db.player.x, db.player.y = 0, 0
-                                    db.left.x, db.left.y = 0, 0
-                                    db.right.x, db.right.y = 0, 0
-
-                                    addon.PositionActionBars()
+                                    -- Reset widget positions to defaults
+                                    local defaults = {
+                                        mainbar = { anchor = "BOTTOM", posX = 0, posY = 75 },
+                                        rightbar = { anchor = "RIGHT", posX = -5, posY = -70 },
+                                        leftbar = { anchor = "RIGHT", posX = -45, posY = -70 },
+                                        bottombarleft = { anchor = "BOTTOM", posX = 0, posY = 120 },
+                                        bottombarright = { anchor = "BOTTOM", posX = 0, posY = 160 },
+                                    }
+                                    
+                                    for barName, defaultPos in pairs(defaults) do
+                                        if not addon.db.profile.widgets[barName] then
+                                            addon.db.profile.widgets[barName] = {}
+                                        end
+                                        addon.db.profile.widgets[barName].anchor = defaultPos.anchor
+                                        addon.db.profile.widgets[barName].posX = defaultPos.posX
+                                        addon.db.profile.widgets[barName].posY = defaultPos.posY
+                                        
+                                        -- Apply position immediately
+                                        local frameInfo = addon:GetEditableFrameInfo(barName)
+                                        if frameInfo and frameInfo.frame then
+                                            ApplyUIFramePosition(frameInfo.frame, "widgets." .. barName)
+                                        end
+                                    end
                                 end,
                                 order = 4.6
                             },
-                            -- ✅ ACTUALIZADOS LOS SLIDERS PARA USAR LA NUEVA ESTRUCTURA Y LÓGICA 'disabled'.
-                            x_position = {
-                                type = 'range',
-                                name = "Main Bar X",
-                                min = 0,
-                                max = 2500,
-                                step = 1,
-                                get = function()
-                                    return addon.db.profile.mainbars.player.x or 0
-                                end,
-                                set = function(info, value)
-                                    addon.db.profile.mainbars.player.x = value
-                                    if addon.PositionActionBars then
-                                        addon.PositionActionBars()
-                                    end
-                                end,
-                                order = 5,
-                                -- Se deshabilita si la barra no está en modo 'override'.
-                                disabled = function()
-                                    return not addon.db.profile.mainbars.player.override
-                                end
-                            },
-                            y_position = {
-                                type = 'range',
-                                name = "Main Bar Y",
-                                min = 0,
-                                max = 1500,
-                                step = 1,
-                                get = function()
-                                    return addon.db.profile.mainbars.player.y or 0
-                                end,
-                                set = function(info, value)
-                                    addon.db.profile.mainbars.player.y = value
-                                    if addon.PositionActionBars then
-                                        addon.PositionActionBars()
-                                    end
-                                end,
-                                order = 6,
-                                disabled = function()
-                                    return not addon.db.profile.mainbars.player.override
-                                end
-                            },
-                            multibar_left_x = {
-                                type = 'range',
-                                name = "Left Bar X",
-                                min = 0,
-                                max = 2500,
-                                step = 1,
-                                get = function()
-                                    return addon.db.profile.mainbars.left.x or 0
-                                end,
-                                set = function(info, value)
-                                    addon.db.profile.mainbars.left.x = value
-                                    if addon.PositionActionBars then
-                                        addon.PositionActionBars()
-                                    end
-                                end,
-                                order = 7,
-                                disabled = function()
-                                    return not addon.db.profile.mainbars.left.override
-                                end
-                            },
-                            multibar_left_y = {
-                                type = 'range',
-                                name = "Left Bar Y",
-                                min = 0,
-                                max = 1500,
-                                step = 1,
-                                get = function()
-                                    return addon.db.profile.mainbars.left.y or 0
-                                end,
-                                set = function(info, value)
-                                    addon.db.profile.mainbars.left.y = value
-                                    if addon.PositionActionBars then
-                                        addon.PositionActionBars()
-                                    end
-                                end,
-                                order = 8,
-                                disabled = function()
-                                    return not addon.db.profile.mainbars.left.override
-                                end
-                            },
-                            multibar_right_x = {
-                                type = 'range',
-                                name = "Right Bar X",
-                                min = 0,
-                                max = 2500,
-                                step = 1,
-                                get = function()
-                                    return addon.db.profile.mainbars.right.x or 0
-                                end,
-                                set = function(info, value)
-                                    addon.db.profile.mainbars.right.x = value
-                                    if addon.PositionActionBars then
-                                        addon.PositionActionBars()
-                                    end
-                                end,
-                                order = 9,
-                                disabled = function()
-                                    return not addon.db.profile.mainbars.right.override
-                                end
-                            },
-                            multibar_right_y = {
-                                type = 'range',
-                                name = "Right Bar Y",
-                                min = 0,
-                                max = 1500,
-                                step = 1,
-                                get = function()
-                                    return addon.db.profile.mainbars.right.y or 0
-                                end,
-                                set = function(info, value)
-                                    addon.db.profile.mainbars.right.y = value
-                                    if addon.PositionActionBars then
-                                        addon.PositionActionBars()
-                                    end
-                                end,
-                                order = 10,
-                                disabled = function()
-                                    return not addon.db.profile.mainbars.right.override
-                                end
-                            }
                         }
                     },
                     buttons = {

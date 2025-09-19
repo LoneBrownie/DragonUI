@@ -49,6 +49,32 @@ local defaults = {
                 anchor = "BOTTOM",
                 posX = 0,
                 posY = 200
+            },
+            
+            mainbar = {
+                anchor = "BOTTOM",
+                posX = 0,
+                posY = 25
+            },
+            rightbar = {
+                anchor = "RIGHT",
+                posX = -5,
+                posY = -70
+            },
+            leftbar = {
+                anchor = "RIGHT",
+                posX = -45,
+                posY = -70
+            },
+            bottombarleft = {
+                anchor = "BOTTOM",
+                posX = 0,
+                posY = 120
+            },
+            bottombarright = {
+                anchor = "BOTTOM",
+                posX = 0,
+                posY = 160
             }
         },
         -- Quest Tracker
@@ -60,28 +86,15 @@ local defaults = {
         },
         -- ACTIONBAR SETTINGS
         mainbars = {
-            -- ✅ Cada barra ahora tiene su propia configuración de posición y override.
-            player = {
-                override = false,
-                y_position_offset = 25, -- Offset vertical para el modo automático.
-                x = 0,
-                y = 0
-            },
+            -- ✅ Only keep orientation and scale settings - position handled by centralized system
             left = {
-                override = false,
-                x = 0,
-                y = 0,
                 horizontal = false
             },
             right = {
-                override = false,
-                x = 0,
-                y = 0,
                 horizontal = false
-
             },
 
-            -- La escala sigue siendo global para las barras.
+            -- Scale settings remain
             scale_actionbar = 0.9,
             scale_rightbar = 0.9,
             scale_leftbar = 0.9,

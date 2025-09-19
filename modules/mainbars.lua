@@ -22,6 +22,7 @@ local pUiMainBar = CreateFrame(
 	UIParent,
 	'MainMenuBarUiTemplate'
 );
+
 local pUiMainBarArt = CreateFrame(
 	'Frame',
 	'pUiMainBarArt',
@@ -190,7 +191,8 @@ end
 function MainMenuBarMixin:actionbar_setup()
 	ActionButton1:SetParent(pUiMainBar)
 	ActionButton1:SetClearPoint('BOTTOMLEFT', pUiMainBar, 2, 2)
-	MultiBarBottomLeftButton1:SetClearPoint('BOTTOMLEFT', ActionButton1, 'BOTTOMLEFT', 0, 48)
+	-- ✅ REMOVED: Bottom bar anchoring to main bar - now handled by centralized system
+	-- MultiBarBottomLeftButton1:SetClearPoint('BOTTOMLEFT', ActionButton1, 'BOTTOMLEFT', 0, 48)
 	
 	if config.buttons.pages.show then
 		do_action.SetNumPagesButton(ActionBarUpButton, pUiMainBarArt, 'pageuparrow', 8)
@@ -208,10 +210,12 @@ function MainMenuBarMixin:actionbar_setup()
 		ActionBarDownButton:Hide();
 		MainMenuBarPageNumber:Hide();
 	end
-	MultiBarBottomLeft:SetParent(pUiMainBar)
-	MultiBarBottomRight:SetParent(pUiMainBar)
+	-- ✅ REMOVED: Bottom bars no longer parented to mainbar for independent positioning
+	-- MultiBarBottomLeft:SetParent(pUiMainBar)
+	-- MultiBarBottomRight:SetParent(pUiMainBar)
 	MultiBarBottomRight:EnableMouse(false)
-	MultiBarBottomRight:SetClearPoint('BOTTOMLEFT', MultiBarBottomLeftButton1, 'TOPLEFT', 0, 8)
+	-- ✅ REMOVED: Bottom bars positioning handled by centralized system
+	-- MultiBarBottomRight:SetClearPoint('BOTTOMLEFT', MultiBarBottomLeftButton1, 'TOPLEFT', 0, 8)
 	-- MultiBarRight:SetClearPoint('TOPRIGHT', UIParent, 'RIGHT', -6, (Minimap:GetHeight() * 1.3))
 	MultiBarRight:SetScale(config.mainbars.scale_rightbar)
 	MultiBarLeft:SetScale(config.mainbars.scale_leftbar)
@@ -226,29 +230,12 @@ function addon.PositionActionBars()
     local db = addon.db and addon.db.profile and addon.db.profile.mainbars
     if not db then return end
 
-    local scale = UIParent:GetEffectiveScale()
-
-    -- 1. Barra Principal (pUiMainBar) - sin cambios
-    if pUiMainBar then
-        pUiMainBar:SetMovable(true)
-        pUiMainBar:ClearAllPoints()
-        
-        if db.player.override then
-            pUiMainBar:SetPoint("BOTTOMLEFT", UIParent, "BOTTOMLEFT", (db.player.x or 0) / scale, (db.player.y or 0) / scale)
-        else
-            pUiMainBar:SetPoint("BOTTOM", UIParent, "BOTTOM", 0, db.player.y_position_offset or 75)
-        end
-        pUiMainBar:SetUserPlaced(db.player.override)
-    end
-
-    -- 2. Barra Derecha (MultiBarRight) - CON ORIENTACIÓN
+    -- ✅ ONLY HANDLE ORIENTATION - POSITION IS HANDLED BY CENTRALIZED SYSTEM
+    
+    -- Configure MultiBarRight orientation
     if MultiBarRight then
-        MultiBarRight:SetMovable(true)
-        MultiBarRight:ClearAllPoints()
-        
-        -- ✅ CONFIGURAR ORIENTACIÓN HORIZONTAL/VERTICAL
         if db.right.horizontal then
-            -- Modo horizontal: los botones van de izquierda a derecha
+            -- Horizontal mode: buttons go from left to right
             for i = 2, 12 do
                 local button = _G["MultiBarRightButton" .. i]
                 if button then
@@ -257,7 +244,7 @@ function addon.PositionActionBars()
                 end
             end
         else
-            -- Modo vertical: los botones van de arriba a abajo (default)
+            -- Vertical mode: buttons go from top to bottom (default)
             for i = 2, 12 do
                 local button = _G["MultiBarRightButton" .. i]
                 if button then
@@ -266,29 +253,12 @@ function addon.PositionActionBars()
                 end
             end
         end
-
-        if db.right.override then
-            MultiBarRight:SetPoint("BOTTOMLEFT", UIParent, "BOTTOMLEFT", (db.right.x or 0) / scale, (db.right.y or 0) / scale)
-        else
-            if db.right.horizontal then
-                -- Posición horizontal por defecto
-                MultiBarRight:SetPoint("BOTTOM", UIParent, "BOTTOM", 0, 150)
-            else
-                -- Posición vertical por defecto
-                MultiBarRight:SetPoint("RIGHT", UIParent, "RIGHT", -5, -70)
-            end
-        end
-        MultiBarRight:SetUserPlaced(db.right.override)
     end
 
-    -- 3. Barra Izquierda (MultiBarLeft) - CON ORIENTACIÓN
+    -- Configure MultiBarLeft orientation
     if MultiBarLeft then
-        MultiBarLeft:SetMovable(true)
-        MultiBarLeft:ClearAllPoints()
-        
-        -- ✅ CONFIGURAR ORIENTACIÓN HORIZONTAL/VERTICAL
         if db.left.horizontal then
-            -- Modo horizontal: los botones van de izquierda a derecha
+            -- Horizontal mode: buttons go from left to right
             for i = 2, 12 do
                 local button = _G["MultiBarLeftButton" .. i]
                 if button then
@@ -297,7 +267,7 @@ function addon.PositionActionBars()
                 end
             end
         else
-            -- Modo vertical: los botones van de arriba a abajo (default)
+            -- Vertical mode: buttons go from top to bottom (default)
             for i = 2, 12 do
                 local button = _G["MultiBarLeftButton" .. i]
                 if button then
@@ -306,23 +276,6 @@ function addon.PositionActionBars()
                 end
             end
         end
-
-        if db.left.override then
-            MultiBarLeft:SetPoint("BOTTOMLEFT", UIParent, "BOTTOMLEFT", (db.left.x or 0) / scale, (db.left.y or 0) / scale)
-        else
-            if db.left.horizontal then
-                -- Posición horizontal por defecto
-                MultiBarLeft:SetPoint("BOTTOM", UIParent, "BOTTOM", 0, 200)
-            else
-                -- Posición vertical por defecto - anclada a la barra derecha
-                if not db.right.override then
-                    MultiBarLeft:SetPoint("RIGHT", MultiBarRight, "LEFT", -5, 0)
-                else
-                    MultiBarLeft:SetPoint("RIGHT", MultiBarRight, "LEFT", -5, 0)
-                end
-            end
-        end
-        MultiBarLeft:SetUserPlaced(db.left.override)
     end
 end
 
@@ -447,7 +400,8 @@ function addon.RefreshRepBarPosition()
 	end
 end
 
--- update position for secondary action bars
+-- update position for secondary action bars - LEGACY FUNCTION
+-- ✅ NOTE: This function is kept for compatibility but bottom bars are now handled by centralized system
 function addon.RefreshUpperActionBarsPosition()
     if not MultiBarBottomLeftButton1 or not MultiBarBottomRight then return end
 
@@ -463,9 +417,12 @@ function addon.RefreshUpperActionBarsPosition()
         yOffset2 = 8
     end
 
-    -- reposition the bars
-    MultiBarBottomLeftButton1:SetClearPoint('BOTTOMLEFT', ActionButton1, 'BOTTOMLEFT', 0, yOffset1)
-    MultiBarBottomRight:SetClearPoint('BOTTOMLEFT', MultiBarBottomLeftButton1, 'TOPLEFT', 0, yOffset2)
+    -- ✅ REMOVED: Bottom bars positioning now handled by centralized system
+    -- MultiBarBottomLeftButton1:SetClearPoint('BOTTOMLEFT', ActionButton1, 'BOTTOMLEFT', 0, yOffset1)
+    -- MultiBarBottomRight:SetClearPoint('BOTTOMLEFT', MultiBarBottomLeftButton1, 'TOPLEFT', 0, yOffset2)
+    
+    -- ✅ REMOVED: Bottom bars are now completely independent from mainbar
+    -- MultiBarBottomLeftButton1:SetClearPoint('BOTTOMLEFT', ActionButton1, 'BOTTOMLEFT', 0, yOffset1)
 end
 
 function MainMenuBarMixin:initialize()
@@ -476,6 +433,357 @@ function MainMenuBarMixin:initialize()
 end
 addon.pUiMainBar = pUiMainBar;
 MainMenuBarMixin:initialize();
+
+-- ✅ INTEGRATE ACTION BARS WITH CENTRALIZED UI SYSTEM
+-- Create container frames for each action bar and register them
+local function SetupActionBarContainers()
+    -- Create MainBars module reference for consistency
+    addon.MainBars = addon.MainBars or {}
+    
+    -- 1. Main bar - use existing pUiMainBar as container, add editor textures
+    -- Create a separate overlay frame to ensure it's above action buttons
+    if not pUiMainBar.overlayFrame then
+        local overlayFrame = CreateFrame("Frame", nil, UIParent)
+        overlayFrame:SetFrameStrata("FULLSCREEN_DIALOG")  -- Highest available strata to be above everything
+        overlayFrame:SetFrameLevel(9999)
+        overlayFrame:SetAllPoints(pUiMainBar)
+        overlayFrame:EnableMouse(true)  -- Block mouse events to prevent interaction with buttons below
+        
+        -- CRITICAL FIX: Allow dragging by forwarding drag events to the main frame
+        overlayFrame:RegisterForDrag("LeftButton")
+        overlayFrame:SetScript("OnDragStart", function(self)
+            if pUiMainBar:IsMovable() then
+                pUiMainBar:StartMoving()
+            end
+        end)
+        overlayFrame:SetScript("OnDragStop", function(self)
+            if pUiMainBar:IsMovable() then
+                pUiMainBar:StopMovingOrSizing()
+            end
+        end)
+        
+        pUiMainBar.overlayFrame = overlayFrame
+        
+        local texture = overlayFrame:CreateTexture(nil, 'OVERLAY')
+        texture:SetAllPoints(overlayFrame)
+        texture:SetTexture(0, 1, 0, 0.7) -- Green more visible
+        texture:SetDrawLayer('OVERLAY', 7) -- High layer within overlay frame
+        texture:Hide()
+        pUiMainBar.editorTexture = texture
+        
+        local fontString = overlayFrame:CreateFontString(nil, "OVERLAY", 'GameFontNormalLarge')
+        fontString:SetPoint("CENTER", overlayFrame, "CENTER")
+        fontString:SetText("MainBar")
+        fontString:SetTextColor(1, 1, 1, 1) -- White text for better visibility
+        fontString:SetShadowColor(0, 0, 0, 1)
+        fontString:SetShadowOffset(2, -2)
+        fontString:SetDrawLayer('OVERLAY', 8) -- Above the texture
+        fontString:Hide()
+        pUiMainBar.editorText = fontString
+        
+        -- Hook mainbar movement to update overlay position
+        pUiMainBar:HookScript("OnUpdate", function(self)
+            if overlayFrame then
+                overlayFrame:SetAllPoints(self)
+            end
+        end)
+    end
+    
+    -- Set proper frame strata and level for editor mode - CRITICAL for overlay visibility
+    pUiMainBar.originalStrata = pUiMainBar:GetFrameStrata()
+    pUiMainBar.originalLevel = pUiMainBar:GetFrameLevel()
+    
+    -- Ensure main bar has proper default position and is movable
+    if not pUiMainBar:GetPoint() then
+        pUiMainBar:SetPoint("BOTTOM", UIParent, "BOTTOM", 0, 75)
+    end
+    pUiMainBar:SetMovable(true)
+    pUiMainBar:EnableMouse(true)
+    pUiMainBar:RegisterForDrag("LeftButton")
+    pUiMainBar:SetScript("OnDragStart", function(self) self:StartMoving() end)
+    pUiMainBar:SetScript("OnDragStop", function(self) self:StopMovingOrSizing() end)
+    
+    addon:RegisterEditableFrame({
+        name = "mainbar",
+        frame = pUiMainBar,
+        blizzardFrame = MainMenuBar,
+        configPath = {"widgets", "mainbar"},
+        module = addon.MainBars
+    })
+    print("|cFF00FF00[DragonUI]|r Registered mainbar frame")
+    
+    -- 2. Right bar container
+    local rightBarFrame = addon.CreateUIFrame(40, 500, "RightBar")
+    rightBarFrame:SetPoint("RIGHT", UIParent, "RIGHT", -5, -70) -- Default position
+    
+    -- Ensure overlay is above action buttons
+    if rightBarFrame.editorTexture then
+        rightBarFrame.editorTexture:SetDrawLayer('OVERLAY', 25)
+    end
+    if rightBarFrame.editorText then
+        rightBarFrame.editorText:SetDrawLayer('OVERLAY', 26)
+    end
+    
+    -- Set proper strata for overlay visibility
+    rightBarFrame:SetFrameStrata("FULLSCREEN_DIALOG")
+    rightBarFrame:SetFrameLevel(500)
+    
+    if MultiBarRight then
+        MultiBarRight:SetParent(UIParent) -- Keep on UIParent to prevent strata issues
+        MultiBarRight:ClearAllPoints()
+        MultiBarRight:SetPoint("CENTER", rightBarFrame, "CENTER")
+    end
+    
+    addon:RegisterEditableFrame({
+        name = "rightbar",
+        frame = rightBarFrame,
+        blizzardFrame = MultiBarRight,
+        configPath = {"widgets", "rightbar"},
+        module = addon.MainBars
+    })
+    print("|cFF00FF00[DragonUI]|r Registered rightbar frame")
+    
+    -- 3. Left bar container
+    local leftBarFrame = addon.CreateUIFrame(40, 500, "LeftBar")
+    leftBarFrame:SetPoint("RIGHT", UIParent, "RIGHT", -45, -70) -- Default position
+    
+    -- Ensure overlay is above action buttons
+    if leftBarFrame.editorTexture then
+        leftBarFrame.editorTexture:SetDrawLayer('OVERLAY', 25)
+    end
+    if leftBarFrame.editorText then
+        leftBarFrame.editorText:SetDrawLayer('OVERLAY', 26)
+    end
+    
+    -- Set proper strata for overlay visibility
+    leftBarFrame:SetFrameStrata("FULLSCREEN_DIALOG")
+    leftBarFrame:SetFrameLevel(500)
+    
+    if MultiBarLeft then
+        MultiBarLeft:SetParent(UIParent) -- Keep on UIParent to prevent strata issues
+        MultiBarLeft:ClearAllPoints()
+        MultiBarLeft:SetPoint("CENTER", leftBarFrame, "CENTER")
+    end
+    
+    addon:RegisterEditableFrame({
+        name = "leftbar",
+        frame = leftBarFrame,
+        blizzardFrame = MultiBarLeft,
+        configPath = {"widgets", "leftbar"},
+        module = addon.MainBars
+    })
+    print("|cFF00FF00[DragonUI]|r Registered leftbar frame")
+    
+    -- 4. Bottom left bar container - INDEPENDENT FROM MAINBAR
+    local bottomLeftBarFrame = addon.CreateUIFrame(500, 40, "BottomBarLeft")
+    bottomLeftBarFrame:SetPoint("BOTTOM", UIParent, "BOTTOM", 0, 120) -- Default position
+    
+    -- Make overlay more visible and ensure it's above action bars
+    if bottomLeftBarFrame.editorTexture then
+        bottomLeftBarFrame.editorTexture:SetTexture(1, 0.8, 0, 0.8) -- Orange more visible
+        bottomLeftBarFrame.editorTexture:SetDrawLayer('OVERLAY', 30) -- Very high layer
+    end
+    if bottomLeftBarFrame.editorText then
+        bottomLeftBarFrame.editorText:SetTextColor(1, 1, 1, 1) -- White text with shadow
+        bottomLeftBarFrame.editorText:SetShadowColor(0, 0, 0, 1)
+        bottomLeftBarFrame.editorText:SetShadowOffset(2, -2)
+        bottomLeftBarFrame.editorText:SetDrawLayer('OVERLAY', 31)
+    end
+    
+    -- CRITICAL: Set frame strata higher to be above action bars AND mainbar
+    bottomLeftBarFrame:SetFrameStrata("FULLSCREEN_DIALOG")
+    bottomLeftBarFrame:SetFrameLevel(1500)  -- Higher than mainbar
+    
+    -- Ensure overlay stays with frame during movement
+    bottomLeftBarFrame:HookScript("OnUpdate", function(self)
+        if self.editorTexture and self.editorText then
+            -- Force overlay to stay aligned with frame
+            self.editorTexture:SetAllPoints(self)
+            self.editorText:SetPoint("CENTER", self, "CENTER")
+        end
+    end)
+    
+    if MultiBarBottomLeft then
+        -- COMPLETELY DECOUPLE from mainbar
+        MultiBarBottomLeft:SetParent(UIParent)
+        MultiBarBottomLeft:ClearAllPoints()
+        MultiBarBottomLeft:SetPoint("CENTER", bottomLeftBarFrame, "CENTER")
+        MultiBarBottomLeft:SetMovable(true)
+    end
+    
+    addon:RegisterEditableFrame({
+        name = "bottombarleft",
+        frame = bottomLeftBarFrame,
+        blizzardFrame = MultiBarBottomLeft,
+        configPath = {"widgets", "bottombarleft"},
+        module = addon.MainBars
+    })
+    print("|cFF00FF00[DragonUI]|r Registered bottombarleft frame")
+    
+    -- 5. Bottom right bar container - INDEPENDENT FROM MAINBAR
+    local bottomRightBarFrame = addon.CreateUIFrame(500, 40, "BottomBarRight")
+    bottomRightBarFrame:SetPoint("BOTTOM", UIParent, "BOTTOM", 0, 160) -- Default position
+    
+    -- Make overlay more visible and ensure it's above action bars
+    if bottomRightBarFrame.editorTexture then
+        bottomRightBarFrame.editorTexture:SetTexture(1, 0.5, 0, 0.8) -- Orange more visible
+        bottomRightBarFrame.editorTexture:SetDrawLayer('OVERLAY', 30) -- Very high layer
+    end
+    if bottomRightBarFrame.editorText then
+        bottomRightBarFrame.editorText:SetTextColor(1, 1, 1, 1) -- White text with shadow
+        bottomRightBarFrame.editorText:SetShadowColor(0, 0, 0, 1)
+        bottomRightBarFrame.editorText:SetShadowOffset(2, -2)
+        bottomRightBarFrame.editorText:SetDrawLayer('OVERLAY', 31)
+    end
+    
+    -- CRITICAL: Set frame strata higher to be above action bars AND mainbar
+    bottomRightBarFrame:SetFrameStrata("FULLSCREEN_DIALOG")
+    bottomRightBarFrame:SetFrameLevel(1500)  -- Higher than mainbar
+    
+    -- Ensure overlay stays with frame during movement
+    bottomRightBarFrame:HookScript("OnUpdate", function(self)
+        if self.editorTexture and self.editorText then
+            -- Force overlay to stay aligned with frame
+            self.editorTexture:SetAllPoints(self)
+            self.editorText:SetPoint("CENTER", self, "CENTER")
+        end
+    end)
+    
+    if MultiBarBottomRight then
+        -- COMPLETELY DECOUPLE from mainbar
+        MultiBarBottomRight:SetParent(UIParent)
+        MultiBarBottomRight:ClearAllPoints()
+        MultiBarBottomRight:SetPoint("CENTER", bottomRightBarFrame, "CENTER")
+        MultiBarBottomRight:SetMovable(true)
+    end
+    
+    addon:RegisterEditableFrame({
+        name = "bottombarright",
+        frame = bottomRightBarFrame,
+        blizzardFrame = MultiBarBottomRight,
+        configPath = {"widgets", "bottombarright"},
+        module = addon.MainBars
+    })
+    print("|cFF00FF00[DragonUI]|r Registered bottombarright frame")
+    
+    print("|cFF00FF00[DragonUI]|r Action bars integrated with centralized UI system")
+end
+
+-- Set up containers when the module loads
+SetupActionBarContainers()
+
+-- Function to ensure bottom bars follow their containers when moved
+local function EnsureBottomBarsFollowContainers()
+    addon.core:ScheduleTimer(function()
+        if MultiBarBottomLeft then
+            local frameInfo = addon:GetEditableFrameInfo("bottombarleft")
+            if frameInfo and frameInfo.frame then
+                MultiBarBottomLeft:ClearAllPoints()
+                MultiBarBottomLeft:SetPoint("CENTER", frameInfo.frame, "CENTER")
+            end
+        end
+        
+        if MultiBarBottomRight then
+            local frameInfo = addon:GetEditableFrameInfo("bottombarright")
+            if frameInfo and frameInfo.frame then
+                MultiBarBottomRight:ClearAllPoints()
+                MultiBarBottomRight:SetPoint("CENTER", frameInfo.frame, "CENTER")
+            end
+        end
+        
+        -- Also ensure left and right bars follow their containers
+        if MultiBarLeft then
+            local frameInfo = addon:GetEditableFrameInfo("leftbar")
+            if frameInfo and frameInfo.frame then
+                MultiBarLeft:ClearAllPoints()
+                MultiBarLeft:SetPoint("CENTER", frameInfo.frame, "CENTER")
+            end
+        end
+        
+        if MultiBarRight then
+            local frameInfo = addon:GetEditableFrameInfo("rightbar")
+            if frameInfo and frameInfo.frame then
+                MultiBarRight:ClearAllPoints()
+                MultiBarRight:SetPoint("CENTER", frameInfo.frame, "CENTER")
+            end
+        end
+    end, 0.1)
+end
+
+-- ✅ REMOVED: Faulty hook that was causing IsMoving() errors
+-- The centralized system should handle movement automatically
+
+-- Add proper hooks for action bar following using drag events
+local function SetupActionBarFollowing()
+    -- Setup for all container frames to ensure action bars follow when moved
+    -- NOTE: mainbar is excluded because it doesn't have a separate action bar that follows it
+    local actionBarMappings = {
+        leftbar = MultiBarLeft,
+        rightbar = MultiBarRight,
+        bottombarleft = MultiBarBottomLeft,
+        bottombarright = MultiBarBottomRight
+    }
+    
+    for containerName, actionBar in pairs(actionBarMappings) do
+        if actionBar then
+            local frameInfo = addon:GetEditableFrameInfo(containerName)
+            if frameInfo and frameInfo.frame then
+                -- Hook drag stop to ensure action bar follows
+                frameInfo.frame:HookScript("OnDragStop", function(self)
+                    actionBar:ClearAllPoints()
+                    actionBar:SetPoint("CENTER", self, "CENTER")
+                end)
+                
+                -- Also hook show/hide events
+                frameInfo.frame:HookScript("OnShow", function(self)
+                    actionBar:ClearAllPoints()
+                    actionBar:SetPoint("CENTER", self, "CENTER")
+                end)
+            end
+        end
+    end
+end
+
+-- Setup the following system after containers are registered
+addon.core:ScheduleTimer(SetupActionBarFollowing, 1)
+
+-- Apply positions from database after registration
+local function ApplyActionBarPositions()
+    -- Apply positions using the centralized system for each registered frame
+    local registeredFrames = {
+        "mainbar", "rightbar", "leftbar", "bottombarleft", "bottombarright"
+    }
+    
+    print("|cFF00FF00[DragonUI]|r Applying action bar positions...")
+    
+    for _, frameName in pairs(registeredFrames) do
+        local frameInfo = addon:GetEditableFrameInfo(frameName)
+        if frameInfo and frameInfo.frame then
+            -- Check if we have saved position data
+            local config = addon.db.profile.widgets[frameName]
+            if config and config.anchor then
+                frameInfo.frame:ClearAllPoints()
+                frameInfo.frame:SetPoint(config.anchor or "CENTER", UIParent, config.anchor or "CENTER", config.posX or 0, config.posY or 0)
+                print("|cFF00FF00[DragonUI]|r Applied position to " .. frameName .. ": " .. (config.anchor or "CENTER") .. " (" .. (config.posX or 0) .. "," .. (config.posY or 0) .. ")")
+            else
+                print("|cFFFF0000[DragonUI]|r No saved position for " .. frameName .. ", using defaults")
+            end
+        else
+            print("|cFFFF0000[DragonUI]|r Frame info not found for " .. frameName)
+        end
+    end
+end
+
+-- Apply positions after a short delay to ensure everything is initialized
+local positionFrame = CreateFrame("Frame")
+positionFrame:RegisterEvent("PLAYER_LOGIN")
+positionFrame:SetScript("OnEvent", function(self, event)
+    if event == "PLAYER_LOGIN" then
+        -- Apply positions after addon is fully loaded
+        addon.core:ScheduleTimer(ApplyActionBarPositions, 0.5)
+        self:UnregisterEvent("PLAYER_LOGIN")
+    end
+end)
 
 -- configuration refresh function
 function addon.RefreshMainbars()
@@ -489,12 +797,7 @@ function addon.RefreshMainbars()
     local db_buttons = db.buttons
     
     -- ========================================
-    -- ✅ POSICIONAR BARRAS (NUEVO Y SIMPLIFICADO)
-    -- ========================================
-    addon.PositionActionBars()
-    
-    -- ========================================
-    -- ✅ RESTO DE CONFIGURACIONES (se mantiene igual)
+    -- ✅ ORIENTATION AND NON-POSITIONAL SETTINGS ONLY
     -- ========================================
     
     -- Update scales
@@ -502,6 +805,9 @@ function addon.RefreshMainbars()
     if MultiBarLeft then MultiBarLeft:SetScale(db_mainbars.scale_leftbar); end
     if MultiBarRight then MultiBarRight:SetScale(db_mainbars.scale_rightbar); end
     if VehicleMenuBar then VehicleMenuBar:SetScale(db_mainbars.scale_vehicle); end
+    
+    -- Update orientation (only - position handled by centralized system)
+    addon.PositionActionBars()
     
     -- Update page buttons
     if db_buttons.pages.show then
