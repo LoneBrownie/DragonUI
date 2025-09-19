@@ -120,6 +120,16 @@ function EditorMode:Show()
     -- ✅ NUEVO: USAR SISTEMA CENTRALIZADO - UNA SOLA LÍNEA
     addon:ShowAllEditableFrames()
     
+    -- ✅ NEW: Enable action bar overlays for mouse blocking during editor mode
+    if addon.EnableActionBarOverlays then
+        addon.EnableActionBarOverlays()
+    end
+    
+    -- Update overlay sizes after showing
+    if addon.UpdateOverlaySizes then
+        addon.UpdateOverlaySizes()
+    end
+    
     -- Refresh AceConfig to update button state
     self:RefreshOptionsUI()
     
@@ -133,6 +143,11 @@ function EditorMode:Hide()
 
     -- ✅ NUEVO: USAR SISTEMA CENTRALIZADO - UNA SOLA LÍNEA
     addon:HideAllEditableFrames(true) -- true = refresh and save positions
+    
+    -- ✅ NEW: Disable action bar overlays to allow normal interaction with action buttons
+    if addon.DisableActionBarOverlays then
+        addon.DisableActionBarOverlays()
+    end
     
     -- Refresh AceConfig to update button state
     self:RefreshOptionsUI()

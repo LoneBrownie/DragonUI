@@ -191,8 +191,7 @@ end
 function MainMenuBarMixin:actionbar_setup()
 	ActionButton1:SetParent(pUiMainBar)
 	ActionButton1:SetClearPoint('BOTTOMLEFT', pUiMainBar, 2, 2)
-	-- ✅ REMOVED: Bottom bar anchoring to main bar - now handled by centralized system
-	-- MultiBarBottomLeftButton1:SetClearPoint('BOTTOMLEFT', ActionButton1, 'BOTTOMLEFT', 0, 48)
+	
 	
 	if config.buttons.pages.show then
 		do_action.SetNumPagesButton(ActionBarUpButton, pUiMainBarArt, 'pageuparrow', 8)
@@ -219,6 +218,8 @@ function MainMenuBarMixin:actionbar_setup()
 	-- MultiBarRight:SetClearPoint('TOPRIGHT', UIParent, 'RIGHT', -6, (Minimap:GetHeight() * 1.3))
 	MultiBarRight:SetScale(config.mainbars.scale_rightbar)
 	MultiBarLeft:SetScale(config.mainbars.scale_leftbar)
+    if MultiBarBottomLeft then MultiBarBottomLeft:SetScale(config.mainbars.scale_bottomleft or 0.9) end
+    if MultiBarBottomRight then MultiBarBottomRight:SetScale(config.mainbars.scale_bottomright or 0.9) end
 
 	-- MultiBarLeft:SetParent(UIParent)
 	-- MultiBarLeft:SetClearPoint('TOPRIGHT', MultiBarRight, 'TOPLEFT', -7, 0)
@@ -447,7 +448,7 @@ local function SetupActionBarContainers()
         overlayFrame:SetFrameStrata("FULLSCREEN_DIALOG")  -- Highest available strata to be above everything
         overlayFrame:SetFrameLevel(9999)
         overlayFrame:SetAllPoints(pUiMainBar)
-        overlayFrame:EnableMouse(true)  -- Block mouse events to prevent interaction with buttons below
+        overlayFrame:EnableMouse(false)  -- ✅ FIXED: Don't block mouse by default - only when editor is active
         
         -- CRITICAL FIX: Allow dragging by forwarding drag events to the main frame
         overlayFrame:RegisterForDrag("LeftButton")
@@ -514,7 +515,7 @@ local function SetupActionBarContainers()
     
     -- 2. Right bar container
     local rightBarFrame = addon.CreateUIFrame(40, 500, "RightBar")
-    rightBarFrame:SetPoint("RIGHT", UIParent, "RIGHT", -5, -70) -- Default position
+    rightBarFrame:SetPoint("RIGHT", UIParent, "RIGHT", -10, -70) -- Default position
     
     -- Ensure overlay is above action buttons
     if rightBarFrame.editorTexture then
@@ -804,6 +805,8 @@ function addon.RefreshMainbars()
     pUiMainBar:SetScale(db_mainbars.scale_actionbar);
     if MultiBarLeft then MultiBarLeft:SetScale(db_mainbars.scale_leftbar); end
     if MultiBarRight then MultiBarRight:SetScale(db_mainbars.scale_rightbar); end
+    if MultiBarBottomLeft then MultiBarBottomLeft:SetScale(db_mainbars.scale_bottomleft or 0.9); end     
+    if MultiBarBottomRight then MultiBarBottomRight:SetScale(db_mainbars.scale_bottomright or 0.9); end 
     if VehicleMenuBar then VehicleMenuBar:SetScale(db_mainbars.scale_vehicle); end
     
     -- Update orientation (only - position handled by centralized system)
@@ -910,4 +913,43 @@ end
 -- ✅ FUNCIÓN PARA FORZAR SOLO BARRAS SECUNDARIAS
 function addon.ForceSecondaryBarsPosition()
     addon.PositionActionBars()
+end
+
+-- ✅ FUNCTIONS TO ENABLE/DISABLE OVERLAY MOUSE BLOCKING FOR EDITOR MODE
+function addon.EnableActionBarOverlays()
+    -- Enable mouse blocking on all action bar overlays when editor mode is active
+    if pUiMainBar and pUiMainBar.overlayFrame then
+        pUiMainBar.overlayFrame:EnableMouse(true)
+    end
+    if MultiBarLeft and MultiBarLeft.overlayFrame then
+        MultiBarLeft.overlayFrame:EnableMouse(true)
+    end
+    if MultiBarRight and MultiBarRight.overlayFrame then
+        MultiBarRight.overlayFrame:EnableMouse(true)
+    end
+    if MultiBarBottomLeft and MultiBarBottomLeft.overlayFrame then
+        MultiBarBottomLeft.overlayFrame:EnableMouse(true)
+    end
+    if MultiBarBottomRight and MultiBarBottomRight.overlayFrame then
+        MultiBarBottomRight.overlayFrame:EnableMouse(true)
+    end
+end
+
+function addon.DisableActionBarOverlays()
+    -- Disable mouse blocking on all action bar overlays when editor mode is inactive
+    if pUiMainBar and pUiMainBar.overlayFrame then
+        pUiMainBar.overlayFrame:EnableMouse(false)
+    end
+    if MultiBarLeft and MultiBarLeft.overlayFrame then
+        MultiBarLeft.overlayFrame:EnableMouse(false)
+    end
+    if MultiBarRight and MultiBarRight.overlayFrame then
+        MultiBarRight.overlayFrame:EnableMouse(false)
+    end
+    if MultiBarBottomLeft and MultiBarBottomLeft.overlayFrame then
+        MultiBarBottomLeft.overlayFrame:EnableMouse(false)
+    end
+    if MultiBarBottomRight and MultiBarBottomRight.overlayFrame then
+        MultiBarBottomRight.overlayFrame:EnableMouse(false)
+    end
 end

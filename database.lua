@@ -54,7 +54,7 @@ local defaults = {
             mainbar = {
                 anchor = "BOTTOM",
                 posX = 0,
-                posY = 25
+                posY = 22
             },
             rightbar = {
                 anchor = "RIGHT",
@@ -68,13 +68,13 @@ local defaults = {
             },
             bottombarleft = {
                 anchor = "BOTTOM",
-                posX = 0,
-                posY = 120
+                posX = -10,
+                posY = 59
             },
             bottombarright = {
                 anchor = "BOTTOM",
-                posX = 0,
-                posY = 160
+                posX = -10,
+                posY = 99
             }
         },
         -- Quest Tracker
@@ -94,10 +94,11 @@ local defaults = {
                 horizontal = false
             },
 
-            -- Scale settings remain
             scale_actionbar = 0.9,
             scale_rightbar = 0.9,
             scale_leftbar = 0.9,
+            scale_bottomleft = 0.9,    
+            scale_bottomright = 0.9,
             scale_vehicle = 1
         },
 
