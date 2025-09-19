@@ -37,7 +37,7 @@ local defaults = {
             },
             pet = {
                 anchor = "TOPLEFT",
-                posX =63,
+                posX = 63,
                 posY = -80
             },
             petbar = {
@@ -50,7 +50,7 @@ local defaults = {
                 posX = 0,
                 posY = 200
             },
-            
+
             mainbar = {
                 anchor = "BOTTOM",
                 posX = 0,
@@ -76,8 +76,16 @@ local defaults = {
                 posX = -10,
                 posY = 97
             },
-            micromenu = { anchor = "BOTTOMRIGHT", posX = -166, posY = 5 },
-        bagsbar = { anchor = "BOTTOMRIGHT", posX = 0, posY = 0}
+            micromenu = {
+                anchor = "BOTTOMRIGHT",
+                posX = -3,
+                posY = 3
+            },
+            bagsbar = {
+                anchor = "BOTTOMRIGHT",
+                posX = -3,
+                posY = 45
+            }
         },
         -- Quest Tracker
         questtracker = {
@@ -99,7 +107,7 @@ local defaults = {
             scale_actionbar = 0.9,
             scale_rightbar = 0.9,
             scale_leftbar = 0.9,
-            scale_bottomleft = 0.9,    
+            scale_bottomleft = 0.9,
             scale_bottomright = 0.9,
             scale_vehicle = 1
         },
@@ -238,7 +246,6 @@ local defaults = {
             sizeIcon = 27,
             holdTime = 0.3,
             holdTimeInterrupt = 0.8,
-           
 
             -- TARGET CASTBAR SETTINGS
             target = {
@@ -333,7 +340,7 @@ local defaults = {
                 showManaTextAlways = false,
                 enableThreatGlow = false,
                 scale = 1.0,
-                override = true,
+                override = true
 
             },
             party = {
@@ -345,8 +352,8 @@ local defaults = {
                 showManaTextAlways = false,
                 orientation = 'vertical',
                 padding = 10,
-                scale = 1.0,
-               
+                scale = 1.0
+
             },
             tot = {
                 classcolor = false,
