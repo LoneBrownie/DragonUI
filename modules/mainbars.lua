@@ -284,40 +284,45 @@ end
 
 
 function MainMenuBarMixin:statusbar_setup()
+	-- ✅ RETAILUI PATTERN: Clean and simple setup - no legacy positioning
 	for _,bar in pairs({MainMenuExpBar,ReputationWatchStatusBar}) do
 		bar:GetStatusBarTexture():SetDrawLayer('BORDER')
 		bar.status = bar:CreateTexture(nil, 'ARTWORK')
 		if old then
-			bar:SetSize(545, 10)
+			bar:SetSize(537, 10)
 			bar.status:SetPoint('CENTER', 0, -1)
-			bar.status:SetSize(545, 14)
+			bar.status:SetSize(545, 10)
 			bar.status:set_atlas('ui-hud-experiencebar')
 		elseif new then
+			-- RetailUI approach: Let container control size
 			bar:SetSize(537, 10)
 			bar.status:SetPoint('CENTER', 0, -2)
 			bar.status:set_atlas('ui-hud-experiencebar-round', true)
 			ReputationWatchStatusBar:SetStatusBarTexture(addon._dir..'statusbarfill.tga')
 			ReputationWatchStatusBarBackground:set_atlas('ui-hud-experiencebar-background', true)
-			ExhaustionTick:GetNormalTexture():set_atlas('ui-hud-experiencebar-frame-pip')
-			ExhaustionTick:GetHighlightTexture():set_atlas('ui-hud-experiencebar-frame-pip-mouseover')
-			ExhaustionTick:GetHighlightTexture():SetBlendMode('ADD')
+			
+			-- ✅ RETAILUI: Clean ExhaustionTick setup - let Blizzard handle positioning
+			if ExhaustionTick then
+				ExhaustionTick:GetNormalTexture():set_atlas('ui-hud-experiencebar-frame-pip')
+				ExhaustionTick:GetHighlightTexture():set_atlas('ui-hud-experiencebar-frame-pip-mouseover')
+				ExhaustionTick:GetHighlightTexture():SetBlendMode('ADD')
+			end
 		else
 			bar.status:Hide()
 		end
 	end
 	
-	-- ✅ REMOVED: Position now handled by RetailUI container system
-	-- MainMenuExpBar:SetClearPoint('BOTTOM', UIParent, 0, 6)
+	-- ✅ ONLY set frame levels - NO positioning or parenting
+	-- All positioning is handled by the RetailUI container system
 	MainMenuExpBar:SetFrameLevel(10)
-	ReputationWatchBar:SetParent(pUiMainBar)
 	ReputationWatchBar:SetFrameLevel(10)
-	ReputationWatchBar:SetWidth(ReputationWatchStatusBar:GetWidth())
-	ReputationWatchBar:SetHeight(ReputationWatchStatusBar:GetHeight())
 	
+	-- Text positioning only
 	MainMenuBarExpText:SetParent(MainMenuExpBar)
 	MainMenuBarExpText:SetClearPoint('CENTER', MainMenuExpBar, 'CENTER', 0, old and 0 or 1)
 	
 	if new then
+		-- ✅ RETAILUI: Clean background texture setup
 		for _,obj in pairs{MainMenuExpBar:GetRegions()} do 
 			if obj:GetObjectType() == 'Texture' and obj:GetDrawLayer() == 'BACKGROUND' then
 				obj:set_atlas('ui-hud-experiencebar-background', true)
@@ -329,27 +334,50 @@ end
 event:RegisterEvents(function(self)
 	self:UnregisterEvent('PLAYER_ENTERING_WORLD');
 	local exhaustionStateID = GetRestState();
-	ExhaustionTick:SetParent(pUiMainBar);
-	ExhaustionTick:SetFrameLevel(MainMenuExpBar:GetFrameLevel() +2);
-	if new then
-		ExhaustionLevelFillBar:SetHeight(MainMenuExpBar:GetHeight());
-		ExhaustionLevelFillBar:set_atlas('ui-hud-experiencebar-fill-prediction');
-		ExhaustionTick:SetSize(10, 14);
-		ExhaustionTick:SetClearPoint('CENTER', ExhaustionLevelFillBar, 'RIGHT', 0, 2);
+	
+	-- ✅ RETAILUI PATTERN: Proper ExhaustionTick handling
+	if MainMenuExpBar and addon.ActionBarFrames.xpbar then
+		-- Set proper parent and frame level
+		ExhaustionTick:SetParent(MainMenuExpBar);
+		ExhaustionTick:SetFrameLevel(MainMenuExpBar:GetFrameLevel() + 2);
+		
+		if new then
+			-- RetailUI approach: Only adjust height to match container
+			ExhaustionLevelFillBar:SetHeight(addon.ActionBarFrames.xpbar:GetHeight());
+			ExhaustionLevelFillBar:set_atlas('ui-hud-experiencebar-fill-prediction');
+			
+			-- ✅ FIX: Proper ExhaustionTick scaling and positioning (larger and more visible)
+			ExhaustionTick:SetSize(10, addon.ActionBarFrames.xpbar:GetHeight() + 6); -- Larger and taller than bar
+			ExhaustionTick:ClearAllPoints();
+			-- Position at the END of the CURRENT XP (right edge of the actual XP bar)
+			ExhaustionTick:SetPoint('RIGHT', MainMenuExpBar:GetStatusBarTexture(), 'RIGHT', 5, 3);
 
-		MainMenuExpBar:SetStatusBarTexture(addon._dir..'uiexperiencebar');
-		MainMenuExpBar:SetStatusBarColor(1, 1, 1, 1);
-		if exhaustionStateID == 1 then
-			ExhaustionTick:Show();
-			MainMenuExpBar:GetStatusBarTexture():SetTexCoord(574/2048, 1137/2048, 34/64, 43/64);
-			ExhaustionLevelFillBar:SetVertexColor(0.0, 0, 1, 0.45);
-		elseif exhaustionStateID == 2 then
-			MainMenuExpBar:GetStatusBarTexture():SetTexCoord(1/2048, 570/2048, 42/64, 51/64);
-			ExhaustionLevelFillBar:SetVertexColor(0.58, 0.0, 0.55, 0.45);
+			MainMenuExpBar:SetStatusBarTexture(addon._dir..'uiexperiencebar');
+			MainMenuExpBar:SetStatusBarColor(1, 1, 1, 1);
+			
+			if exhaustionStateID == 1 then
+				MainMenuExpBar:GetStatusBarTexture():SetTexCoord(574/2048, 1137/2048, 34/64, 43/64);
+			elseif exhaustionStateID == 2 then
+				MainMenuExpBar:GetStatusBarTexture():SetTexCoord(1/2048, 570/2048, 42/64, 51/64);
+			end
 		end
-	else
-		if exhaustionStateID == 1 then
-			ExhaustionTick:Show();
+		
+		-- Use centralized function for exhaustion tick
+		addon.UpdateExhaustionTick()
+	end
+	
+	-- ✅ ENSURE: Reputation bar is also positioned correctly after world load
+	if ReputationWatchBar and addon.ActionBarFrames.repbar then
+		-- Force reposition reputation bar to its container
+		ReputationWatchBar:SetParent(UIParent)
+		ReputationWatchBar:ClearAllPoints()
+		ReputationWatchBar:SetPoint("CENTER", addon.ActionBarFrames.repbar, "CENTER")
+		
+		-- Also position overlay frame
+		if ReputationWatchBarOverlayFrame then
+			ReputationWatchBarOverlayFrame:SetParent(UIParent)
+			ReputationWatchBarOverlayFrame:ClearAllPoints()
+			ReputationWatchBarOverlayFrame:SetPoint("CENTER", addon.ActionBarFrames.repbar, "CENTER")
 		end
 	end
 end,
@@ -359,50 +387,18 @@ end,
 
 
 
-hooksecurefunc('ReputationWatchBar_Update',function()
-	local name = GetWatchedFactionInfo();
-	if name then
-		local abovexp = config.xprepbar.repbar_abovexp_offset;
-		local default = config.xprepbar.repbar_offset;
-		ReputationWatchBar:SetClearPoint('BOTTOM', UIParent, 0, MainMenuExpBar:IsShown() and abovexp or default);
-		ReputationWatchBarOverlayFrame:SetClearPoint('BOTTOM', UIParent, 0, MainMenuExpBar:IsShown() and abovexp or default);
-		ReputationWatchStatusBar:SetHeight(10)
-		ReputationWatchStatusBar:SetClearPoint('TOPLEFT', ReputationWatchBar, 0, 3)
-		ReputationWatchStatusBarText:SetClearPoint('CENTER', ReputationWatchStatusBar, 'CENTER', 0, old and 0 or 1);
-		ReputationWatchStatusBarBackground:SetAllPoints(ReputationWatchStatusBar)
-	end
-end)
+-- ✅ REMOVED: Legacy ReputationWatchBar_Update hook completely eliminated
+-- This hook was interfering with the container system
+-- All positioning is now handled by the RetailUI container system
 
 
 
 
 
 
-local MainMenuExpBar = _G["MainMenuExpBar"]
-local ReputationWatchBar = _G["ReputationWatchBar"]
-
-for _,bar in pairs({MainMenuExpBar, ReputationWatchBar}) do
-    if bar then
-        bar:HookScript('OnShow',function()
-            if not InCombatLockdown() and not (addon.EditorMode and addon.EditorMode:IsActive()) then
-                addon.PositionActionBars() -- ✅ Usar la nueva función
-            end
-        end);
-        bar:HookScript('OnHide',function()
-            if not InCombatLockdown() and not (addon.EditorMode and addon.EditorMode:IsActive()) then
-                addon.PositionActionBars() -- ✅ Usar la nueva función
-            end
-        end);
-    end
-end;
-
-
-
-function addon.RefreshRepBarPosition()
-	if ReputationWatchBar_Update then
-		ReputationWatchBar_Update()
-	end
-end
+-- ✅ REMOVED: Legacy OnShow/OnHide hooks eliminated
+-- These hooks were interfering with the container system
+-- All positioning is now handled by the RetailUI container system
 
 -- update position for secondary action bars - LEGACY FUNCTION
 -- ✅ NOTE: This function is kept for compatibility but bottom bars are now handled by centralized system
@@ -448,7 +444,8 @@ addon.ActionBarFrames = {
     leftbar = nil,
     bottombarleft = nil,
     bottombarright = nil,
-    xpbar = nil
+    xpbar = nil,
+    repbar = nil
 }
 
 -- Create action bar container frames
@@ -462,8 +459,11 @@ local function CreateActionBarFrames()
     addon.ActionBarFrames.bottombarleft = addon.CreateUIFrame(490, 40, "BottomBarLeft")
     addon.ActionBarFrames.bottombarright = addon.CreateUIFrame(490, 40, "BottomBarRight")
     
-    -- Create experience bar container
-    addon.ActionBarFrames.xpbar = addon.CreateUIFrame(545, 20, "XPBar")
+    -- Create experience bar container (matching reputation bar dimensions)
+    addon.ActionBarFrames.xpbar = addon.CreateUIFrame(537, 12, "XPBar")
+    
+    -- Create reputation bar container (same dimensions as XP bar)
+    addon.ActionBarFrames.repbar = addon.CreateUIFrame(537, 12, "RepBar")
 end
 
 -- Position action bars to their container frames (initialization only - safe during addon load)
@@ -511,6 +511,22 @@ local function PositionActionBarsToContainers_Initial()
         MainMenuExpBar:SetParent(UIParent)
         MainMenuExpBar:ClearAllPoints()
         MainMenuExpBar:SetPoint("CENTER", addon.ActionBarFrames.xpbar, "CENTER")
+        MainMenuExpBar:SetScale(addon.db.profile.xprepbar.expbar_scale or 0.9)  -- ✅ FIX: Use configurable scale
+    end
+    
+    -- Position reputation bar (match XP bar behavior exactly)
+    if ReputationWatchBar and addon.ActionBarFrames.repbar then
+        ReputationWatchBar:SetParent(UIParent)
+        ReputationWatchBar:ClearAllPoints()
+        ReputationWatchBar:SetPoint("CENTER", addon.ActionBarFrames.repbar, "CENTER")
+        ReputationWatchBar:SetScale(addon.db.profile.xprepbar.repbar_scale or 0.9)  -- ✅ FIX: Use configurable scale
+        
+        -- Also position overlay frame (like legacy system did)
+        if ReputationWatchBarOverlayFrame then
+            ReputationWatchBarOverlayFrame:SetParent(UIParent)
+            ReputationWatchBarOverlayFrame:ClearAllPoints()
+            ReputationWatchBarOverlayFrame:SetPoint("CENTER", addon.ActionBarFrames.repbar, "CENTER")
+        end
     end
 end
 
@@ -545,7 +561,8 @@ local function ApplyActionBarPositions()
         {frame = addon.ActionBarFrames.leftbar, config = widgets.leftbar, default = {"RIGHT", -45, -70}},
         {frame = addon.ActionBarFrames.bottombarleft, config = widgets.bottombarleft, default = {"BOTTOM", 0, 120}},
         {frame = addon.ActionBarFrames.bottombarright, config = widgets.bottombarright, default = {"BOTTOM", 0, 160}},
-        {frame = addon.ActionBarFrames.xpbar, config = widgets.xpbar, default = {"BOTTOM", 0, 6}}
+        {frame = addon.ActionBarFrames.xpbar, config = widgets.xpbar, default = {"BOTTOM", 0, 6}},
+        {frame = addon.ActionBarFrames.repbar, config = widgets.repbar, default = {"BOTTOM", 0, 16}}
     }
     
     for _, barData in ipairs(barConfigs) do
@@ -575,7 +592,8 @@ local function RegisterActionBarFrames()
         {name = "leftbar", frame = addon.ActionBarFrames.leftbar, blizzardFrame = MultiBarLeft, configPath = {"widgets", "leftbar"}},
         {name = "bottombarleft", frame = addon.ActionBarFrames.bottombarleft, blizzardFrame = MultiBarBottomLeft, configPath = {"widgets", "bottombarleft"}},
         {name = "bottombarright", frame = addon.ActionBarFrames.bottombarright, blizzardFrame = MultiBarBottomRight, configPath = {"widgets", "bottombarright"}},
-        {name = "xpbar", frame = addon.ActionBarFrames.xpbar, blizzardFrame = MainMenuExpBar, configPath = {"widgets", "xpbar"}}
+        {name = "xpbar", frame = addon.ActionBarFrames.xpbar, blizzardFrame = MainMenuExpBar, configPath = {"widgets", "xpbar"}},
+        {name = "repbar", frame = addon.ActionBarFrames.repbar, blizzardFrame = ReputationWatchBar, configPath = {"widgets", "repbar"}}
     }
     
     for _, registration in ipairs(frameRegistrations) do
@@ -595,7 +613,8 @@ end
 local function SetupActionBarDragHandlers()
     -- Add drag end handlers to reposition action bars
     for name, frame in pairs(addon.ActionBarFrames) do
-        if frame and name ~= "mainbar" then
+        -- Exclude bars that don't need repositioning after drag
+        if frame and name ~= "mainbar" and name ~= "xpbar" and name ~= "repbar" then
             frame:HookScript("OnDragStop", function(self)
                 addon.core:ScheduleTimer(function() 
                     -- RetailUI Pattern: Only reposition if not in combat
@@ -604,6 +623,67 @@ local function SetupActionBarDragHandlers()
             end)
         end
     end
+    
+    -- Add specific drag handlers for XP and Rep bars to only reposition their Blizzard frames
+    if addon.ActionBarFrames.xpbar then
+        addon.ActionBarFrames.xpbar:HookScript("OnDragStop", function(self)
+            addon.core:ScheduleTimer(function()
+                if not InCombatLockdown() and MainMenuExpBar then
+                    MainMenuExpBar:ClearAllPoints()
+                    MainMenuExpBar:SetPoint("CENTER", addon.ActionBarFrames.xpbar, "CENTER")
+                    MainMenuExpBar:SetScale(addon.db.profile.xprepbar.expbar_scale or 0.9)  -- ✅ FIX: Maintain configured scale
+                end
+            end, 0.1)
+        end)
+    end
+    
+    if addon.ActionBarFrames.repbar then
+        addon.ActionBarFrames.repbar:HookScript("OnDragStop", function(self)
+            addon.core:ScheduleTimer(function()
+                if not InCombatLockdown() and ReputationWatchBar then
+                    -- Reposition main rep bar
+                    ReputationWatchBar:ClearAllPoints()
+                    ReputationWatchBar:SetPoint("CENTER", addon.ActionBarFrames.repbar, "CENTER")
+                    ReputationWatchBar:SetScale(addon.db.profile.xprepbar.repbar_scale or 0.9)  -- ✅ FIX: Maintain configured scale
+                    
+                    -- Also reposition overlay frame (like legacy system did)
+                    if ReputationWatchBarOverlayFrame then
+                        ReputationWatchBarOverlayFrame:ClearAllPoints()
+                        ReputationWatchBarOverlayFrame:SetPoint("CENTER", addon.ActionBarFrames.repbar, "CENTER")
+                    end
+                end
+            end, 0.1)
+        end)
+    end
+end
+-- ✅ REPUTATION BAR: Event handling to maintain position after Blizzard repositioning
+local function SetupRepBarEventHandlers()
+    local repEvent = CreateFrame('Frame')
+    repEvent:RegisterEvent('UPDATE_FACTION')
+    repEvent:RegisterEvent('COMBAT_RATING_UPDATE')
+    repEvent:RegisterEvent('PLAYER_LEVEL_UP')
+    repEvent:RegisterEvent('ADDON_LOADED')
+    
+    repEvent:SetScript('OnEvent', function(self, event, arg1)
+        if event == 'ADDON_LOADED' and arg1 == addonName then
+            self:UnregisterEvent('ADDON_LOADED')
+            return
+        end
+        
+        -- Force reputation bar to stay in container after Blizzard events (immediate)
+        if ReputationWatchBar and addon.ActionBarFrames.repbar then
+            ReputationWatchBar:SetParent(UIParent)
+            ReputationWatchBar:ClearAllPoints()
+            ReputationWatchBar:SetPoint("CENTER", addon.ActionBarFrames.repbar, "CENTER")
+            ReputationWatchBar:SetScale(addon.db.profile.xprepbar.repbar_scale or 0.9)  -- ✅ FIX: Maintain configured scale
+            
+            if ReputationWatchBarOverlayFrame then
+                ReputationWatchBarOverlayFrame:SetParent(UIParent)
+                ReputationWatchBarOverlayFrame:ClearAllPoints()
+                ReputationWatchBarOverlayFrame:SetPoint("CENTER", addon.ActionBarFrames.repbar, "CENTER")
+            end
+        end
+    end)
 end
 
 -- Initialize action bar system
@@ -616,13 +696,26 @@ local function InitializeActionBarSystem()
     -- This is safe during ADDON_LOADED event, even in combat
     PositionActionBarsToContainers_Initial()
     
+    -- ✅ ENSURE: Explicitly refresh both bar positions after all initialization is complete
+    if addon.RefreshXpBarPosition then
+        addon.RefreshXpBarPosition()
+    end
+    if addon.RefreshRepBarPosition then
+        addon.RefreshRepBarPosition()
+    end
+    
     if InCombatLockdown() then
         print("|cff00ff00DragonUI:|r Action bars positioned during combat reload")
     end
     
     -- Set up drag handlers after a short delay
     addon.core:ScheduleTimer(function() SetupActionBarDragHandlers() end, 0.2)
+    
+    -- ✅ SET UP: Reputation bar event handlers to prevent Blizzard repositioning
+    SetupRepBarEventHandlers()
 end
+
+
 -- Update action bar positions from database (similar to RetailUI:UpdateWidgets)
 function addon.UpdateActionBarWidgets()
     -- Safe containers can be positioned anytime - no combat check needed
@@ -672,6 +765,10 @@ function addon.RefreshMainbars()
     if MultiBarBottomLeft then MultiBarBottomLeft:SetScale(db_mainbars.scale_bottomleft or 0.9); end     
     if MultiBarBottomRight then MultiBarBottomRight:SetScale(db_mainbars.scale_bottomright or 0.9); end 
     if VehicleMenuBar then VehicleMenuBar:SetScale(db_mainbars.scale_vehicle); end
+    
+    -- ✅ FIX: Force XP and Rep bars to scale 1.0 to match legacy behavior
+    if MainMenuExpBar then MainMenuExpBar:SetScale(addon.db.profile.xprepbar.expbar_scale or 0.9); end
+    if ReputationWatchBar then ReputationWatchBar:SetScale(addon.db.profile.xprepbar.repbar_scale or 0.9); end
     
     -- Update orientation (only - position handled by centralized system)
     addon.PositionActionBars()
@@ -767,6 +864,61 @@ function addon.RefreshXpBarPosition()
         if not InCombatLockdown() and MainMenuExpBar then
             MainMenuExpBar:ClearAllPoints()
             MainMenuExpBar:SetPoint("CENTER", addon.ActionBarFrames.xpbar, "CENTER")
+            MainMenuExpBar:SetScale(addon.db.profile.xprepbar.expbar_scale or 0.9)  -- ✅ FIX: Maintain configured scale
+        end
+    end
+end
+
+-- Simple function to refresh Rep bar position from database
+function addon.RefreshRepBarPosition()
+    -- Safe containers can be positioned anytime - no combat check needed
+    if not addon.ActionBarFrames.repbar or not addon.db or not addon.db.profile then return end
+    
+    local repbarConfig = addon.db.profile.widgets.repbar
+    if repbarConfig and repbarConfig.anchor then
+        addon.ActionBarFrames.repbar:ClearAllPoints()
+        addon.ActionBarFrames.repbar:SetPoint(repbarConfig.anchor or "BOTTOM", UIParent, repbarConfig.anchor or "BOTTOM", repbarConfig.posX or 0, repbarConfig.posY or 16)
+        
+        -- Reposition Blizzard frames only if not in combat (match XP bar behavior exactly)
+        if not InCombatLockdown() then
+            if ReputationWatchBar then
+                ReputationWatchBar:ClearAllPoints()
+                ReputationWatchBar:SetPoint("CENTER", addon.ActionBarFrames.repbar, "CENTER")
+                ReputationWatchBar:SetScale(addon.db.profile.xprepbar.repbar_scale or 0.9)  -- ✅ FIX: Maintain configured scale
+            end
+            
+            -- Also reposition overlay frame (like legacy system did)
+            if ReputationWatchBarOverlayFrame then
+                ReputationWatchBarOverlayFrame:ClearAllPoints()
+                ReputationWatchBarOverlayFrame:SetPoint("CENTER", addon.ActionBarFrames.repbar, "CENTER")
+            end
+        end
+    end
+end
+
+-- ✅ NEW: Function to handle exhaustion tick updates (RetailUI pattern)
+function addon.UpdateExhaustionTick()
+    if not MainMenuExpBar or not ExhaustionTick then return end
+    
+    local exhaustionStateID = GetRestState()
+    local db_style = addon.db and addon.db.profile and addon.db.profile.style
+    local showExhaustionTick = db_style and db_style.exhaustion_tick
+    
+    -- Check if user wants to show exhaustion tick (configurable like RetailUI)
+    if showExhaustionTick and exhaustionStateID == 1 then
+        ExhaustionTick:Show()
+        if ExhaustionLevelFillBar then
+            ExhaustionLevelFillBar:SetVertexColor(0.0, 0, 1, 0.45) -- Blue for rested
+        end
+    else
+        -- Hide ExhaustionTick like RetailUI does, or when no rested XP
+        ExhaustionTick:Hide()
+        if ExhaustionLevelFillBar then
+            if exhaustionStateID == 1 then
+                ExhaustionLevelFillBar:SetVertexColor(0.0, 0, 1, 0.45) -- Blue for rested
+            else
+                ExhaustionLevelFillBar:SetVertexColor(0.58, 0.0, 0.55, 0.45) -- Purple for normal
+            end
         end
     end
 end

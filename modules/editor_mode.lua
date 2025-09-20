@@ -125,6 +125,9 @@ function EditorMode:Show()
         addon.EnableActionBarOverlays()
     end
     
+    -- ✅ HOOK: Mantener escalas configuradas durante editor mode
+    EditorMode:InstallScaleHooks()
+    
     -- Update overlay sizes after showing
     if addon.UpdateOverlaySizes then
         addon.UpdateOverlaySizes()
@@ -148,6 +151,9 @@ function EditorMode:Hide()
     if addon.DisableActionBarOverlays then
         addon.DisableActionBarOverlays()
     end
+    
+    -- ✅ UNHOOK: Remover hooks de escala cuando se sale del editor mode
+    EditorMode:RemoveScaleHooks()
     
     -- Refresh AceConfig to update button state
     self:RefreshOptionsUI()
@@ -184,4 +190,44 @@ SLASH_DRAGONUI_EDITOR1 = "/duiedit"
 SLASH_DRAGONUI_EDITOR2 = "/dragonedit"
 SlashCmdList["DRAGONUI_EDITOR"] = function()
     EditorMode:Toggle()
+end
+
+-- ✅ HOOKS PARA MANTENER ESCALAS DURANTE EDITOR MODE
+local scaleHooks = {}
+
+function EditorMode:InstallScaleHooks()
+    -- Hook para MainMenuExpBar
+    if MainMenuExpBar and not scaleHooks.xpbar then
+        scaleHooks.xpbar = function()
+            if addon.db and addon.db.profile.xprepbar and addon.db.profile.xprepbar.expbar_scale then
+                MainMenuExpBar:SetScale(addon.db.profile.xprepbar.expbar_scale)
+            end
+        end
+        
+        -- Hook a los eventos que pueden cambiar la escala
+        hooksecurefunc(MainMenuExpBar, "SetScale", scaleHooks.xpbar)
+        hooksecurefunc(MainMenuExpBar, "SetPoint", scaleHooks.xpbar)
+        hooksecurefunc(MainMenuExpBar, "ClearAllPoints", scaleHooks.xpbar)
+    end
+    
+    -- Hook para ReputationWatchBar
+    if ReputationWatchBar and not scaleHooks.repbar then
+        scaleHooks.repbar = function()
+            if addon.db and addon.db.profile.xprepbar and addon.db.profile.xprepbar.repbar_scale then
+                ReputationWatchBar:SetScale(addon.db.profile.xprepbar.repbar_scale)
+            end
+        end
+        
+        -- Hook a los eventos que pueden cambiar la escala
+        hooksecurefunc(ReputationWatchBar, "SetScale", scaleHooks.repbar)
+        hooksecurefunc(ReputationWatchBar, "SetPoint", scaleHooks.repbar)
+        hooksecurefunc(ReputationWatchBar, "ClearAllPoints", scaleHooks.repbar)
+    end
+end
+
+function EditorMode:RemoveScaleHooks()
+    -- Los hooks securefunc no se pueden remover directamente,
+    -- así que simplemente marcamos como removidos para que no se ejecuten
+    scaleHooks.xpbar = nil
+    scaleHooks.repbar = nil
 end

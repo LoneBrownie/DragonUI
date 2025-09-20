@@ -805,6 +805,57 @@ function addon:CreateOptionsTable()
                             end
                         end,
                         order = 5
+                    },
+                    exhaustion_tick = {
+                        type = 'toggle',
+                        name = "Show Exhaustion Tick",
+                        desc = "Show the exhaustion tick indicator on the experience bar (blue marker for rested XP). RetailUI hides this completely.",
+                        get = function()
+                            return addon.db.profile.style.exhaustion_tick
+                        end,
+                        set = function(info, val)
+                            addon.db.profile.style.exhaustion_tick = val
+                            if addon.UpdateExhaustionTick then
+                                addon.UpdateExhaustionTick()
+                            end
+                        end,
+                        order = 6
+                    },
+                    expbar_scale = {
+                        type = 'range',
+                        name = "Experience Bar Scale",
+                        desc = "Scale size of the experience bar",
+                        min = 0.5,
+                        max = 1.5,
+                        step = 0.05,
+                        get = function()
+                            return addon.db.profile.xprepbar.expbar_scale
+                        end,
+                        set = function(info, value)
+                            addon.db.profile.xprepbar.expbar_scale = value
+                            if addon.RefreshXpBarPosition then
+                                addon.RefreshXpBarPosition()
+                            end
+                        end,
+                        order = 7
+                    },
+                    repbar_scale = {
+                        type = 'range',
+                        name = "Reputation Bar Scale",
+                        desc = "Scale size of the reputation bar",
+                        min = 0.5,
+                        max = 1.5,
+                        step = 0.05,
+                        get = function()
+                            return addon.db.profile.xprepbar.repbar_scale
+                        end,
+                        set = function(info, value)
+                            addon.db.profile.xprepbar.repbar_scale = value
+                            if addon.RefreshRepBarPosition then
+                                addon.RefreshRepBarPosition()
+                            end
+                        end,
+                        order = 8
                     }
                 }
             },

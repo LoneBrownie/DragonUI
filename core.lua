@@ -223,8 +223,8 @@ function addon:RefreshConfig()
         end
     end
 
-    if addon.RefreshXpRepBarPosition then
-        pcall(addon.RefreshXpRepBarPosition)
+    if addon.RefreshXpBarPosition then
+        pcall(addon.RefreshXpBarPosition)
     end
 
     if addon.RefreshRepBarPosition then
@@ -322,6 +322,19 @@ function CreateUIFrame(width, height, frameName)
     end)
     frame:SetScript("OnDragStop", function(self)
         self:StopMovingOrSizing()
+        
+        -- ✅ AUTO-SAVE: Buscar este frame en EditableFrames y guardar posición automáticamente
+        for frameName, frameData in pairs(addon.EditableFrames) do
+            if frameData.frame == self then
+                -- Guardar posición automáticamente
+                if #frameData.configPath == 2 then
+                    SaveUIFramePosition(frameData.frame, frameData.configPath[1], frameData.configPath[2])
+                else
+                    SaveUIFramePosition(frameData.frame, frameData.configPath[1])
+                end
+                break
+            end
+        end
     end)
 
     frame:SetFrameLevel(100)

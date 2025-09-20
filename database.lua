@@ -90,6 +90,11 @@ local defaults = {
                 anchor = "BOTTOM",
                 posX = 0,
                 posY = 6
+            },
+            repbar = {
+                anchor = "BOTTOM",
+                posX = 0,
+                posY = 16
             }
         },
         -- Quest Tracker
@@ -151,12 +156,16 @@ local defaults = {
             singlebar_offset = 24,
             nobar_offset = 18,
             repbar_abovexp_offset = 16,
-            repbar_offset = 2
+            repbar_offset = 2,
+            -- Escalas configurables para las barras
+            expbar_scale = 0.9,
+            repbar_scale = 0.9
         },
 
         style = {
             gryphons = 'new',
-            xpbar = 'new'
+            xpbar = 'new',
+            exhaustion_tick = true  -- Show exhaustion tick (false to hide like RetailUI)
         },
 
         buttons = {
