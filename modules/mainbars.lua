@@ -169,6 +169,8 @@ function MainMenuBarMixin:update_main_bar_background()
                     and name ~= "SpellbookMicroButton"
                     and name ~= "TalentMicroButton"
                     and name ~= "AchievementMicroButton"
+                    and name ~= "bagsFrame"
+                    and name ~= "MainMenuBarBackpackButton"
                     and name ~= "QuestLogMicroButton"
                     and name ~= "SocialsMicroButton"
                     and name ~= "PVPMicroButton"

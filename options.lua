@@ -957,8 +957,8 @@ function addon:CreateOptionsTable()
                                         type = 'range',
                                         name = "X Position",
                                         desc = "Horizontal position of stance bar",
-                                        min = -500,
-                                        max = 500,
+                                        min = -1500,
+                                        max = 1500,
                                         step = 1,
                                         get = function()
                                             return addon.db.profile.additional.stance.x_position
@@ -978,8 +978,8 @@ function addon:CreateOptionsTable()
                                         desc = "|cff00FF00Smart Anchoring:|r The stance bar automatically positions above the main action bar using intelligent anchoring.\n" ..
                                             "|cffFFFF00Fine-Tuning:|r Use this offset to make small vertical adjustments while preserving the smart anchoring behavior.\n" ..
                                             "|cffFFD700Note:|r Positive values move the bar up, negative values move it down.",
-                                        min = -50,
-                                        max = 50,
+                                        min = -1500,
+                                        max = 1500,
                                         step = 1,
                                         get = function()
                                             return addon.db.profile.additional.stance.y_offset

@@ -6,7 +6,7 @@ local addon = select(2, ...)
 -- ===============================================================
 -- EARLY EXIT CHECK
 -- ===============================================================
--- ✅ SIMPLIFICADO: Solo verificar que addon.db existe, no específicamente unitframe.party
+-- Simplified: Only check if addon.db exists, not specifically unitframe.party
 if not addon or not addon.db then
     return -- Exit early if database not ready
 end
@@ -60,46 +60,43 @@ local TEXTURES = {
 -- CENTRALIZED SYSTEM INTEGRATION
 -- ===============================================================
 
--- Create auxiliary frame for anchoring (like target.lua)
+-- Create auxiliary frame for anchoring (similar to target.lua)
 local function CreatePartyAnchorFrame()
     if PartyFrames.anchor then
         return PartyFrames.anchor
     end
 
-    -- ✅ USAR FUNCIÓN CENTRALIZADA DE CORE.LUA
+    -- Use centralized function from core.lua
     PartyFrames.anchor = addon.CreateUIFrame(120, 200, "PartyFrames")
-    
-    -- ✅ PERSONALIZAR TEXTO PARA PARTY FRAMES
+
+    -- Customize text for party frames
     if PartyFrames.anchor.editorText then
         PartyFrames.anchor.editorText:SetText("Party Frames")
     end
-    
+
     return PartyFrames.anchor
 end
 
--- ✅ FUNCIÓN PARA APLICAR POSICIÓN DESDE WIDGETS (COMO target.lua)
+-- Function to apply position from widgets (similar to target.lua)
 local function ApplyWidgetPosition()
     if not PartyFrames.anchor then
-        print("|cFFFF0000[DragonUI]|r Party frames: No anchor frame available")
         return
     end
 
-    -- ✅ ASEGURAR QUE EXISTE LA CONFIGURACIÓN
+    -- Ensure configuration exists
     if not addon.db or not addon.db.profile or not addon.db.profile.widgets then
-        print("|cFFFF0000[DragonUI]|r Party frames: No database available for positioning")
         return
     end
-    
+
     local widgetConfig = addon.db.profile.widgets.party
-    
+
     if widgetConfig and widgetConfig.posX and widgetConfig.posY then
-        -- ✅ USAR EL ANCHOR GUARDADO, NO SIEMPRE TOPLEFT
+        -- Use saved anchor, not always TOPLEFT
         local anchor = widgetConfig.anchor or "TOPLEFT"
         PartyFrames.anchor:ClearAllPoints()
         PartyFrames.anchor:SetPoint(anchor, UIParent, anchor, widgetConfig.posX, widgetConfig.posY)
-        print("|cFF00FF00[DragonUI]|r Party frames positioned via widgets:", anchor, widgetConfig.posX, widgetConfig.posY)
     else
-        -- ✅ CREAR CONFIGURACIÓN POR DEFECTO SI NO EXISTE
+        -- Create default configuration if it doesn't exist
         if not addon.db.profile.widgets.party then
             addon.db.profile.widgets.party = {
                 anchor = "TOPLEFT",
@@ -109,31 +106,29 @@ local function ApplyWidgetPosition()
         end
         PartyFrames.anchor:ClearAllPoints()
         PartyFrames.anchor:SetPoint("TOPLEFT", UIParent, "TOPLEFT", 10, -200)
-        print("|cFF00FF00[DragonUI]|r Party frames positioned with defaults: TOPLEFT 10 -200")
     end
 end
 
--- ✅ FUNCIONES REQUERIDAS POR EL SISTEMA CENTRALIZADO
+-- Functions required by the centralized system
 function PartyFrames:LoadDefaultSettings()
-    -- ✅ ASEGURAR QUE EXISTE LA CONFIGURACIÓN EN WIDGETS
+    -- Ensure configuration exists in widgets
     if not addon.db.profile.widgets then
         addon.db.profile.widgets = {}
     end
-    
+
     if not addon.db.profile.widgets.party then
         addon.db.profile.widgets.party = {
             anchor = "TOPLEFT",
             posX = 10,
             posY = -200
         }
-        print("|cFF00FF00[DragonUI]|r Party frames: Created default widget settings")
     end
-    
-    -- ✅ ASEGURAR QUE EXISTE LA CONFIGURACIÓN EN UNITFRAME
+
+    -- Ensure configuration exists in unitframe
     if not addon.db.profile.unitframe then
         addon.db.profile.unitframe = {}
     end
-    
+
     if not addon.db.profile.unitframe.party then
         addon.db.profile.unitframe.party = {
             enabled = true,
@@ -151,13 +146,12 @@ function PartyFrames:LoadDefaultSettings()
             x = 10,
             y = -200
         }
-        print("|cFF00FF00[DragonUI]|r Party frames: Created default unitframe settings")
     end
 end
 
 function PartyFrames:UpdateWidgets()
     ApplyWidgetPosition()
-    -- ✅ REPOSICIONAR TODOS LOS PARTY FRAMES RELATIVOS AL ANCHOR ACTUALIZADO
+    -- Reposition all party frames relative to the updated anchor
     if not InCombatLockdown() then
         for i = 1, MAX_PARTY_MEMBERS do
             local frame = _G['PartyMemberFrame' .. i]
@@ -170,14 +164,14 @@ function PartyFrames:UpdateWidgets()
     end
 end
 
--- ✅ FUNCIÓN PARA VERIFICAR SI LOS PARTY FRAMES DEBEN ESTAR VISIBLES
+-- Function to check if party frames should be visible
 local function ShouldPartyFramesBeVisible()
     return GetNumPartyMembers() > 0
 end
 
--- ✅ FUNCIONES DE TESTEO PARA EL EDITOR
+-- Test functions for the editor
 local function ShowPartyFramesTest()
-    -- Mostrar los party frames aunque no haya grupo
+    -- Display party frames even if not in a group
     for i = 1, MAX_PARTY_MEMBERS do
         local frame = _G['PartyMemberFrame' .. i]
         if frame then
@@ -187,7 +181,7 @@ local function ShowPartyFramesTest()
 end
 
 local function HidePartyFramesTest()
-    -- Ocultar frames vacíos cuando no hay party
+    -- Hide empty frames when not in a party
     for i = 1, MAX_PARTY_MEMBERS do
         local frame = _G['PartyMemberFrame' .. i]
         if frame and not UnitExists("party" .. i) then
@@ -202,7 +196,7 @@ end
 
 -- Get settings helper
 local function GetSettings()
-    -- ✅ VERIFICACIÓN ROBUSTA CON VALORES POR DEFECTO
+    -- Perform a robust check with default values
     if not addon.db or not addon.db.profile then
         return {
             scale = 1.0,
@@ -210,15 +204,15 @@ local function GetSettings()
             breakUpLargeNumbers = true
         }
     end
-    
+
     local settings = addon.db.profile.unitframe and addon.db.profile.unitframe.party
-    
-    -- ✅ SI NO EXISTE LA CONFIGURACIÓN, CREARLA CON DEFAULTS
+
+    -- If configuration doesn't exist, create it with defaults
     if not settings then
         if not addon.db.profile.unitframe then
             addon.db.profile.unitframe = {}
         end
-        
+
         addon.db.profile.unitframe.party = {
             enabled = true,
             classcolor = false,
@@ -285,15 +279,15 @@ local function GetPartyCoords(type)
     return 0, 1, 0, 1
 end
 
--- ✅ NUEVA FUNCIÓN: Get power bar texture
+-- New function: Get power bar texture
 local function GetPowerBarTexture(unit)
     if not unit or not UnitExists(unit) then
         return TEXTURES.manaBar
     end
 
-    local powerType, powerTypeString = UnitPowerType(unit)
+    local powerType = UnitPowerType(unit)
 
-    -- En 3.3.5a los tipos son números, no strings
+    -- In 3.3.5a types are numbers, not strings
     if powerType == 0 then -- MANA
         return TEXTURES.manaBar
     elseif powerType == 1 then -- RAGE
@@ -302,7 +296,7 @@ local function GetPowerBarTexture(unit)
         return TEXTURES.focusBar
     elseif powerType == 3 then -- ENERGY
         return TEXTURES.energyBar
-    elseif powerType == 6 then -- RUNIC_POWER (si existe en 3.3.5a)
+    elseif powerType == 6 then -- RUNIC_POWER (if it exists in 3.3.5a)
         return TEXTURES.runicPowerBar
     else
         return TEXTURES.manaBar -- Default
@@ -313,11 +307,11 @@ end
 -- CLASS COLORS
 -- ===============================================================
 
--- ✅ NUEVA FUNCIÓN: Get class color para party member
+-- New function: Get class color for party member
 local function GetPartyClassColor(partyIndex)
     local unit = "party" .. partyIndex
     if not UnitExists(unit) or not UnitIsPlayer(unit) then
-        return 1, 1, 1 -- Blanco si no es jugador
+        return 1, 1, 1 -- White if not a player
     end
 
     local _, class = UnitClass(unit)
@@ -326,10 +320,10 @@ local function GetPartyClassColor(partyIndex)
         return color.r, color.g, color.b
     end
 
-    return 1, 1, 1 -- Blanco por defecto
+    return 1, 1, 1 -- White by default
 end
 
--- ✅ NUEVA FUNCIÓN: Update party health bar con class color
+-- New function: Update party health bar with class color
 local function UpdatePartyHealthBarColor(partyIndex)
     if not partyIndex or partyIndex < 1 or partyIndex > 4 then
         return
@@ -356,23 +350,23 @@ local function UpdatePartyHealthBarColor(partyIndex)
     end
 
     if settings.classcolor and UnitIsPlayer(unit) then
-        -- ✅ USAR CONSTANTE EN LUGAR DE STRING HARDCODED
+        -- Use constant instead of hardcoded string
         local statusTexturePath = TEXTURES.healthBarStatus
         if texture:GetTexture() ~= statusTexturePath then
             texture:SetTexture(statusTexturePath)
         end
 
-        -- ✅ APLICAR COLOR DE CLASE
+        -- Apply class color
         local r, g, b = GetPartyClassColor(partyIndex)
         healthbar:SetStatusBarColor(r, g, b, 1)
     else
-        -- ✅ USAR CONSTANTE EN LUGAR DE STRING HARDCODED
+        -- Use constant instead of hardcoded string
         local normalTexturePath = TEXTURES.healthBar
         if texture:GetTexture() ~= normalTexturePath then
             texture:SetTexture(normalTexturePath)
         end
 
-        -- ✅ COLOR BLANCO (la textura ya tiene color)
+        -- White color (texture already has color)
         healthbar:SetStatusBarColor(1, 1, 1, 1)
     end
 end
@@ -383,7 +377,7 @@ local function RepositionBlizzardBuffs()
     for i = 1, MAX_PARTY_MEMBERS do
         local frame = _G['PartyMemberFrame' .. i]
         if frame then
-            -- ✅ MOVER BUFFS Y DEBUFFS JUNTOS
+            -- Move buffs and debuffs together
             for auraIndex = 1, 4 do
                 local buff = _G['PartyMemberFrame' .. i .. 'Buff' .. auraIndex]
                 local debuff = _G['PartyMemberFrame' .. i .. 'Debuff' .. auraIndex]
@@ -440,7 +434,7 @@ local function ScheduleTextUpdate(frameIndex)
     -- If no update is scheduled, create one
     if not updateScheduled then
         updateScheduled = true
-        -- ✅ USE OnUpdate with minimal delay (compatible with 3.3.5a)
+        -- Use OnUpdate with minimal delay (compatible with 3.3.5a)
         local elapsed = 0
         updateFrame:SetScript("OnUpdate", function(self, dt)
             elapsed = elapsed + dt
@@ -465,7 +459,7 @@ local function SetupHealthBarClipping(frame)
         return
     end
 
-    -- Hook SetValue para clipping dinámico Y class color
+    -- Hook SetValue for dynamic clipping and class color
     hooksecurefunc(healthbar, "SetValue", function(self, value)
         local frameIndex = frame:GetID()
         local unit = "party" .. frameIndex
@@ -478,10 +472,10 @@ local function SetupHealthBarClipping(frame)
             return
         end
 
-        -- ✅ APLICAR CLASS COLOR PRIMERO
+        -- Apply class color first
         UpdatePartyHealthBarColor(frameIndex)
 
-        -- ✅ CLIPPING DINÁMICO: Solo mostrar la parte llena de la textura
+        -- Dynamic clipping: Only show the filled part of the texture
         local min, max = self:GetMinMaxValues()
         local current = value or self:GetValue()
 
@@ -507,7 +501,7 @@ local function SetupManaBarClipping(frame)
         return
     end
 
-    -- Hook SetValue para clipping dinámico
+    -- Hook SetValue for dynamic clipping
     hooksecurefunc(manabar, "SetValue", function(self, value)
         local unit = "party" .. frame:GetID()
         if not UnitExists(unit) then
@@ -523,14 +517,14 @@ local function SetupManaBarClipping(frame)
         local current = value or self:GetValue()
 
         if max > 0 and current then
-            -- ✅ CLIPPING DINÁMICO: Solo mostrar la parte llena de la textura
+            -- Dynamic clipping: Only show the filled part of the texture
             local percentage = current / max
             texture:SetTexCoord(0, percentage, 0, 1)
         else
             texture:SetTexCoord(0, 1, 0, 1)
         end
 
-        -- Actualizar textura según tipo de poder
+        -- Update texture based on power type
         local powerTexture = GetPowerBarTexture(unit)
         texture:SetTexture(powerTexture)
         texture:SetVertexColor(1, 1, 1, 1)
@@ -549,22 +543,22 @@ local function StylePartyFrames()
         return
     end
 
-    -- ✅ CREAR ANCHOR FRAME SI NO EXISTE
+    -- Create anchor frame if it doesn't exist
     CreatePartyAnchorFrame()
-    
-    -- ✅ APLICAR POSICIÓN DEL WIDGET
+
+    -- Apply widget position
     ApplyWidgetPosition()
 
     for i = 1, MAX_PARTY_MEMBERS do
         local frame = _G['PartyMemberFrame' .. i]
         if frame then
-            -- ✅ Scale and texture setup
+            -- Scale and texture setup
             frame:SetScale(settings.scale or 1)
 
-            -- ✅ POSICIONAMIENTO RELATIVO AL ANCHOR
+            -- Positioning relative to anchor
             if not InCombatLockdown() then
                 frame:ClearAllPoints()
-                local yOffset = (i - 1) * -50 -- Stack vertical con 50px de separación
+                local yOffset = (i - 1) * -50 -- Stack vertically with 50px separation
                 frame:SetPoint("TOPLEFT", PartyFrames.anchor, "TOPLEFT", 0, yOffset)
             end
 
@@ -581,7 +575,7 @@ local function StylePartyFrames()
                 texture:Hide()
             end
 
-            -- Barra de vida
+            -- Health bar
             local healthbar = _G[frame:GetName() .. 'HealthBar']
             if healthbar and not InCombatLockdown() then
                 healthbar:SetStatusBarTexture(TEXTURES.healthBar)
@@ -591,33 +585,33 @@ local function StylePartyFrames()
                 healthbar:SetFrameLevel(frame:GetFrameLevel())
                 healthbar:SetStatusBarColor(1, 1, 1, 1)
 
-                -- ✅ CONFIGURAR CLIPPING DINÁMICO CON CLASS COLOR
+                -- Configure dynamic clipping with class color
                 SetupHealthBarClipping(frame)
 
-                -- ✅ APLICAR CLASS COLOR INICIAL
+                -- Apply initial class color
                 UpdatePartyHealthBarColor(i)
             end
 
-            -- ✅ REEMPLAZAR Mana bar setup (líneas 192-199)
+            -- Replace mana bar setup (lines 192-199)
             local manabar = _G[frame:GetName() .. 'ManaBar']
             if manabar and not InCombatLockdown() then
                 manabar:SetStatusBarTexture(TEXTURES.manaBar)
                 manabar:SetSize(74, 6.5)
                 manabar:ClearAllPoints()
                 manabar:SetPoint('TOPLEFT', 41, -30.5)
-                manabar:SetFrameLevel(frame:GetFrameLevel()) -- ✅ MISMO NIVEL QUE EL FRAME
+                manabar:SetFrameLevel(frame:GetFrameLevel()) -- Same level as the frame
                 manabar:SetStatusBarColor(1, 1, 1, 1)
 
-                -- ✅ CONFIGURAR CLIPPING DINÁMICO
+                -- Configure dynamic clipping
                 SetupManaBarClipping(frame)
             end
 
-            -- ✅ Name styling
+            -- Name styling
            local name = _G[frame:GetName() .. 'Name']
             if name then
                 name:SetFont("Fonts\\FRIZQT__.TTF", 10)
                 name:SetShadowOffset(1, -1)
-                name:SetTextColor(1, 0.82, 0, 1) -- ✅ AMARILLO COMO EL RESTO
+                name:SetTextColor(1, 0.82, 0, 1) -- Yellow like the rest
 
                 if not InCombatLockdown() then
                     name:ClearAllPoints()
@@ -628,22 +622,22 @@ local function StylePartyFrames()
 
             -- LEADER ICON STYLING
             local leaderIcon = _G[frame:GetName() .. 'LeaderIcon']
-            if leaderIcon then -- ✅ QUITAMOS and not InCombatLockdown()
+            if leaderIcon then -- Removed and not InCombatLockdown()
                 leaderIcon:ClearAllPoints()
-                leaderIcon:SetPoint('TOPLEFT', 42, 9) -- ✅ Posición personalizada
-                leaderIcon:SetSize(16, 16) -- ✅ Tamaño personalizado (opcional)
+                leaderIcon:SetPoint('TOPLEFT', 42, 9) -- Custom position
+                leaderIcon:SetSize(16, 16) -- Custom size (optional)
             end
 
-            -- ✅ MASTER LOOTER ICON STYLING
+            -- Master looter icon styling
             local masterLooterIcon = _G[frame:GetName() .. 'MasterIcon']
-            if masterLooterIcon then -- ✅ SIN RESTRICCIÓN DE COMBATE
+            if masterLooterIcon then -- No combat restriction
                 masterLooterIcon:ClearAllPoints()
-                masterLooterIcon:SetPoint('TOPLEFT', 58, 20) -- ✅ Posición al lado del leader icon
-                masterLooterIcon:SetSize(16, 16) -- ✅ Tamaño personalizado
+                masterLooterIcon:SetPoint('TOPLEFT', 58, 20) -- Position next to leader icon
+                masterLooterIcon:SetSize(16, 16) -- Custom size
 
             end
 
-            -- ✅ Flash setup
+            -- Flash setup
             local flash = _G[frame:GetName() .. 'Flash']
             if flash then
                 flash:SetSize(114, 47)
@@ -654,16 +648,16 @@ local function StylePartyFrames()
                 flash:SetDrawLayer('ARTWORK', 5)
             end
 
-            -- ✅ Create background and mark as styled 
+            -- Create background and mark as styled
             if not frame.DragonUIStyled then
-                -- Background (por detrás)
+                -- Background (behind)
                 local background = frame:CreateTexture(nil, 'BACKGROUND', nil, 3)
                 background:SetTexture(TEXTURES.frame)
                 background:SetTexCoord(GetPartyCoords("background"))
                 background:SetSize(120, 49)
                 background:SetPoint('TOPLEFT', 1, -2)
 
-                -- ✅ BORDER (por encima de todo) - CON FRAMELEVEL FORZADO
+                -- Border (above everything) - with forced framelevel
                 local border = frame:CreateTexture(nil, 'ARTWORK', nil, 10)
                 border:SetTexture(TEXTURES.border)
                 border:SetTexCoord(GetPartyCoords("border"))
@@ -671,13 +665,13 @@ local function StylePartyFrames()
                 border:SetPoint('TOPLEFT', 1, -2)
                 border:SetVertexColor(1, 1, 1, 1)
 
-                -- ✅ FORZAR QUE EL BORDER TENGA UN FRAMELEVEL MÁS ALTO
+                -- Force the border to have a higher framelevel
                 local borderFrame = CreateFrame("Frame", nil, frame)
                 borderFrame:SetFrameLevel(frame:GetFrameLevel() + 10)
                 borderFrame:SetAllPoints(frame)
                 border:SetParent(borderFrame)
 
-                -- ✅ MOVER TEXTOS AL FRAME DEL BORDER PARA QUE ESTÉN POR ENCIMA
+                -- Move texts to the border frame so they are above
                 local name = _G[frame:GetName() .. 'Name']
                 local healthText = _G[frame:GetName() .. 'HealthBarText']
                 local manaText = _G[frame:GetName() .. 'ManaBarText']
@@ -687,10 +681,10 @@ local function StylePartyFrames()
                 local statusIcon = _G[frame:GetName() .. 'StatusIcon']
                 local blizzardRoleIcon = _G[frame:GetName() .. 'RoleIcon']
                 local guideIcon = _G[frame:GetName() .. 'GuideIcon']
-                -- Mover textos sin crear taint (solo cambiar parent)
+                -- Move texts without creating taint (only change parent)
                 if name then
                     name:SetParent(borderFrame)
-                    name:SetDrawLayer('OVERLAY', 11) -- Por encima del border
+                    name:SetDrawLayer('OVERLAY', 11) -- Above the border
                 end
                 if healthText then
                     healthText:SetParent(borderFrame)
@@ -727,13 +721,13 @@ local function StylePartyFrames()
 
                 frame.DragonUIStyled = true
             end
-            -- ✅ REPOSICIONAR TEXTOS DE HEALTH Y MANA
+            -- Reposition health and mana texts
             if healthbar then
                 local healthText = _G[frame:GetName() .. 'HealthBarText']
                 if healthText then
                     healthText:ClearAllPoints()
-                    healthText:SetPoint("CENTER", healthbar, "CENTER", 0, 0) -- ✅ CENTRADO EN LA BARRA
-                    healthText:SetDrawLayer("OVERLAY", 10) -- ✅ POR ENCIMA DEL BORDER
+                    healthText:SetPoint("CENTER", healthbar, "CENTER", 0, 0) -- Centered on the bar
+                    healthText:SetDrawLayer("OVERLAY", 10) -- Above the border
                     healthText:SetFont("Fonts\\FRIZQT__.TTF", 10, "OUTLINE")
                     healthText:SetTextColor(1, 1, 1, 1)
                 end
@@ -743,8 +737,8 @@ local function StylePartyFrames()
                 local manaText = _G[frame:GetName() .. 'ManaBarText']
                 if manaText then
                     manaText:ClearAllPoints()
-                    manaText:SetPoint("CENTER", manabar, "CENTER", 0, 0) -- ✅ CENTRADO EN LA BARRA
-                    manaText:SetDrawLayer("OVERLAY", 10) -- ✅ POR ENCIMA DEL BORDER
+                    manaText:SetPoint("CENTER", manabar, "CENTER", 0, 0) -- Centered on the bar
+                    manaText:SetDrawLayer("OVERLAY", 10) -- Above the border
                     manaText:SetFont("Fonts\\FRIZQT__.TTF", 10, "OUTLINE")
                     manaText:SetTextColor(1, 1, 1, 1)
                 end
@@ -775,26 +769,26 @@ local function UpdateDisconnectedState(frame)
     local name = _G[frame:GetName() .. 'Name']
 
     if not isConnected then
-        -- ✅ MIEMBRO DESCONECTADO - APLICAR EFECTOS GRISES
+        -- Disconnected member - apply gray effects
         if healthbar then
             healthbar:SetAlpha(0.3)
             healthbar:SetStatusBarColor(0.5, 0.5, 0.5, 1)
         end
-        
+
         if manabar then
             manabar:SetAlpha(0.3)
             manabar:SetStatusBarColor(0.5, 0.5, 0.5, 1)
         end
-        
+
         if portrait then
             portrait:SetVertexColor(0.5, 0.5, 0.5, 1)
         end
-        
+
         if name then
             name:SetTextColor(0.6, 0.6, 0.6, 1)
         end
 
-        -- Reposicionar iconos para que no se pierdan
+        -- Reposition icons so they don't get lost
         local leaderIcon = _G[frame:GetName() .. 'LeaderIcon']
         if leaderIcon then
             leaderIcon:ClearAllPoints()
@@ -808,32 +802,32 @@ local function UpdateDisconnectedState(frame)
             masterLooterIcon:SetPoint('TOPLEFT', 58, 20)
             masterLooterIcon:SetSize(16, 16)
         end
-        
+
     else
-        -- ✅ MIEMBRO CONECTADO - DESHACER EXACTAMENTE LO QUE SE HIZO AL DESCONECTAR
-        
-        -- ✅ RESTAURAR TRANSPARENCIAS (sin taint)
+        -- Connected member - undo exactly what was done when disconnecting
+
+        -- Restore transparencies (without taint)
         if healthbar then
-            healthbar:SetAlpha(1.0) -- ✅ Opacidad normal
-            -- ✅ RESTAURAR COLOR CORRECTO (class color o blanco)
+            healthbar:SetAlpha(1.0) -- Normal opacity
+            -- Restore correct color (class color or white)
             local frameIndex = frame:GetID()
-            UpdatePartyHealthBarColor(frameIndex) -- ✅ SOLO actualiza color, no recrea frame
+            UpdatePartyHealthBarColor(frameIndex) -- Only updates color, does not recreate frame
         end
-        
+
         if manabar then
-            manabar:SetAlpha(1.0) -- ✅ Opacidad normal
-            manabar:SetStatusBarColor(1, 1, 1, 1) -- ✅ Blanco como debe ser
+            manabar:SetAlpha(1.0) -- Normal opacity
+            manabar:SetStatusBarColor(1, 1, 1, 1) -- White as it should be
         end
-        
+
         if portrait then
-            portrait:SetVertexColor(1, 1, 1, 1) -- ✅ Color normal
+            portrait:SetVertexColor(1, 1, 1, 1) -- Normal color
         end
-        
+
         if name then
-            name:SetTextColor(1, 0.82, 0, 1) -- ✅ Amarillo normal
+            name:SetTextColor(1, 0.82, 0, 1) -- Normal yellow
         end
-        
-        -- ✅ REPOSICIONAR ICONOS (sin recrear frames)
+
+        -- Reposition icons (without recreating frames)
         local leaderIcon = _G[frame:GetName() .. 'LeaderIcon']
         if leaderIcon then
             leaderIcon:ClearAllPoints()
@@ -859,7 +853,7 @@ local function UpdateHealthText(statusBar, unit)
         local frameName = statusBar:GetParent():GetName()
         local frameIndex = frameName:match("PartyMemberFrame(%d+)")
         if frameIndex then
-            -- ✅ ACTUALIZACIÓN DIRECTA CON LARGE NUMBERS
+            -- Direct update with large numbers
             local partyUnit = "party" .. frameIndex
             if UnitExists(partyUnit) then
                 local current = UnitHealth(partyUnit)
@@ -884,7 +878,7 @@ local function UpdateManaText(statusBar, unit)
         local frameName = statusBar:GetParent():GetName()
         local frameIndex = frameName:match("PartyMemberFrame(%d+)")
         if frameIndex then
-            -- ✅ ACTUALIZACIÓN DIRECTA CON LARGE NUMBERS
+            -- Direct update with large numbers
             local partyUnit = "party" .. frameIndex
             if UnitExists(partyUnit) then
                 local current = UnitPower(partyUnit)
@@ -926,7 +920,7 @@ local function UpdatePartyColors(frame)
     end
 end
 
--- ✅ NUEVA FUNCIÓN: Update mana bar texture
+-- New function: Update mana bar texture
 local function UpdateManaBarTexture(frame)
     if not frame then
         return
@@ -941,7 +935,7 @@ local function UpdateManaBarTexture(frame)
     if manabar then
         local powerTexture = GetPowerBarTexture(unit)
         manabar:SetStatusBarTexture(powerTexture)
-        manabar:SetStatusBarColor(1, 1, 1, 1) -- Mantener blanco
+        manabar:SetStatusBarColor(1, 1, 1, 1) -- Keep white
     end
 end
 
@@ -951,10 +945,10 @@ end
 
 -- Setup all necessary hooks for party frames
 local function SetupPartyHooks()
-    -- Hook principal para mantener estilos (SIMPLIFIED)
+    -- Main hook to maintain styles (simplified)
     hooksecurefunc("PartyMemberFrame_UpdateMember", function(frame)
         if frame and frame:GetName():match("^PartyMemberFrame%d+$") then
-            -- ✅ MANTENER POSICIONAMIENTO RELATIVO AL ANCHOR
+            -- Maintain positioning relative to anchor
             if PartyFrames.anchor and not InCombatLockdown() then
                 local frameIndex = frame:GetID()
                 if frameIndex and frameIndex >= 1 and frameIndex <= 4 then
@@ -976,7 +970,7 @@ local function SetupPartyHooks()
                 bg:Hide()
             end
 
-            -- ✅ MANTENER SOLO CONFIGURACIÓN DE CLIPPING (ACE3 maneja colors)
+            -- Maintain only clipping configuration (ACE3 handles colors)
             local healthbar = _G[frame:GetName() .. 'HealthBar']
             local manabar = _G[frame:GetName() .. 'ManaBar']
 
@@ -991,15 +985,15 @@ local function SetupPartyHooks()
 
             -- Update power bar texture
             UpdateManaBarTexture(frame)
-            -- Desconected state
+            -- Disconnected state
             UpdateDisconnectedState(frame)
         end
     end)
 
-    -- ✅ HOOK PRINCIPAL PARA CLASS COLOR (SIMPLIFIED)
+    -- Main hook for class color (simplified)
     hooksecurefunc("UnitFrameHealthBar_Update", function(statusbar, unit)
         if statusbar and statusbar:GetName() and statusbar:GetName():find('PartyMemberFrame') then
-            -- ✅ SOLO MANTENER CLIPPING DINÁMICO - ACE3 SE ENCARGA DEL COLOR
+            -- Only maintain dynamic clipping - Ace3 handles color
             local texture = statusbar:GetStatusBarTexture()
             if texture then
                 local min, max = statusbar:GetMinMaxValues()
@@ -1012,10 +1006,10 @@ local function SetupPartyHooks()
         end
     end)
 
-    -- ✅ HOOK PARA MANA BAR (SIN TOCAR HEALTH)
+    -- Hook for mana bar (without touching health)
     hooksecurefunc("UnitFrameManaBar_Update", function(statusbar, unit)
         if statusbar and statusbar:GetName() and statusbar:GetName():find('PartyMemberFrame') then
-            statusbar:SetStatusBarColor(1, 1, 1, 1) -- ✅ Solo mana en blanco
+            statusbar:SetStatusBarColor(1, 1, 1, 1) -- Only mana in white
 
             local frameName = statusbar:GetParent():GetName()
             local frameIndex = frameName:match("PartyMemberFrame(%d+)")
@@ -1024,7 +1018,7 @@ local function SetupPartyHooks()
                 local powerTexture = GetPowerBarTexture(partyUnit)
                 statusbar:SetStatusBarTexture(powerTexture)
 
-                -- ✅ MANTENER CLIPPING DINÁMICO
+                -- Maintain dynamic clipping
                 local texture = statusbar:GetStatusBarTexture()
                 if texture then
                     local min, max = statusbar:GetMinMaxValues()
@@ -1044,23 +1038,21 @@ end
 -- MODULE INTERFACE FUNCTIONS (SIMPLIFIED FOR ACE3)
 -- ===============================================================
 
--- ✅ FUNCIÓN SIMPLIFICADA COMPATIBLE CON ACE3
+-- Simplified function compatible with Ace3
 function PartyFrames:UpdateSettings()
-    -- ✅ VERIFICAR CONFIGURACIÓN INICIAL
+    -- Check initial configuration
     if not addon.db or not addon.db.profile or not addon.db.profile.widgets or not addon.db.profile.widgets.party then
         self:LoadDefaultSettings()
     end
-    
-    -- ✅ APLICAR POSICIÓN DEL WIDGET PRIMERO
+
+    -- Apply widget position first
     ApplyWidgetPosition()
     
-    -- ✅ SOLO APLICAR ESTILOS BASE - ACE3 SE ENCARGA DEL CLASS COLOR
+    -- Only apply base styles - ACE3 handles class color
     StylePartyFrames()
     
-    -- ✅ REPOSICIONAR BUFFS
+    -- Reposition buffs
     RepositionBlizzardBuffs()
-    
-    print("|cFF00FF00[DragonUI]|r Party frames updated via Ace3")
 end
 
 -- ===============================================================
@@ -1074,7 +1066,7 @@ addon.RefreshPartyFrames = function()
     end
 end
 
--- ✅ NUEVA FUNCIÓN: Refresh que se llama desde core.lua
+-- New function: Refresh called from core.lua
 function addon:RefreshPartyFrames()
     if PartyFrames and PartyFrames.UpdateSettings then
         PartyFrames:UpdateSettings()
@@ -1090,26 +1082,25 @@ local function InitializePartyFramesForEditor()
         return
     end
 
-    -- ✅ CREAR ANCHOR FRAME
+    -- Create anchor frame
     CreatePartyAnchorFrame()
-    
-    -- ✅ SIEMPRE ASEGURAR QUE EXISTE LA CONFIGURACIÓN
+
+    -- Always ensure configuration exists
     PartyFrames:LoadDefaultSettings()
-    
-    -- ✅ APLICAR POSICIÓN INICIAL
+
+    -- Apply initial position
     ApplyWidgetPosition()
-    
-    -- ✅ REGISTRAR CON EL SISTEMA CENTRALIZADO
+
+    -- Register with centralized system
     if addon and addon.RegisterEditableFrame then
         addon:RegisterEditableFrame({
             name = "party",
             frame = PartyFrames.anchor,
-            configPath = {"widgets", "party"}, -- ✅ AÑADIR configPath requerido por core.lua
+            configPath = {"widgets", "party"}, -- Add configPath required by core.lua
             showTest = ShowPartyFramesTest,
             hideTest = HidePartyFramesTest,
-            hasTarget = ShouldPartyFramesBeVisible -- ✅ USAR hasTarget en lugar de shouldShow
+            hasTarget = ShouldPartyFramesBeVisible -- Use hasTarget instead of shouldShow
         })
-        print("|cFF00FF00[DragonUI]|r Party frames registered in centralized system")
     end
 
     PartyFrames.initialized = true
@@ -1119,17 +1110,17 @@ end
 -- INITIALIZATION
 -- ===============================================================
 
--- ✅ Initialize everything in correct order
+-- Initialize everything in correct order
 InitializePartyFramesForEditor() -- First: register with centralized system
 StylePartyFrames() -- Second: visual properties and positioning
 SetupPartyHooks() -- Third: safe hooks only
 
--- ✅ LISTENER PARA CUANDO EL ADDON ESTÉ COMPLETAMENTE CARGADO
+-- Listener for when the addon is fully loaded
 local readyFrame = CreateFrame("Frame")
 readyFrame:RegisterEvent("ADDON_LOADED")
 readyFrame:SetScript("OnEvent", function(self, event, addonName)
     if addonName == "DragonUI" then
-        -- Aplicar posición después de que el addon esté completamente cargado
+        -- Apply position after the addon is fully loaded
         if PartyFrames and PartyFrames.UpdateSettings then
             PartyFrames:UpdateSettings()
         end
@@ -1153,6 +1144,4 @@ end)
 -- ===============================================================
 -- MODULE LOADED CONFIRMATION
 -- ===============================================================
-
-print("|cFF00FF00[DragonUI]|r Party frames module loaded (taint-free) - CENTRALIZED SYSTEM")
 
