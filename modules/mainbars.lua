@@ -460,6 +460,11 @@ local function SetupActionBarContainers()
         overlayFrame:SetScript("OnDragStop", function(self)
             if pUiMainBar:IsMovable() then
                 pUiMainBar:StopMovingOrSizing()
+                -- ✅ CRITICAL FIX: Save mainbar position when moved via overlay
+                if addon.EditorMode and addon.EditorMode:IsActive() then
+                    SaveUIFramePosition(pUiMainBar, "widgets", "mainbar")
+                    print("|cFFFFFF00[DragonUI Debug]|r Mainbar position saved via overlay drag")
+                end
             end
         end)
         
@@ -495,11 +500,14 @@ local function SetupActionBarContainers()
     
     -- Ensure main bar has proper position from database or use default
     local mainbarConfig = addon.db.profile.widgets.mainbar
-    if not pUiMainBar:GetPoint() then
-        if mainbarConfig and mainbarConfig.anchor then
-            pUiMainBar:SetPoint(mainbarConfig.anchor or "BOTTOM", UIParent, mainbarConfig.anchor or "BOTTOM", mainbarConfig.posX or 0, mainbarConfig.posY or 22)
-            print("|cFF00FF00[DragonUI]|r Applied mainbar position from database: " .. (mainbarConfig.anchor or "BOTTOM") .. " (" .. (mainbarConfig.posX or 0) .. "," .. (mainbarConfig.posY or 22) .. ")")
-        else
+    if mainbarConfig and mainbarConfig.anchor then
+        -- ✅ CRITICAL FIX: Always apply saved position, clear existing points first
+        pUiMainBar:ClearAllPoints()
+        pUiMainBar:SetPoint(mainbarConfig.anchor or "BOTTOM", UIParent, mainbarConfig.anchor or "BOTTOM", mainbarConfig.posX or 0, mainbarConfig.posY or 75)
+        print("|cFF00FF00[DragonUI]|r Applied mainbar position from database: " .. (mainbarConfig.anchor or "BOTTOM") .. " (" .. (mainbarConfig.posX or 0) .. "," .. (mainbarConfig.posY or 75) .. ")")
+    else
+        -- Only set default if no saved position exists
+        if not pUiMainBar:GetPoint() then
             pUiMainBar:SetPoint("BOTTOM", UIParent, "BOTTOM", 0, 75)
             print("|cFF00FF00[DragonUI]|r Applied mainbar default position")
         end
@@ -508,14 +516,26 @@ local function SetupActionBarContainers()
     pUiMainBar:EnableMouse(true)
     pUiMainBar:RegisterForDrag("LeftButton")
     pUiMainBar:SetScript("OnDragStart", function(self) self:StartMoving() end)
-    pUiMainBar:SetScript("OnDragStop", function(self) self:StopMovingOrSizing() end)
+    pUiMainBar:SetScript("OnDragStop", function(self) 
+        self:StopMovingOrSizing()
+        -- ✅ CRITICAL FIX: Save position automatically when moved in editor mode
+        if addon.EditorMode and addon.EditorMode:IsActive() then
+            SaveUIFramePosition(self, "widgets", "mainbar")
+            print("|cFFFFFF00[DragonUI Debug]|r Mainbar position saved during drag")
+        end
+    end)
     
     addon:RegisterEditableFrame({
         name = "mainbar",
         frame = pUiMainBar,
         blizzardFrame = MainMenuBar,
         configPath = {"widgets", "mainbar"},
-        module = addon.MainBars
+        module = addon.MainBars,
+        onHide = function()
+            -- ✅ EXTRA SAFETY: Force save mainbar position when editor closes
+            SaveUIFramePosition(pUiMainBar, "widgets", "mainbar")
+            print("|cFFFFFF00[DragonUI Debug]|r Mainbar position saved on editor close")
+        end
     })
     print("|cFF00FF00[DragonUI]|r Registered mainbar frame")
     
@@ -718,11 +738,20 @@ end
 
 -- ✅ NEW: Set up containers after database is initialized
 local function InitializeActionBars()
-    if addon.db and addon.db.profile then
+    if addon.db and addon.db.profile and addon.db.profile.widgets then
         SetupActionBarContainers()
         print("|cFF00FF00[DragonUI]|r Action bars initialized with database positions")
+        
+        -- ✅ EXTRA SAFETY: Force apply mainbar position after a short delay
+        addon.core:ScheduleTimer(function()
+            if addon.RefreshMainbarPosition then
+                addon.RefreshMainbarPosition()
+            end
+        end, 0.5)
     else
         print("|cFFFF0000[DragonUI]|r Database not ready, deferring action bar setup")
+        -- Retry after a longer delay
+        addon.core:ScheduleTimer(InitializeActionBars, 1.0)
     end
 end
 
@@ -876,7 +905,11 @@ local function OnProfileChange()
     -- Llama directamente a la función de refresco principal.
     if addon.RefreshMainbars then
         addon.RefreshMainbars()
-       
+    end
+    
+    -- ✅ CRITICAL FIX: Also refresh mainbar position specifically
+    if addon.RefreshMainbarPosition then
+        addon.RefreshMainbarPosition()
     end
 end
 
@@ -909,6 +942,18 @@ function addon.TestProfileCallbacks()
         if addon.db.GetCurrentProfile then
        
         end
+    end
+end
+
+-- ✅ NEW: Function to refresh mainbar position from database
+function addon.RefreshMainbarPosition()
+    if not pUiMainBar or not addon.db or not addon.db.profile then return end
+    
+    local mainbarConfig = addon.db.profile.widgets.mainbar
+    if mainbarConfig and mainbarConfig.anchor then
+        pUiMainBar:ClearAllPoints()
+        pUiMainBar:SetPoint(mainbarConfig.anchor or "BOTTOM", UIParent, mainbarConfig.anchor or "BOTTOM", mainbarConfig.posX or 0, mainbarConfig.posY or 75)
+        print("|cFF00FF00[DragonUI]|r Refreshed mainbar position from database: " .. (mainbarConfig.anchor or "BOTTOM") .. " (" .. (mainbarConfig.posX or 0) .. "," .. (mainbarConfig.posY or 75) .. ")")
     end
 end
 
