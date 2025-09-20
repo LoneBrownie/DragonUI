@@ -27,7 +27,7 @@ end
 -- UTILITY FUNCTIONS FOR CENTRALIZED SYSTEM
 -- ============================================================================
 
--- ✅ FUNCIÓN PARA APLICAR POSICIÓN DESDE WIDGETS (COMO PLAYER.LUA)
+-- Function to apply position from widgets (like player.lua)
 local function ApplyWidgetPosition()
     if not Module.focusFrame then
         return
@@ -40,36 +40,34 @@ local function ApplyWidgetPosition()
         Module.focusFrame:SetPoint(widgetConfig.anchor or "TOPLEFT", UIParent, widgetConfig.anchor or "TOPLEFT", 
                                    widgetConfig.posX or 250, widgetConfig.posY or -170)
         
-        -- También aplicar al frame de Blizzard
+        -- Also apply to Blizzard frame
         FocusFrame:ClearAllPoints()
         FocusFrame:SetPoint("CENTER", Module.focusFrame, "CENTER", 20, -7)
         
-        print("|cFF00FF00[DragonUI]|r Focus frame positioned via widgets:", widgetConfig.posX, widgetConfig.posY)
     else
-        -- Fallback a posición por defecto
+        -- Fallback to default position
         Module.focusFrame:ClearAllPoints()
         Module.focusFrame:SetPoint("TOPLEFT", UIParent, "TOPLEFT", 250, -170)
         FocusFrame:ClearAllPoints()
         FocusFrame:SetPoint("CENTER", Module.focusFrame, "CENTER", 0, 0)
-        print("|cFF00FF00[DragonUI]|r Focus frame positioned with defaults")
     end
 end
 
--- ✅ FUNCIÓN PARA VERIFICAR SI EL FOCUS FRAME DEBE ESTAR VISIBLE
+-- Function to check if the focus frame should be visible
 local function ShouldFocusFrameBeVisible()
     return UnitExists("focus")
 end
 
--- ✅ FUNCIONES DE TESTEO SIMPLIFICADAS (estilo RetailUI)
+-- Simplified test functions
 local function ShowFocusFrameTest()
-    -- ✅ SISTEMA SIMPLE: Solo llamar al método ShowTest del frame
+    -- Simple system: Just call the frame's ShowTest method
     if FocusFrame and FocusFrame.ShowTest then
         FocusFrame:ShowTest()
     end
 end
 
 local function HideFocusFrameTest()
-    -- ✅ SISTEMA SIMPLE: Solo llamar al método HideTest del frame
+    -- Simple system: Just call the frame's HideTest method
     if FocusFrame and FocusFrame.HideTest then
         FocusFrame:HideTest()
     end
@@ -88,7 +86,7 @@ local FocusFrameTextureFrameName = _G.FocusFrameTextureFrameName
 local FocusFrameTextureFrameLevelText = _G.FocusFrameTextureFrameLevelText
 local FocusFrameNameBackground = _G.FocusFrameNameBackground
 
--- Texture paths (reutilizar del target)
+-- Texture paths (reused from target)
 local TEXTURES = {
     BACKGROUND = "Interface\\AddOns\\DragonUI\\Textures\\UI-HUD-UnitFrame-Target-PortraitOn-BACKGROUND",
     BORDER = "Interface\\AddOns\\DragonUI\\Textures\\UI-HUD-UnitFrame-Target-PortraitOn-BORDER",
@@ -97,7 +95,7 @@ local TEXTURES = {
     BOSS = "Interface\\AddOns\\DragonUI\\Textures\\uiunitframeboss2x"
 }
 
--- Boss classifications (mismas que target)
+-- Boss classifications (same as target)
 local BOSS_COORDS = {
     elite = {0.001953125, 0.314453125, 0.322265625, 0.630859375, 80, 79, 4, 1},
     rare = {0.00390625, 0.31640625, 0.64453125, 0.953125, 80, 79, 4, 1},
@@ -286,32 +284,30 @@ end
 local function InitializeFrame()
     if Module.configured then return end
     
-    -- ✅ VERIFICAR QUE FOCUSFRAME EXISTE (solo en Wrath)
+    -- Check that FocusFrame exists (Wrath only)
     if not FocusFrame then
-        print("|cFFFF0000[DragonUI]|r FocusFrame not available in this WoW version")
         return
     end
     
-    -- ✅ CREAR OVERLAY FRAME PARA EL SISTEMA CENTRALIZADO
+    -- Create overlay frame for centralized system
     if not Module.focusFrame then
         Module.focusFrame = addon.CreateUIFrame(180, 70, "FocusFrame")
         
-        -- ✅ REGISTRO AUTOMÁTICO EN EL SISTEMA CENTRALIZADO
+        -- Automatic registration in centralized system
         addon:RegisterEditableFrame({
             name = "focus",
             frame = Module.focusFrame,
             blizzardFrame = FocusFrame,
             configPath = {"widgets", "focus"},
-            hasTarget = ShouldFocusFrameBeVisible, -- Solo visible cuando hay focus
-            showTest = ShowFocusFrameTest,         -- ✅ NUEVO: Mostrar frame fake
-            hideTest = HideFocusFrameTest,         -- ✅ NUEVO: Ocultar frame fake
+            hasTarget = ShouldFocusFrameBeVisible, -- Only visible when there is focus
+            showTest = ShowFocusFrameTest,         -- Show fake frame
+            hideTest = HideFocusFrameTest,         -- Hide fake frame
             onHide = function()
-                ApplyWidgetPosition() -- Aplicar nueva configuración al salir del editor
+                ApplyWidgetPosition() -- Apply new configuration when exiting editor
             end,
             module = Module
         })
         
-        print("|cFF00FF00[DragonUI]|r Focus frame registered in centralized system")
     end
     
     -- Hide Blizzard elements
@@ -401,14 +397,14 @@ local function InitializeFrame()
     FocusFrame:SetClampedToScreen(false)
     FocusFrame:SetScale(config.scale or 1)
     
-    -- ✅ APLICAR POSICIÓN DESDE WIDGETS SIEMPRE
+    -- Always apply position from widgets
     ApplyWidgetPosition()
     
     Module.configured = true
     
-    -- ✅ HOOK CRÍTICO: Proteger contra resets de Blizzard
+    -- Critical hook: Protect against Blizzard resets
     if not Module.scaleHooked then
-        -- Proteger contra cualquier reset de escala que pueda hacer Blizzard
+        -- Protect against any scale reset that Blizzard might do
         local originalSetScale = FocusFrame.SetScale
         FocusFrame.SetScale = function(self, scale)
             local config = GetConfig()
@@ -416,20 +412,19 @@ local function InitializeFrame()
             originalSetScale(self, correctScale)
         end
         Module.scaleHooked = true
-        print("|cFF00FF00[DragonUI]|r Focus frame scale protection enabled")
     end
     
-    -- ✅ MÉTODOS ShowTest Y HideTest EXACTAMENTE COMO RETAILUI (adaptado para Focus)
+    -- ShowTest and HideTest (adapted for Focus)
     if not FocusFrame.ShowTest then
         FocusFrame.ShowTest = function(self)
-            -- ✅ MOSTRAR FRAME CON DATOS DEL PLAYER Y NUESTRAS TEXTURAS PERSONALIZADAS
+            -- Show frame with player data and our custom textures
             self:Show()
             
-            -- ✅ ASEGURAR QUE EL FOCUSFRAME ESTÉ EN STRATA BAJO PARA QUE EL EDITOR ESTÉ ENCIMA
+            -- Ensure FocusFrame is in low strata so editor is on top
             self:SetFrameStrata("MEDIUM")
-            self:SetFrameLevel(10) -- Nivel bajo para que el frame verde esté encima
+            self:SetFrameLevel(10) -- Low level so green frame is on top
             
-            -- ✅ ASEGURAR QUE NUESTRAS TEXTURAS PERSONALIZADAS ESTÉN VISIBLES
+            -- Ensure our custom textures are visible
             if frameElements.background then
                 frameElements.background:Show()
             end
@@ -437,42 +432,42 @@ local function InitializeFrame()
                 frameElements.border:Show()
             end
             
-            -- ✅ PORTRAIT DEL PLAYER (como RetailUI)
+            -- Player portrait 
             if FocusFramePortrait then
                 SetPortraitTexture(FocusFramePortrait, "player")
             end
             
-            -- ✅ BACKGROUND CON COLOR DEL PLAYER Y NUESTRA TEXTURA
+            -- Background with player color and our texture
             if FocusFrameNameBackground then
                 local r, g, b = UnitSelectionColor("player")
                 FocusFrameNameBackground:SetVertexColor(r, g, b, 0.8)
                 FocusFrameNameBackground:Show()
             end
             
-            -- ✅ NOMBRE Y NIVEL DEL PLAYER (conservar color original)
+            -- Player name and level (preserve original color)
             local nameText = FocusFrameTextureFrameName
             if nameText then
-                -- ✅ GUARDAR COLOR ORIGINAL ANTES DE CAMBIAR
+                -- Save original color before changing
                 if not nameText.originalColor then
                     local r, g, b, a = nameText:GetTextColor()
                     nameText.originalColor = {r, g, b, a}
                 end
                 nameText:SetText(UnitName("player"))
-                -- ✅ NO CAMBIAR COLOR - mantener el original
+                -- Do not change color - keep original
             end
             
             local levelText = FocusFrameTextureFrameLevelText  
             if levelText then
-                -- ✅ GUARDAR COLOR ORIGINAL ANTES DE CAMBIAR
+                -- Save original color before changing
                 if not levelText.originalColor then
                     local r, g, b, a = levelText:GetTextColor()
                     levelText.originalColor = {r, g, b, a}
                 end
                 levelText:SetText(UnitLevel("player"))
-                -- ✅ NO CAMBIAR COLOR - mantener el original
+                -- Do not change color - keep original
             end
             
-            -- ✅ HEALTH BAR CON NUESTRO SISTEMA DE CLASS COLOR
+            -- Health bar with our class color system
             local healthBar = FocusFrameHealthBar
             if healthBar then
                 local curHealth = UnitHealth("player")
@@ -480,16 +475,16 @@ local function InitializeFrame()
                 healthBar:SetMinMaxValues(0, maxHealth)
                 healthBar:SetValue(curHealth)
                 
-                -- ✅ APLICAR NUESTRO SISTEMA DE CLASS COLOR
+                -- Apply our class color system
                 local texture = healthBar:GetStatusBarTexture()
                 if texture then
                     local config = GetConfig()
                     if config.classcolor then
-                        -- ✅ USAR TEXTURA STATUS PARA CLASS COLOR
+                        -- Use status texture for class color
                         local statusTexturePath = "Interface\\AddOns\\DragonUI\\Textures\\Unitframe\\UI-HUD-UnitFrame-Target-PortraitOn-Bar-Health-Status"
                         texture:SetTexture(statusTexturePath)
                         
-                        -- ✅ APLICAR COLOR DE CLASE DEL PLAYER
+                        -- Apply player class color
                         local _, class = UnitClass("player")
                         local color = RAID_CLASS_COLORS[class]
                         if color then
@@ -498,20 +493,20 @@ local function InitializeFrame()
                             texture:SetVertexColor(1, 1, 1, 1)
                         end
                     else
-                        -- ✅ USAR TEXTURA NORMAL SIN CLASS COLOR
+                        -- Use normal texture without class color
                         local normalTexturePath = "Interface\\AddOns\\DragonUI\\Textures\\Unitframe\\UI-HUD-UnitFrame-Target-PortraitOn-Bar-Health"
                         texture:SetTexture(normalTexturePath)
                         texture:SetVertexColor(1, 1, 1, 1)
                     end
                     
-                    -- ✅ APLICAR COORDS DE TEXTURA
+                    -- Apply texture coordinates
                     texture:SetTexCoord(0, curHealth / maxHealth, 0, 1)
                 end
                 
                 healthBar:Show()
             end
             
-            -- ✅ MANA BAR CON NUESTRO SISTEMA DE TEXTURAS DE PODER
+            -- Mana bar with our power texture system
             local manaBar = FocusFrameManaBar
             if manaBar then
                 local powerType = UnitPowerType("player")
@@ -520,7 +515,7 @@ local function InitializeFrame()
                 manaBar:SetMinMaxValues(0, maxMana)
                 manaBar:SetValue(curMana)
                 
-                -- ✅ APLICAR NUESTRA TEXTURA DE PODER PERSONALIZADA
+                -- Apply our custom power texture
                 local texture = manaBar:GetStatusBarTexture()
                 if texture then
                     local powerName = POWER_MAP[powerType] or "Mana"
@@ -529,7 +524,7 @@ local function InitializeFrame()
                     texture:SetDrawLayer("ARTWORK", 1)
                     texture:SetVertexColor(1, 1, 1, 1)
                     
-                    -- ✅ APLICAR COORDS DE TEXTURA
+                    -- Apply texture coordinates
                     if maxMana > 0 then
                         texture:SetTexCoord(0, curMana / maxMana, 0, 1)
                     end
@@ -538,12 +533,12 @@ local function InitializeFrame()
                 manaBar:Show()
             end
             
-            -- ✅ MOSTRAR DECORACIÓN ELITE SI EL PLAYER ES ESPECIAL (Focus no tiene famous NPCs, pero sí clasificación)
+            -- Show elite decoration if player is special (Focus doesn't have famous NPCs, but has classification)
             if frameElements.elite then
                 local classification = UnitClassification("player")
                 local coords = nil
                 
-                -- ✅ VERIFICAR SI EL PLAYER TIENE CLASIFICACIÓN ESPECIAL
+                -- Check if player has special classification
                 if classification and classification ~= "normal" then
                     coords = BOSS_COORDS[classification] or BOSS_COORDS.elite
                 end
@@ -560,11 +555,11 @@ local function InitializeFrame()
         end
         
         FocusFrame.HideTest = function(self)
-            -- ✅ RESTAURAR STRATA ORIGINAL DEL FOCUSFRAME
+            -- Restore original FocusFrame strata
             self:SetFrameStrata("LOW")
-            self:SetFrameLevel(1) -- Nivel normal
+            self:SetFrameLevel(1) -- Normal level
             
-            -- ✅ RESTAURAR COLORES ORIGINALES DE LOS TEXTOS
+            -- Restore original text colors
             local nameText = FocusFrameTextureFrameName
             if nameText and nameText.originalColor then
                 nameText:SetVertexColor(nameText.originalColor[1], nameText.originalColor[2], 
@@ -577,17 +572,17 @@ local function InitializeFrame()
                                         levelText.originalColor[3], levelText.originalColor[4])
             end
             
-            -- ✅ SIMPLE: Solo ocultar si no hay focus real
+            -- Simple: Only hide if no real focus
             if not UnitExists("focus") then
                 self:Hide()
             end
         end
         
-        print("|cFF00FF00[DragonUI]|r Focus frame test methods added (RetailUI style)")
+        end
+        
     end
     
-    print("|cFF00FF00[DragonUI]|r FocusFrame configured successfully")
-end
+
 
 -- ============================================================================
 -- EVENT HANDLING
@@ -603,11 +598,10 @@ local function OnEvent(self, event, ...)
     elseif event == "PLAYER_ENTERING_WORLD" then
         InitializeFrame()
         
-        -- ✅ CONFIGURAR TEXT SYSTEM AQUÍ PARA ASEGURAR QUE ESTÉ DISPONIBLE
+        -- Configure text system here to ensure it's available
         if addon.TextSystem and not Module.textSystem and FocusFrame then
             Module.textSystem = addon.TextSystem.SetupFrameTextSystem("focus", "focus", FocusFrame, FocusFrameHealthBar,
                 FocusFrameManaBar, "FocusFrame")
-            print("|cFF00FF00[DragonUI]|r Focus text system configured after world enter")
         end
         
         if UnitExists("focus") then
@@ -653,7 +647,7 @@ if not Module.eventsFrame then
     Module.eventsFrame:RegisterEvent("PLAYER_FOCUS_CHANGED")
     Module.eventsFrame:RegisterEvent("UNIT_CLASSIFICATION_CHANGED")
     Module.eventsFrame:RegisterEvent("UNIT_FACTION")
-    -- ✅ EVENTOS CRÍTICOS PARA EL TEXT SYSTEM
+    -- Critical events for the text system
     Module.eventsFrame:RegisterEvent("UNIT_HEALTH")
     Module.eventsFrame:RegisterEvent("UNIT_MAXHEALTH") 
     Module.eventsFrame:RegisterEvent("UNIT_POWER_UPDATE")
@@ -670,13 +664,13 @@ local function RefreshFrame()
         InitializeFrame()
     end
     
-    -- ✅ APLICAR CONFIGURACIÓN INMEDIATAMENTE (incluyendo scale)
+    -- Apply configuration immediately (including scale)
     local config = GetConfig()
     
-    -- ✅ APLICAR SCALE INMEDIATAMENTE
+    -- Apply scale immediately
     FocusFrame:SetScale(config.scale or 1)
     
-    -- ✅ APLICAR POSICIÓN DESDE WIDGETS INMEDIATAMENTE
+    -- Apply position from widgets immediately
     ApplyWidgetPosition()
     
     if UnitExists("focus") then
@@ -694,7 +688,7 @@ local function ResetFrame()
         addon:SetConfigValue("unitframe", "focus", key, value)
     end
     
-    -- ✅ RESETEAR WIDGETS TAMBIÉN
+    -- Reset widgets too
     if not addon.db.profile.widgets then
         addon.db.profile.widgets = {}
     end
@@ -709,8 +703,6 @@ local function ResetFrame()
     FocusFrame:ClearAllPoints()
     FocusFrame:SetScale(config.scale or 1)
     ApplyWidgetPosition()
-    
-    print("|cFF00FF00[DragonUI]|r Focus frame reset to defaults with widgets")
 end
 
 -- Export API
@@ -735,7 +727,7 @@ end
 -- CENTRALIZED SYSTEM SUPPORT FUNCTIONS (like player.lua/target.lua)
 -- ============================================================================
 
--- ✅ FUNCIONES REQUERIDAS POR EL SISTEMA CENTRALIZADO
+-- Functions required by the centralized system
 function Module:LoadDefaultSettings()
     if not addon.db.profile.widgets then
         addon.db.profile.widgets = {}
@@ -749,7 +741,6 @@ end
 
 function Module:UpdateWidgets()
     if not addon.db or not addon.db.profile.widgets or not addon.db.profile.widgets.focus then
-        print("[DragonUI] Focus widgets config not found, loading defaults")
         self:LoadDefaultSettings()
         return
     end
@@ -757,8 +748,4 @@ function Module:UpdateWidgets()
     ApplyWidgetPosition()
     
     local widgetOptions = addon.db.profile.widgets.focus
-    print(string.format("[DragonUI] Focus positioned at: %s (%d, %d)", 
-          widgetOptions.anchor, widgetOptions.posX, widgetOptions.posY))
 end
-
-print("|cFF00FF00[DragonUI]|r Focus module loaded and optimized v1.0 - CENTRALIZED SYSTEM")
