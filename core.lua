@@ -357,8 +357,14 @@ addon.frames = {}
 function ShowUIFrame(frame)
     frame:SetMovable(false)
     frame:EnableMouse(false)
-    frame.editorTexture:Hide()
-    frame.editorText:Hide()
+    
+    -- Safety check for editor overlay elements
+    if frame.editorTexture then
+        frame.editorTexture:Hide()
+    end
+    if frame.editorText then
+        frame.editorText:Hide()
+    end
 
     if addon.frames[frame] then
         for _, target in pairs(addon.frames[frame]) do
@@ -371,8 +377,14 @@ end
 function HideUIFrame(frame, exclude)
     frame:SetMovable(true)
     frame:EnableMouse(true)
-    frame.editorTexture:Show()
-    frame.editorText:Show()
+    
+    -- Safety check for editor overlay elements
+    if frame.editorTexture then
+        frame.editorTexture:Show()
+    end
+    if frame.editorText then
+        frame.editorText:Show()
+    end
 
     addon.frames[frame] = {}
     exclude = exclude or {}

@@ -306,7 +306,8 @@ function MainMenuBarMixin:statusbar_setup()
 		end
 	end
 	
-	MainMenuExpBar:SetClearPoint('BOTTOM', UIParent, 0, 6)
+	-- ✅ REMOVED: Position now handled by RetailUI container system
+	-- MainMenuExpBar:SetClearPoint('BOTTOM', UIParent, 0, 6)
 	MainMenuExpBar:SetFrameLevel(10)
 	ReputationWatchBar:SetParent(pUiMainBar)
 	ReputationWatchBar:SetFrameLevel(10)
@@ -437,414 +438,221 @@ end
 addon.pUiMainBar = pUiMainBar;
 MainMenuBarMixin:initialize();
 
--- ✅ INTEGRATE ACTION BARS WITH CENTRALIZED UI SYSTEM
--- Create container frames for each action bar and register them
-local function SetupActionBarContainers()
-    -- Create MainBars module reference for consistency
-    addon.MainBars = addon.MainBars or {}
+-- ACTION BAR SYSTEM - Based on RetailUI Pattern
+-- Simple and clean approach for action bar management
+
+-- Store action bar container frames
+addon.ActionBarFrames = {
+    mainbar = nil,
+    rightbar = nil,
+    leftbar = nil,
+    bottombarleft = nil,
+    bottombarright = nil,
+    xpbar = nil
+}
+
+-- Create action bar container frames
+local function CreateActionBarFrames()
+    -- Main bar - create a NEW container frame instead of using pUiMainBar directly
+    addon.ActionBarFrames.mainbar = addon.CreateUIFrame(pUiMainBar:GetWidth(), pUiMainBar:GetHeight(), "MainBar")
     
-    -- 1. Main bar - use existing pUiMainBar as container, add editor textures
-    -- Create a separate overlay frame to ensure it's above action buttons
-    if not pUiMainBar.overlayFrame then
-        local overlayFrame = CreateFrame("Frame", nil, UIParent)
-        overlayFrame:SetFrameStrata("FULLSCREEN_DIALOG")  -- Highest available strata to be above everything
-        overlayFrame:SetFrameLevel(9999)
-        overlayFrame:SetAllPoints(pUiMainBar)
-        overlayFrame:EnableMouse(false)  -- ✅ FIXED: Don't block mouse by default - only when editor is active
-        
-        -- CRITICAL FIX: Allow dragging by forwarding drag events to the main frame
-        overlayFrame:RegisterForDrag("LeftButton")
-        overlayFrame:SetScript("OnDragStart", function(self)
-            if pUiMainBar:IsMovable() then
-                pUiMainBar:StartMoving()
-            end
-        end)
-        overlayFrame:SetScript("OnDragStop", function(self)
-            if pUiMainBar:IsMovable() then
-                pUiMainBar:StopMovingOrSizing()
-                -- ✅ CRITICAL FIX: Save mainbar position when moved via overlay
-                if addon.EditorMode and addon.EditorMode:IsActive() then
-                    SaveUIFramePosition(pUiMainBar, "widgets", "mainbar")
-                    print("|cFFFFFF00[DragonUI Debug]|r Mainbar position saved via overlay drag")
-                end
-            end
-        end)
-        
-        pUiMainBar.overlayFrame = overlayFrame
-        
-        local texture = overlayFrame:CreateTexture(nil, 'OVERLAY')
-        texture:SetAllPoints(overlayFrame)
-        texture:SetTexture(0, 1, 0, 0.3) -- Green more visible
-        texture:SetDrawLayer('OVERLAY', 7) -- High layer within overlay frame
-        texture:Hide()
-        pUiMainBar.editorTexture = texture
-        
-        local fontString = overlayFrame:CreateFontString(nil, "OVERLAY", 'GameFontNormalLarge')
-        fontString:SetPoint("CENTER", overlayFrame, "CENTER")
-        fontString:SetText("MainBar")
-        fontString:SetShadowColor(0, 0, 0, 1)
-        fontString:SetShadowOffset(2, -2)
-        fontString:SetDrawLayer('OVERLAY', 8) -- Above the texture
-        fontString:Hide()
-        pUiMainBar.editorText = fontString
-        
-        -- Hook mainbar movement to update overlay position
-        pUiMainBar:HookScript("OnUpdate", function(self)
-            if overlayFrame then
-                overlayFrame:SetAllPoints(self)
-            end
-        end)
-    end
+    -- Create other action bar containers
+    addon.ActionBarFrames.rightbar = addon.CreateUIFrame(40, 490, "RightBar")
+    addon.ActionBarFrames.leftbar = addon.CreateUIFrame(40, 490, "LeftBar")
+    addon.ActionBarFrames.bottombarleft = addon.CreateUIFrame(490, 40, "BottomBarLeft")
+    addon.ActionBarFrames.bottombarright = addon.CreateUIFrame(490, 40, "BottomBarRight")
     
-    -- Set proper frame strata and level for editor mode - CRITICAL for overlay visibility
-    pUiMainBar.originalStrata = pUiMainBar:GetFrameStrata()
-    pUiMainBar.originalLevel = pUiMainBar:GetFrameLevel()
+    -- Create experience bar container
+    addon.ActionBarFrames.xpbar = addon.CreateUIFrame(545, 20, "XPBar")
+end
+
+-- Position action bars to their container frames (initialization only - safe during addon load)
+local function PositionActionBarsToContainers_Initial()
+    -- This function is ONLY called during ADDON_LOADED
+    -- It's safe to position Blizzard frames during initial load, even in combat
     
-    -- Ensure main bar has proper position from database or use default
-    local mainbarConfig = addon.db.profile.widgets.mainbar
-    if mainbarConfig and mainbarConfig.anchor then
-        -- ✅ CRITICAL FIX: Always apply saved position, clear existing points first
+    -- Position main bar - anchor pUiMainBar to its container
+    if pUiMainBar and addon.ActionBarFrames.mainbar then
+        pUiMainBar:SetParent(UIParent)
         pUiMainBar:ClearAllPoints()
-        pUiMainBar:SetPoint(mainbarConfig.anchor or "BOTTOM", UIParent, mainbarConfig.anchor or "BOTTOM", mainbarConfig.posX or 0, mainbarConfig.posY or 75)
-        print("|cFF00FF00[DragonUI]|r Applied mainbar position from database: " .. (mainbarConfig.anchor or "BOTTOM") .. " (" .. (mainbarConfig.posX or 0) .. "," .. (mainbarConfig.posY or 75) .. ")")
-    else
-        -- Only set default if no saved position exists
-        if not pUiMainBar:GetPoint() then
-            pUiMainBar:SetPoint("BOTTOM", UIParent, "BOTTOM", 0, 75)
-            print("|cFF00FF00[DragonUI]|r Applied mainbar default position")
-        end
-    end
-    pUiMainBar:SetMovable(true)
-    pUiMainBar:EnableMouse(true)
-    pUiMainBar:RegisterForDrag("LeftButton")
-    pUiMainBar:SetScript("OnDragStart", function(self) self:StartMoving() end)
-    pUiMainBar:SetScript("OnDragStop", function(self) 
-        self:StopMovingOrSizing()
-        -- ✅ CRITICAL FIX: Save position automatically when moved in editor mode
-        if addon.EditorMode and addon.EditorMode:IsActive() then
-            SaveUIFramePosition(self, "widgets", "mainbar")
-            print("|cFFFFFF00[DragonUI Debug]|r Mainbar position saved during drag")
-        end
-    end)
-    
-    addon:RegisterEditableFrame({
-        name = "mainbar",
-        frame = pUiMainBar,
-        blizzardFrame = MainMenuBar,
-        configPath = {"widgets", "mainbar"},
-        module = addon.MainBars,
-        onHide = function()
-            -- ✅ EXTRA SAFETY: Force save mainbar position when editor closes
-            SaveUIFramePosition(pUiMainBar, "widgets", "mainbar")
-            print("|cFFFFFF00[DragonUI Debug]|r Mainbar position saved on editor close")
-        end
-    })
-    print("|cFF00FF00[DragonUI]|r Registered mainbar frame")
-    
-    -- 2. Right bar container
-    local rightBarFrame = addon.CreateUIFrame(40, 490, "RightBar")
-
-    
-
-    
-    -- Use database position or default
-    local rightbarConfig = addon.db.profile.widgets.rightbar
-    if rightbarConfig and rightbarConfig.anchor then
-        rightBarFrame:SetPoint(rightbarConfig.anchor or "RIGHT", UIParent, rightbarConfig.anchor or "RIGHT", rightbarConfig.posX or -10, rightbarConfig.posY or -70)
-        print("|cFF00FF00[DragonUI]|r Applied rightbar position from database: " .. (rightbarConfig.anchor or "RIGHT") .. " (" .. (rightbarConfig.posX or -10) .. "," .. (rightbarConfig.posY or -70) .. ")")
-    else
-        rightBarFrame:SetPoint("RIGHT", UIParent, "RIGHT", -10, -70) -- Default position
-        print("|cFF00FF00[DragonUI]|r Applied rightbar default position")
+        pUiMainBar:SetPoint("CENTER", addon.ActionBarFrames.mainbar, "CENTER")
     end
     
-    -- Ensure overlay is above action buttons
-    if rightBarFrame.editorTexture then
-        rightBarFrame.editorTexture:SetDrawLayer('OVERLAY', 25)
-    end
-    if rightBarFrame.editorText then
-        rightBarFrame.editorText:SetDrawLayer('OVERLAY', 26)
-    end
-    
-    -- Set proper strata for overlay visibility
-    rightBarFrame:SetFrameStrata("FULLSCREEN_DIALOG")
-    rightBarFrame:SetFrameLevel(500)
-    
-    if MultiBarRight then
-        MultiBarRight:SetParent(UIParent) -- Keep on UIParent to prevent strata issues
+    -- Position right bar
+    if MultiBarRight and addon.ActionBarFrames.rightbar then
+        MultiBarRight:SetParent(UIParent)
         MultiBarRight:ClearAllPoints()
-        MultiBarRight:SetPoint("CENTER", rightBarFrame, "CENTER")
+        MultiBarRight:SetPoint("CENTER", addon.ActionBarFrames.rightbar, "CENTER")
     end
     
-    addon:RegisterEditableFrame({
-        name = "rightbar",
-        frame = rightBarFrame,
-        blizzardFrame = MultiBarRight,
-        configPath = {"widgets", "rightbar"},
-        module = addon.MainBars
-    })
-    print("|cFF00FF00[DragonUI]|r Registered rightbar frame")
-    
-    -- 3. Left bar container
-    local leftBarFrame = addon.CreateUIFrame(40, 490, "LeftBar")
-    
-    -- Use database position or default
-    local leftbarConfig = addon.db.profile.widgets.leftbar
-    if leftbarConfig and leftbarConfig.anchor then
-        leftBarFrame:SetPoint(leftbarConfig.anchor or "RIGHT", UIParent, leftbarConfig.anchor or "RIGHT", leftbarConfig.posX or -45, leftbarConfig.posY or -70)
-        print("|cFF00FF00[DragonUI]|r Applied leftbar position from database: " .. (leftbarConfig.anchor or "RIGHT") .. " (" .. (leftbarConfig.posX or -45) .. "," .. (leftbarConfig.posY or -70) .. ")")
-    else
-        leftBarFrame:SetPoint("RIGHT", UIParent, "RIGHT", -45, -70) -- Default position
-        print("|cFF00FF00[DragonUI]|r Applied leftbar default position")
-    end
-    
-    -- Ensure overlay is above action buttons
-    if leftBarFrame.editorTexture then
-        leftBarFrame.editorTexture:SetDrawLayer('OVERLAY', 25)
-    end
-    if leftBarFrame.editorText then
-        leftBarFrame.editorText:SetDrawLayer('OVERLAY', 26)
-    end
-    
-    -- Set proper strata for overlay visibility
-    leftBarFrame:SetFrameStrata("FULLSCREEN_DIALOG")
-    leftBarFrame:SetFrameLevel(500)
-    
-    if MultiBarLeft then
-        MultiBarLeft:SetParent(UIParent) -- Keep on UIParent to prevent strata issues
+    -- Position left bar
+    if MultiBarLeft and addon.ActionBarFrames.leftbar then
+        MultiBarLeft:SetParent(UIParent)
         MultiBarLeft:ClearAllPoints()
-        MultiBarLeft:SetPoint("CENTER", leftBarFrame, "CENTER")
+        MultiBarLeft:SetPoint("CENTER", addon.ActionBarFrames.leftbar, "CENTER")
     end
     
-    addon:RegisterEditableFrame({
-        name = "leftbar",
-        frame = leftBarFrame,
-        blizzardFrame = MultiBarLeft,
-        configPath = {"widgets", "leftbar"},
-        module = addon.MainBars
-    })
-    print("|cFF00FF00[DragonUI]|r Registered leftbar frame")
-    
-    -- 4. Bottom left bar container - INDEPENDENT FROM MAINBAR
-    local bottomLeftBarFrame = addon.CreateUIFrame(490, 40, "BottomBarLeft")
-    
-    -- Use database position or default
-    local bottomleftConfig = addon.db.profile.widgets.bottombarleft
-    if bottomleftConfig and bottomleftConfig.anchor then
-        bottomLeftBarFrame:SetPoint(bottomleftConfig.anchor or "BOTTOM", UIParent, bottomleftConfig.anchor or "BOTTOM", bottomleftConfig.posX or 0, bottomleftConfig.posY or 120)
-        print("|cFF00FF00[DragonUI]|r Applied bottombarleft position from database: " .. (bottomleftConfig.anchor or "BOTTOM") .. " (" .. (bottomleftConfig.posX or 0) .. "," .. (bottomleftConfig.posY or 120) .. ")")
-    else
-        bottomLeftBarFrame:SetPoint("BOTTOM", UIParent, "BOTTOM", 0, 120) -- Default position
-        print("|cFF00FF00[DragonUI]|r Applied bottombarleft default position")
-    end
-    
-    -- Make overlay more visible and ensure it's above action bars
-    if bottomLeftBarFrame.editorTexture then
-        bottomLeftBarFrame.editorTexture:SetTexture(0, 1, 0, 0.3) 
-        bottomLeftBarFrame.editorTexture:SetDrawLayer('OVERLAY', 30) -- Very high layer
-    end
-    if bottomLeftBarFrame.editorText then
-
-        bottomLeftBarFrame.editorText:SetShadowColor(0, 0, 0, 1)
-        bottomLeftBarFrame.editorText:SetShadowOffset(2, -2)
-        bottomLeftBarFrame.editorText:SetDrawLayer('OVERLAY', 31)
-    end
-    
-    -- CRITICAL: Set frame strata higher to be above action bars AND mainbar
-    bottomLeftBarFrame:SetFrameStrata("FULLSCREEN_DIALOG")
-    bottomLeftBarFrame:SetFrameLevel(1500)  -- Higher than mainbar
-    
-    -- Ensure overlay stays with frame during movement
-    bottomLeftBarFrame:HookScript("OnUpdate", function(self)
-        if self.editorTexture and self.editorText then
-            -- Force overlay to stay aligned with frame
-            self.editorTexture:SetAllPoints(self)
-            self.editorText:SetPoint("CENTER", self, "CENTER")
-        end
-    end)
-    
-    if MultiBarBottomLeft then
-        -- COMPLETELY DECOUPLE from mainbar
+    -- Position bottom left bar
+    if MultiBarBottomLeft and addon.ActionBarFrames.bottombarleft then
         MultiBarBottomLeft:SetParent(UIParent)
         MultiBarBottomLeft:ClearAllPoints()
-        MultiBarBottomLeft:SetPoint("CENTER", bottomLeftBarFrame, "CENTER")
-        MultiBarBottomLeft:SetMovable(true)
+        MultiBarBottomLeft:SetPoint("CENTER", addon.ActionBarFrames.bottombarleft, "CENTER")
     end
     
-    addon:RegisterEditableFrame({
-        name = "bottombarleft",
-        frame = bottomLeftBarFrame,
-        blizzardFrame = MultiBarBottomLeft,
-        configPath = {"widgets", "bottombarleft"},
-        module = addon.MainBars
-    })
-    print("|cFF00FF00[DragonUI]|r Registered bottombarleft frame")
-    
-    -- 5. Bottom right bar container - INDEPENDENT FROM MAINBAR
-    local bottomRightBarFrame = addon.CreateUIFrame(490, 40, "BottomBarRight")
-    
-    -- Use database position or default
-    local bottomrightConfig = addon.db.profile.widgets.bottombarright
-    if bottomrightConfig and bottomrightConfig.anchor then
-        bottomRightBarFrame:SetPoint(bottomrightConfig.anchor or "BOTTOM", UIParent, bottomrightConfig.anchor or "BOTTOM", bottomrightConfig.posX or 0, bottomrightConfig.posY or 160)
-        print("|cFF00FF00[DragonUI]|r Applied bottombarright position from database: " .. (bottomrightConfig.anchor or "BOTTOM") .. " (" .. (bottomrightConfig.posX or 0) .. "," .. (bottomrightConfig.posY or 160) .. ")")
-    else
-        bottomRightBarFrame:SetPoint("BOTTOM", UIParent, "BOTTOM", 0, 160) -- Default position
-        print("|cFF00FF00[DragonUI]|r Applied bottombarright default position")
-    end
-    
-    -- Make overlay more visible and ensure it's above action bars
-    if bottomRightBarFrame.editorTexture then
-        bottomRightBarFrame.editorTexture:SetTexture(0, 1, 0, 0.3) 
-        bottomRightBarFrame.editorTexture:SetDrawLayer('OVERLAY', 30) -- Very high layer
-    end
-    if bottomRightBarFrame.editorText then
-        bottomRightBarFrame.editorText:SetShadowColor(0, 0, 0, 1)
-        bottomRightBarFrame.editorText:SetShadowOffset(2, -2)
-        bottomRightBarFrame.editorText:SetDrawLayer('OVERLAY', 31)
-    end
-    
-    -- CRITICAL: Set frame strata higher to be above action bars AND mainbar
-    bottomRightBarFrame:SetFrameStrata("FULLSCREEN_DIALOG")
-    bottomRightBarFrame:SetFrameLevel(1500)  -- Higher than mainbar
-    
-    -- Ensure overlay stays with frame during movement
-    bottomRightBarFrame:HookScript("OnUpdate", function(self)
-        if self.editorTexture and self.editorText then
-            -- Force overlay to stay aligned with frame
-            self.editorTexture:SetAllPoints(self)
-            self.editorText:SetPoint("CENTER", self, "CENTER")
-        end
-    end)
-    
-    if MultiBarBottomRight then
-        -- COMPLETELY DECOUPLE from mainbar
+    -- Position bottom right bar
+    if MultiBarBottomRight and addon.ActionBarFrames.bottombarright then
         MultiBarBottomRight:SetParent(UIParent)
         MultiBarBottomRight:ClearAllPoints()
-        MultiBarBottomRight:SetPoint("CENTER", bottomRightBarFrame, "CENTER")
-        MultiBarBottomRight:SetMovable(true)
+        MultiBarBottomRight:SetPoint("CENTER", addon.ActionBarFrames.bottombarright, "CENTER")
     end
     
-    addon:RegisterEditableFrame({
-        name = "bottombarright",
-        frame = bottomRightBarFrame,
-        blizzardFrame = MultiBarBottomRight,
-        configPath = {"widgets", "bottombarright"},
-        module = addon.MainBars
-    })
-    print("|cFF00FF00[DragonUI]|r Registered bottombarright frame")
+    -- Position experience bar
+    if MainMenuExpBar and addon.ActionBarFrames.xpbar then
+        MainMenuExpBar:SetParent(UIParent)
+        MainMenuExpBar:ClearAllPoints()
+        MainMenuExpBar:SetPoint("CENTER", addon.ActionBarFrames.xpbar, "CENTER")
+    end
+end
+
+-- Position action bars to their container frames
+local function PositionActionBarsToContainers()
+    -- Only proceed if not in combat to avoid taint
+    if InCombatLockdown() then return end
     
-    print("|cFF00FF00[DragonUI]|r Action bars integrated with centralized UI system")
+    -- Use the initial function for runtime positioning
+    PositionActionBarsToContainers_Initial()
 end
 
-
-
--- ✅ NEW: Set up containers after database is initialized
-local function InitializeActionBars()
-    if addon.db and addon.db.profile and addon.db.profile.widgets then
-        SetupActionBarContainers()
-        print("|cFF00FF00[DragonUI]|r Action bars initialized with database positions")
-        
-        -- ✅ EXTRA SAFETY: Force apply mainbar position after a short delay
-        addon.core:ScheduleTimer(function()
-            if addon.RefreshMainbarPosition then
-                addon.RefreshMainbarPosition()
-            end
-        end, 0.5)
-    else
-        print("|cFFFF0000[DragonUI]|r Database not ready, deferring action bar setup")
-        -- Retry after a longer delay
-        addon.core:ScheduleTimer(InitializeActionBars, 1.0)
+-- Apply saved positions from database
+local function ApplyActionBarPositions()
+    -- Safe containers can be positioned anytime - no combat check needed
+    if not addon.db or not addon.db.profile or not addon.db.profile.widgets then return end
+    
+    local widgets = addon.db.profile.widgets
+    
+    -- Apply mainbar container position (safe to do anytime)
+    if widgets.mainbar and addon.ActionBarFrames.mainbar then
+        local config = widgets.mainbar
+        if config.anchor then
+            addon.ActionBarFrames.mainbar:ClearAllPoints()
+            addon.ActionBarFrames.mainbar:SetPoint(config.anchor, UIParent, config.anchor, config.posX or 0, config.posY or 75)
+        end
     end
-end
-
--- Hook into addon initialization to setup action bars at the right time
-local initFrame = CreateFrame("Frame")
-initFrame:RegisterEvent("ADDON_LOADED")
-initFrame:SetScript("OnEvent", function(self, event, addonName)
-    if addonName == "DragonUI" then
-        -- Give OnInitialize time to run first
-        addon.core:ScheduleTimer(InitializeActionBars, 0.1)
-        self:UnregisterEvent("ADDON_LOADED")
-    end
-end)
-
--- Function to ensure bottom bars follow their containers when moved
-local function EnsureBottomBarsFollowContainers()
-    addon.core:ScheduleTimer(function()
-        if MultiBarBottomLeft then
-            local frameInfo = addon:GetEditableFrameInfo("bottombarleft")
-            if frameInfo and frameInfo.frame then
-                MultiBarBottomLeft:ClearAllPoints()
-                MultiBarBottomLeft:SetPoint("CENTER", frameInfo.frame, "CENTER")
-            end
-        end
-        
-        if MultiBarBottomRight then
-            local frameInfo = addon:GetEditableFrameInfo("bottombarright")
-            if frameInfo and frameInfo.frame then
-                MultiBarBottomRight:ClearAllPoints()
-                MultiBarBottomRight:SetPoint("CENTER", frameInfo.frame, "CENTER")
-            end
-        end
-        
-        -- Also ensure left and right bars follow their containers
-        if MultiBarLeft then
-            local frameInfo = addon:GetEditableFrameInfo("leftbar")
-            if frameInfo and frameInfo.frame then
-                MultiBarLeft:ClearAllPoints()
-                MultiBarLeft:SetPoint("CENTER", frameInfo.frame, "CENTER")
-            end
-        end
-        
-        if MultiBarRight then
-            local frameInfo = addon:GetEditableFrameInfo("rightbar")
-            if frameInfo and frameInfo.frame then
-                MultiBarRight:ClearAllPoints()
-                MultiBarRight:SetPoint("CENTER", frameInfo.frame, "CENTER")
-            end
-        end
-    end, 0.1)
-end
-
--- ✅ REMOVED: Faulty hook that was causing IsMoving() errors
--- The centralized system should handle movement automatically
-
--- Add proper hooks for action bar following using drag events
-local function SetupActionBarFollowing()
-    -- Setup for all container frames to ensure action bars follow when moved
-    -- NOTE: mainbar is excluded because it doesn't have a separate action bar that follows it
-    local actionBarMappings = {
-        leftbar = MultiBarLeft,
-        rightbar = MultiBarRight,
-        bottombarleft = MultiBarBottomLeft,
-        bottombarright = MultiBarBottomRight
+    
+    -- Apply other bar positions
+    local barConfigs = {
+        {frame = addon.ActionBarFrames.rightbar, config = widgets.rightbar, default = {"RIGHT", -10, -70}},
+        {frame = addon.ActionBarFrames.leftbar, config = widgets.leftbar, default = {"RIGHT", -45, -70}},
+        {frame = addon.ActionBarFrames.bottombarleft, config = widgets.bottombarleft, default = {"BOTTOM", 0, 120}},
+        {frame = addon.ActionBarFrames.bottombarright, config = widgets.bottombarright, default = {"BOTTOM", 0, 160}},
+        {frame = addon.ActionBarFrames.xpbar, config = widgets.xpbar, default = {"BOTTOM", 0, 6}}
     }
     
-    for containerName, actionBar in pairs(actionBarMappings) do
-        if actionBar then
-            local frameInfo = addon:GetEditableFrameInfo(containerName)
-            if frameInfo and frameInfo.frame then
-                -- Hook drag stop to ensure action bar follows
-                frameInfo.frame:HookScript("OnDragStop", function(self)
-                    actionBar:ClearAllPoints()
-                    actionBar:SetPoint("CENTER", self, "CENTER")
-                end)
-                
-                -- Also hook show/hide events
-                frameInfo.frame:HookScript("OnShow", function(self)
-                    actionBar:ClearAllPoints()
-                    actionBar:SetPoint("CENTER", self, "CENTER")
-                end)
-            end
+    for _, barData in ipairs(barConfigs) do
+        if barData.frame and barData.config then
+            local config = barData.config
+            local anchor = config.anchor or barData.default[1]
+            local posX = config.posX or barData.default[2]
+            local posY = config.posY or barData.default[3]
+            
+            barData.frame:ClearAllPoints()
+            barData.frame:SetPoint(anchor, UIParent, anchor, posX, posY)
+        elseif barData.frame then
+            -- Apply default position
+            local default = barData.default
+            barData.frame:ClearAllPoints()
+            barData.frame:SetPoint(default[1], UIParent, default[1], default[2], default[3])
         end
     end
 end
 
--- Setup the following system after containers are registered
-addon.core:ScheduleTimer(SetupActionBarFollowing, 1)
+-- Register action bar frames with the centralized system
+local function RegisterActionBarFrames()
+    -- Register all action bar frames
+    local frameRegistrations = {
+        {name = "mainbar", frame = addon.ActionBarFrames.mainbar, blizzardFrame = MainMenuBar, configPath = {"widgets", "mainbar"}},
+        {name = "rightbar", frame = addon.ActionBarFrames.rightbar, blizzardFrame = MultiBarRight, configPath = {"widgets", "rightbar"}},
+        {name = "leftbar", frame = addon.ActionBarFrames.leftbar, blizzardFrame = MultiBarLeft, configPath = {"widgets", "leftbar"}},
+        {name = "bottombarleft", frame = addon.ActionBarFrames.bottombarleft, blizzardFrame = MultiBarBottomLeft, configPath = {"widgets", "bottombarleft"}},
+        {name = "bottombarright", frame = addon.ActionBarFrames.bottombarright, blizzardFrame = MultiBarBottomRight, configPath = {"widgets", "bottombarright"}},
+        {name = "xpbar", frame = addon.ActionBarFrames.xpbar, blizzardFrame = MainMenuExpBar, configPath = {"widgets", "xpbar"}}
+    }
+    
+    for _, registration in ipairs(frameRegistrations) do
+        if registration.frame then
+            addon:RegisterEditableFrame({
+                name = registration.name,
+                frame = registration.frame,
+                blizzardFrame = registration.blizzardFrame,
+                configPath = registration.configPath,
+                module = addon.MainBars
+            })
+        end
+    end
+end
 
--- ✅ REMOVED: ApplyActionBarPositions function no longer needed
--- Positions are now applied directly in SetupActionBarContainers using database values
+-- Hook drag events to ensure action bars follow their containers
+local function SetupActionBarDragHandlers()
+    -- Add drag end handlers to reposition action bars
+    for name, frame in pairs(addon.ActionBarFrames) do
+        if frame and name ~= "mainbar" then
+            frame:HookScript("OnDragStop", function(self)
+                addon.core:ScheduleTimer(function() 
+                    -- RetailUI Pattern: Only reposition if not in combat
+                    PositionActionBarsToContainers()
+                end, 0.1)
+            end)
+        end
+    end
+end
+
+-- Initialize action bar system
+local function InitializeActionBarSystem()
+    CreateActionBarFrames()
+    ApplyActionBarPositions()
+    RegisterActionBarFrames()
+    
+    -- ALWAYS position action bars immediately during addon load (RetailUI pattern)
+    -- This is safe during ADDON_LOADED event, even in combat
+    PositionActionBarsToContainers_Initial()
+    
+    if InCombatLockdown() then
+        print("|cff00ff00DragonUI:|r Action bars positioned during combat reload")
+    end
+    
+    -- Set up drag handlers after a short delay
+    addon.core:ScheduleTimer(function() SetupActionBarDragHandlers() end, 0.2)
+end
+-- Update action bar positions from database (similar to RetailUI:UpdateWidgets)
+function addon.UpdateActionBarWidgets()
+    -- Safe containers can be positioned anytime - no combat check needed
+    ApplyActionBarPositions()
+    
+    -- Only position Blizzard frames if not in combat
+    if not InCombatLockdown() then
+        PositionActionBarsToContainers()
+    end
+end
+
+-- Event handler for addon initialization
+local initFrame = CreateFrame("Frame")
+initFrame:RegisterEvent("ADDON_LOADED")
+initFrame:RegisterEvent("PLAYER_REGEN_ENABLED") -- When combat ends
+initFrame:SetScript("OnEvent", function(self, event, addonName)
+    if event == "ADDON_LOADED" and addonName == "DragonUI" then
+        -- Initialize action bar system immediately (RetailUI pattern)
+        -- This ensures frames are positioned correctly even during combat reload
+        InitializeActionBarSystem()
+        self:UnregisterEvent("ADDON_LOADED")
+    elseif event == "PLAYER_REGEN_ENABLED" then
+        -- Reposition Blizzard frames when combat ends (for runtime changes)
+        addon.core:ScheduleTimer(function() 
+            ApplyActionBarPositions() -- Ensure containers are in correct position
+            PositionActionBarsToContainers() -- Position Blizzard frames to containers
+            print("|cff00ff00DragonUI:|r Action bars repositioned after combat")
+        end, 0.1)
+    end
+end)
 
 -- configuration refresh function
 function addon.RefreshMainbars()
@@ -856,10 +664,6 @@ function addon.RefreshMainbars()
     local db_mainbars = db.mainbars
     local db_style = db.style
     local db_buttons = db.buttons
-    
-    -- ========================================
-    -- ✅ ORIENTATION AND NON-POSITIONAL SETTINGS ONLY
-    -- ========================================
     
     -- Update scales
     pUiMainBar:SetScale(db_mainbars.scale_actionbar);
@@ -900,18 +704,15 @@ function addon.RefreshMainbars()
     if ReputationWatchStatusBar then 
         ReputationWatchStatusBar:SetStatusBarTexture(db_style.xpbar == 'old' and "Interface\\MainMenuBar\\UI-XP-Bar" or "Interface\\MainMenuBar\\UI-ExperienceBar")
     end
+    
+    -- Update action bar positions
+    addon.UpdateActionBarWidgets()
 end
 
 local function OnProfileChange()
-    -- Esta función se llamará cada vez que el perfil cambie, se resetee o se copie.
-    -- Llama directamente a la función de refresco principal.
+    -- This function is called whenever the profile changes, resets, or is copied
     if addon.RefreshMainbars then
         addon.RefreshMainbars()
-    end
-    
-    -- ✅ CRITICAL FIX: Also refresh mainbar position specifically
-    if addon.RefreshMainbarPosition then
-        addon.RefreshMainbarPosition()
     end
 end
 
@@ -919,113 +720,59 @@ local initializationFrame = CreateFrame("Frame")
 initializationFrame:RegisterEvent("PLAYER_LOGIN")
 initializationFrame:SetScript("OnEvent", function(self, event)
     if event == "PLAYER_LOGIN" then
-        -- Nos aseguramos de que la base de datos (AceDB) esté lista.
+        -- Ensure database is ready
         if not addon.db then return end
 
-        -- Registramos nuestra función 'OnProfileChange' para que se ejecute automáticamente
-        -- cuando AceDB detecte un cambio de perfil.
+        -- Register profile change callbacks
         addon.db.RegisterCallback(addon, "OnProfileChanged", OnProfileChange)
         addon.db.RegisterCallback(addon, "OnProfileCopied", OnProfileChange)
         addon.db.RegisterCallback(addon, "OnProfileReset", OnProfileChange)
         
-        -- Forzamos un refresco inicial al entrar al juego para aplicar la configuración del perfil cargado.
+        -- Initial refresh
         OnProfileChange()
 
-        -- Ya no necesitamos escuchar este evento.
         self:UnregisterEvent("PLAYER_LOGIN")
     end
 end)
 
--- ✅ FUNCIONES PÚBLICAS PARA DEBUGGING/MANUAL (se mantienen)
-function addon.TestProfileCallbacks()
-
-    if addon.db then
-   
-        if addon.db.GetCurrentProfile then
-       
+-- Simple function to refresh mainbar position from database
+function addon.RefreshMainbarPosition()
+    -- Safe containers can be positioned anytime - no combat check needed
+    if not addon.ActionBarFrames.mainbar or not addon.db or not addon.db.profile then return end
+    
+    local mainbarConfig = addon.db.profile.widgets.mainbar
+    if mainbarConfig and mainbarConfig.anchor then
+        addon.ActionBarFrames.mainbar:ClearAllPoints()
+        addon.ActionBarFrames.mainbar:SetPoint(mainbarConfig.anchor or "BOTTOM", UIParent, mainbarConfig.anchor or "BOTTOM", mainbarConfig.posX or 0, mainbarConfig.posY or 75)
+        
+        -- Reposition Blizzard frame only if not in combat
+        if not InCombatLockdown() and pUiMainBar then
+            pUiMainBar:ClearAllPoints()
+            pUiMainBar:SetPoint("CENTER", addon.ActionBarFrames.mainbar, "CENTER")
         end
     end
 end
 
--- ✅ NEW: Function to refresh mainbar position from database
-function addon.RefreshMainbarPosition()
-    if not pUiMainBar or not addon.db or not addon.db.profile then return end
+-- Simple function to refresh XP bar position from database
+function addon.RefreshXpBarPosition()
+    -- Safe containers can be positioned anytime - no combat check needed
+    if not addon.ActionBarFrames.xpbar or not addon.db or not addon.db.profile then return end
     
-    local mainbarConfig = addon.db.profile.widgets.mainbar
-    if mainbarConfig and mainbarConfig.anchor then
-        pUiMainBar:ClearAllPoints()
-        pUiMainBar:SetPoint(mainbarConfig.anchor or "BOTTOM", UIParent, mainbarConfig.anchor or "BOTTOM", mainbarConfig.posX or 0, mainbarConfig.posY or 75)
-        print("|cFF00FF00[DragonUI]|r Refreshed mainbar position from database: " .. (mainbarConfig.anchor or "BOTTOM") .. " (" .. (mainbarConfig.posX or 0) .. "," .. (mainbarConfig.posY or 75) .. ")")
+    local xpbarConfig = addon.db.profile.widgets.xpbar
+    if xpbarConfig and xpbarConfig.anchor then
+        addon.ActionBarFrames.xpbar:ClearAllPoints()
+        addon.ActionBarFrames.xpbar:SetPoint(xpbarConfig.anchor or "BOTTOM", UIParent, xpbarConfig.anchor or "BOTTOM", xpbarConfig.posX or 0, xpbarConfig.posY or 6)
+        
+        -- Reposition Blizzard frame only if not in combat
+        if not InCombatLockdown() and MainMenuExpBar then
+            MainMenuExpBar:ClearAllPoints()
+            MainMenuExpBar:SetPoint("CENTER", addon.ActionBarFrames.xpbar, "CENTER")
+        end
     end
 end
 
+-- Force profile refresh
 function addon.ForceProfileRefresh()
     OnProfileChange()
 end
 
-function addon.TestSecondaryBars()
-
-    local config = addon.db.profile.mainbars
-    if not config then
-       
-        return
-    end
-    
-       
-    if MultiBarLeft then
-        local point, _, _, x, y = MultiBarLeft:GetPoint()
-    
-    end
-    
-    if MultiBarRight then
-        local point, _, _, x, y = MultiBarRight:GetPoint()
-      
-    end
-    
-   
-    addon.PositionActionBars()
-end
-
--- ✅ FUNCIÓN PARA FORZAR SOLO BARRAS SECUNDARIAS
-function addon.ForceSecondaryBarsPosition()
-    addon.PositionActionBars()
-end
-
--- ✅ FUNCTIONS TO ENABLE/DISABLE OVERLAY MOUSE BLOCKING FOR EDITOR MODE
-function addon.EnableActionBarOverlays()
-    -- Enable mouse blocking on all action bar overlays when editor mode is active
-    if pUiMainBar and pUiMainBar.overlayFrame then
-        pUiMainBar.overlayFrame:EnableMouse(true)
-    end
-    if MultiBarLeft and MultiBarLeft.overlayFrame then
-        MultiBarLeft.overlayFrame:EnableMouse(true)
-    end
-    if MultiBarRight and MultiBarRight.overlayFrame then
-        MultiBarRight.overlayFrame:EnableMouse(true)
-    end
-    if MultiBarBottomLeft and MultiBarBottomLeft.overlayFrame then
-        MultiBarBottomLeft.overlayFrame:EnableMouse(true)
-    end
-    if MultiBarBottomRight and MultiBarBottomRight.overlayFrame then
-        MultiBarBottomRight.overlayFrame:EnableMouse(true)
-    end
-end
-
-function addon.DisableActionBarOverlays()
-    -- Disable mouse blocking on all action bar overlays when editor mode is inactive
-    if pUiMainBar and pUiMainBar.overlayFrame then
-        pUiMainBar.overlayFrame:EnableMouse(false)
-    end
-    if MultiBarLeft and MultiBarLeft.overlayFrame then
-        MultiBarLeft.overlayFrame:EnableMouse(false)
-    end
-    if MultiBarRight and MultiBarRight.overlayFrame then
-        MultiBarRight.overlayFrame:EnableMouse(false)
-    end
-    if MultiBarBottomLeft and MultiBarBottomLeft.overlayFrame then
-        MultiBarBottomLeft.overlayFrame:EnableMouse(false)
-    end
-    if MultiBarBottomRight and MultiBarBottomRight.overlayFrame then
-        MultiBarBottomRight.overlayFrame:EnableMouse(false)
-    end
-end

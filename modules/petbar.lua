@@ -42,11 +42,7 @@ local PetbarEditor = {
 
 -- ✅ APLICAR POSICIÓN DESDE WIDGETS AL INICIALIZAR
 local function ApplyPetbarPosition()
-    -- ✅ NO REPOSICIONAR SI ESTAMOS EN EDITOR MODE O DURANTE DRAG
-    if addon.EditorMode and addon.EditorMode:IsActive() then
-        return -- No aplicar posición durante editor mode
-    end
-    
+    -- RetailUI pattern: Apply position from database
     if addon.db and addon.db.profile.widgets and addon.db.profile.widgets.petbar then
         local config = addon.db.profile.widgets.petbar
         if config.anchor and config.posX and config.posY then
@@ -56,45 +52,12 @@ local function ApplyPetbarPosition()
     end
 end
 
--- ✅ INICIALIZACIÓN USANDO SISTEMA DE WIDGETS
-local function InitializePetbar()
-    if config and config.additional then
-        -- ✅ APLICAR POSICIÓN DESDE WIDGETS CONFIG
-        --ApplyPetbarPosition()
-        
-        -- Show petbar frame
-        if petbarFrame then
-            petbarFrame:Show()
-        end
-    end
-end
 
--- ✅ INICIALIZACIÓN SIMPLIFICADA
-local function DelayedPetInit()
-	local delayFrame = CreateFrame("Frame")
-	local elapsed = 0
-	local attempts = 0
-	local maxAttempts = 10 -- Reducido a 5 segundos
-	
-	delayFrame:SetScript("OnUpdate", function(self, dt)
-		elapsed = elapsed + dt
-		if elapsed >= 0.5 then -- Cada 0.5 segundos
-			elapsed = 0
-			attempts = attempts + 1
-			
-			-- ✅ USAR NUEVA FUNCIÓN DE INICIALIZACIÓN
-			InitializePetbar()
-			
-			-- Parar después del máximo de intentos
-			if attempts >= maxAttempts then
-				delayFrame:SetScript("OnUpdate", nil)
-			end
-		end
-	end)
-end
 
--- ✅ USAR NUEVA FUNCIÓN DE INICIALIZACIÓN
-addon.core.RegisterMessage(addon, "DRAGONUI_READY", InitializePetbar)
+-- ✅ INICIALIZACIÓN DIRECTA ESTILO RETAILUI - SIN DELAYS
+-- Usar event handler directo como mainbars.lua
+
+-- ✅ INICIALIZACIÓN DIRECTA - NO USAR DRAGONUI_READY QUE CAUSA DELAYS
 
 -- ✅ ELIMINAMOS LOS HOOKS DEL SISTEMA LEGACY - YA NO NECESITAMOS POSICIONAMIENTO MANUAL
 -- El sistema de widgets maneja la posición directamente
@@ -171,7 +134,7 @@ local function petbutton_updatestate(self, event)
 end
 
 local function petbutton_position()
-	if InCombatLockdown() then return end
+	-- RetailUI pattern: No combat check during addon load
 	
 	-- ✅ USAR NUEVO FRAME DE WIDGETS
 	if not pUiPetBar or not petbarFrame then
@@ -199,7 +162,8 @@ local function petbutton_position()
 					button:SetPoint('LEFT', prevButton, 'RIGHT', space, 0);
 				end
 			end
-			button:Show();
+			-- Use SetAlpha instead of Show() to prevent taint
+			button:SetAlpha(1);
 			petbar:SetAttribute('addchild', button);
 		else
 			print("DragonUI: PetActionButton"..index.." not found")
@@ -214,6 +178,26 @@ local function petbutton_position()
 		hooksecurefunc('PetActionBar_Update', petbutton_updatestate);
 		petbar.updateHooked = true
 	end
+end
+
+-- ✅ INICIALIZACIÓN USANDO SISTEMA DE WIDGETS - SIMPLIFICADA ESTILO RETAILUI
+local function InitializePetbar()
+    -- RetailUI pattern: Initialize immediately, no combat checks during addon load
+    if config and config.additional then
+        -- Apply position from widgets config immediately
+        ApplyPetbarPosition()
+        
+        -- Show petbar frame
+        if petbarFrame then
+            petbarFrame:SetAlpha(1)
+        end
+        
+        -- Initialize pet buttons immediately
+        if not petBarInitialized then
+            petbutton_position()
+            petBarInitialized = true
+        end
+    end
 end
 
 local function OnEvent(self,event,...)
@@ -269,33 +253,26 @@ petbar:SetScript('OnEvent',OnEvent);
 -- Initialization tracking similar to RetailUI
 local petBarInitialized = false
 
--- ✅ INICIALIZACIÓN TARDÍA USANDO NUEVO SISTEMA
-event:RegisterEvents(function()
-	-- Force initialization after a short delay when player enters world
-	local initFrame = CreateFrame("Frame")
-	local elapsed = 0
-	initFrame:SetScript("OnUpdate", function(self, dt)
-		elapsed = elapsed + dt
-		if elapsed >= 1.0 then -- Wait 1 second after entering world
-			self:SetScript("OnUpdate", nil)
-			-- ✅ USAR NUEVO FRAME DE WIDGETS
-			if petbarFrame and not petBarInitialized then
-				petbutton_position()
-				petBarInitialized = true
-			end
-			InitializePetbar() -- ✅ NUEVA FUNCIÓN
-			DelayedPetInit() -- Start the delayed retry system
-		end
-	end)
-end, 'PLAYER_ENTERING_WORLD');
+-- ✅ EVENT HANDLER DIRECTO ESTILO RETAILUI
+local petInitFrame = CreateFrame("Frame")
+petInitFrame:RegisterEvent("ADDON_LOADED")
+petInitFrame:SetScript("OnEvent", function(self, event, addonName)
+	if event == "ADDON_LOADED" and addonName == "DragonUI" then
+		-- Initialize petbar immediately (RetailUI pattern)
+		InitializePetbar()
+		self:UnregisterEvent("ADDON_LOADED")
+	end
+end)
 
 -- ✅ REFRESH FUNCTION USANDO SISTEMA DE WIDGETS
 function addon.RefreshPetbar()
 	if InCombatLockdown() then return end
 	if not pUiPetBar or not petbarFrame then return end
 	
-	-- ✅ APLICAR POSICIÓN DESDE WIDGETS (solo si no estamos en editor mode)
-	ApplyPetbarPosition()
+	-- ✅ APLICAR POSICIÓN DESDE WIDGETS (solo evitar en editor mode si está activo)
+	if not (addon.EditorMode and addon.EditorMode:IsActive()) then
+		ApplyPetbarPosition()
+	end
 	
 	-- Update button size and spacing
 	local btnsize = config.additional.size;

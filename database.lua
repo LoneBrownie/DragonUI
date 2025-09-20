@@ -85,6 +85,11 @@ local defaults = {
                 anchor = "BOTTOMRIGHT",
                 posX = -3,
                 posY = 45
+            },
+            xpbar = {
+                anchor = "BOTTOM",
+                posX = 0,
+                posY = 6
             }
         },
         -- Quest Tracker
