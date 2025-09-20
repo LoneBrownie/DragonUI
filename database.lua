@@ -189,12 +189,9 @@ local defaults = {
         additional = {
             size = 27,
             spacing = 6,
-            -- Pretty actionbar compatibility values (hardcoded for optimal positioning)
-            leftbar_offset = 90, -- Offset when bottom left is shown (for pretty_actionbar)
-            rightbar_offset = 40, -- Offset when bottom right is shown (for pretty_actionbar)
             stance = {
-                x_position = -80,
-                y_offset = -44 -- Additional Y offset for fine-tuning position
+                x_position = -230,
+                y_offset = 0 -- Additional Y offset for fine-tuning position
             },
             pet = {
 
