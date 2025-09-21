@@ -173,7 +173,9 @@ function MainMenuBarMixin:update_main_bar_background()
                     and name ~= "PVPMicroButton"
                     and name ~= "LFGMicroButton"
                     and name ~= "MainMenuMicroButton"
-                    and name ~= "HelpMicroButton" then
+                    and name ~= "HelpMicroButton"
+                    and name ~= "MainMenuExpBar"
+                    and name ~= "ReputationWatchBar" then
                 
                 for j = 1, child:GetNumRegions() do
                     local region = select(j, child:GetRegions())
