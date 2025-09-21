@@ -196,7 +196,9 @@ end
 local scaleHooks = {}
 
 function EditorMode:InstallScaleHooks()
+    -- ✅ DISABLED: Conflicting with RetailUI pattern in mainbars.lua
     -- Hook para MainMenuExpBar
+    --[[ 
     if MainMenuExpBar and not scaleHooks.xpbar then
         scaleHooks.xpbar = function()
             if addon.db and addon.db.profile.xprepbar and addon.db.profile.xprepbar.expbar_scale then
@@ -209,8 +211,11 @@ function EditorMode:InstallScaleHooks()
         hooksecurefunc(MainMenuExpBar, "SetPoint", scaleHooks.xpbar)
         hooksecurefunc(MainMenuExpBar, "ClearAllPoints", scaleHooks.xpbar)
     end
+    ]]--
     
+    -- ✅ DISABLED: Conflicting with RetailUI pattern in mainbars.lua
     -- Hook para ReputationWatchBar
+    --[[
     if ReputationWatchBar and not scaleHooks.repbar then
         scaleHooks.repbar = function()
             if addon.db and addon.db.profile.xprepbar and addon.db.profile.xprepbar.repbar_scale then
@@ -223,6 +228,7 @@ function EditorMode:InstallScaleHooks()
         hooksecurefunc(ReputationWatchBar, "SetPoint", scaleHooks.repbar)
         hooksecurefunc(ReputationWatchBar, "ClearAllPoints", scaleHooks.repbar)
     end
+    ]]--
 end
 
 function EditorMode:RemoveScaleHooks()

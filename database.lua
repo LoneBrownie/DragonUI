@@ -43,7 +43,7 @@ local defaults = {
             petbar = {
                 anchor = "BOTTOM",
                 posX = 1,
-                posY = 149
+                posY = 148
             },
             playerCastbar = {
                 anchor = "BOTTOM",
@@ -69,12 +69,12 @@ local defaults = {
             bottombarleft = {
                 anchor = "BOTTOM",
                 posX = -10,
-                posY = 60
+                posY = 64
             },
             bottombarright = {
                 anchor = "BOTTOM",
                 posX = -10,
-                posY = 100
+                posY = 105
             },
             micromenu = {
                 anchor = "BOTTOMRIGHT",
@@ -94,7 +94,7 @@ local defaults = {
             repbar = {
                 anchor = "BOTTOM",
                 posX = 0,
-                posY = 16
+                posY = -5
             }
         },
         -- Quest Tracker
