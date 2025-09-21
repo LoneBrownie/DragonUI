@@ -283,6 +283,20 @@ end
 function MainMenuBarMixin:statusbar_setup()
     -- ✅ REMOVED: XP and Reputation bar setup will be handled by RetailUI pattern
     -- This function now only handles other status bars if needed
+    
+    -- Setup pet bar initial configuration
+    if PetActionBarFrame then
+        -- Ensure pet bar uses correct scale from config
+        local db = addon.db and addon.db.profile and addon.db.profile.mainbars
+        if db and db.scale_petbar then
+            PetActionBarFrame:SetScale(db.scale_petbar)
+        elseif config.mainbars.scale_petbar then
+            PetActionBarFrame:SetScale(config.mainbars.scale_petbar)
+        end
+        
+        -- Enable mouse interaction
+        PetActionBarFrame:EnableMouse(true)
+    end
 end
 
 -- RetailUI Pattern: XP/Rep Bar Implementation (EXACT COPY)
@@ -704,6 +718,7 @@ function addon.RefreshMainbars()
     if MultiBarBottomLeft then MultiBarBottomLeft:SetScale(db_mainbars.scale_bottomleft or 0.9); end     
     if MultiBarBottomRight then MultiBarBottomRight:SetScale(db_mainbars.scale_bottomright or 0.9); end 
     if VehicleMenuBar then VehicleMenuBar:SetScale(db_mainbars.scale_vehicle); end
+    if PetActionBarFrame then PetActionBarFrame:SetScale(db_mainbars.scale_petbar or 1.0); end
     
     -- RetailUI pattern: XP/Rep bar scaling
     if addon.ActionBarFrames.repexpbar then
@@ -736,6 +751,11 @@ function addon.RefreshMainbars()
     
     -- Update action bar positions
     addon.UpdateActionBarWidgets()
+    
+    -- Update pet bar visibility and configuration
+    addon.core:ScheduleTimer(function()
+        addon.UpdatePetBarVisibility()
+    end, 0.1)
 end
 
 -- ✅ REMOVED: Diagnostic functions will be replaced with RetailUI pattern
@@ -807,6 +827,12 @@ initFrame:RegisterEvent("ADDON_LOADED")
 initFrame:RegisterEvent("PLAYER_ENTERING_WORLD") -- RetailUI pattern: XP/Rep bars setup
 initFrame:RegisterEvent("PLAYER_REGEN_ENABLED") -- When combat ends
 initFrame:RegisterEvent("UPDATE_FACTION") -- When reputation changes
+-- Pet bar events
+initFrame:RegisterEvent("PET_BAR_UPDATE") -- When pet bar changes
+initFrame:RegisterEvent("PET_BAR_UPDATE_COOLDOWN") -- Pet cooldowns
+initFrame:RegisterEvent("UNIT_PET") -- When pet changes
+initFrame:RegisterEvent("UNIT_EXITED_VEHICLE") -- Vehicle exit
+initFrame:RegisterEvent("UNIT_ENTERED_VEHICLE") -- Vehicle enter
 initFrame:SetScript("OnEvent", function(self, event, addonName)
     if event == "ADDON_LOADED" and addonName == "DragonUI" then
         -- Initialize action bar system immediately (RetailUI pattern)
@@ -832,6 +858,11 @@ initFrame:SetScript("OnEvent", function(self, event, addonName)
             -- Note: Scale is handled by individual update hooks, not here to avoid double scaling
         end, 0.5)
         
+        -- Initialize pet bar visibility after a longer delay to ensure pet data is loaded
+        addon.core:ScheduleTimer(function()
+            addon.UpdatePetBarVisibility()
+        end, 1.0)
+        
         self:UnregisterEvent("PLAYER_ENTERING_WORLD")
     elseif event == "PLAYER_REGEN_ENABLED" then
         -- Reposition Blizzard frames when combat ends (for runtime changes)
@@ -847,6 +878,20 @@ initFrame:SetScript("OnEvent", function(self, event, addonName)
             
             -- ✅ CRITICAL: Let WoW handle visibility naturally - don't force Show()
         end, 0.1)
+    elseif event == "PET_BAR_UPDATE" or event == "PET_BAR_UPDATE_COOLDOWN" or event == "UNIT_PET" then
+        -- Handle pet bar visibility and updates
+        if arg1 == "player" or not arg1 then
+            addon.core:ScheduleTimer(function()
+                addon.UpdatePetBarVisibility()
+            end, 0.1)
+        end
+    elseif event == "UNIT_ENTERED_VEHICLE" or event == "UNIT_EXITED_VEHICLE" then
+        -- Handle vehicle events that affect pet bar
+        if arg1 == "player" then
+            addon.core:ScheduleTimer(function()
+                addon.UpdatePetBarVisibility()
+            end, 0.2)
+        end
     end
 end)
 
@@ -857,7 +902,11 @@ local function OnProfileChange()
     if addon.RefreshMainbars then
         addon.RefreshMainbars()
     end
-
+    
+    -- Update pet bar after profile change
+    addon.core:ScheduleTimer(function()
+        addon.UpdatePetBarVisibility()
+    end, 0.2)
 end
 
 local initializationFrame = CreateFrame("Frame")
@@ -903,6 +952,45 @@ end
 -- Force profile refresh
 function addon.ForceProfileRefresh()
     OnProfileChange()
+end
+
+-- Update pet bar visibility and positioning
+function addon.UpdatePetBarVisibility()
+    if InCombatLockdown() then return end
+    
+    local petBar = PetActionBarFrame
+    if not petBar then return end
+    
+    -- Check if player has a pet or is in a vehicle
+    local hasPet = UnitExists("pet") and UnitIsVisible("pet")
+    local inVehicle = UnitInVehicle("player")
+    local hasVehicleActionBar = HasVehicleActionBar and HasVehicleActionBar()
+    
+    -- Show pet bar if player has a pet or relevant vehicle controls
+    if hasPet or (inVehicle and hasVehicleActionBar) then
+        if not petBar:IsShown() then
+            petBar:Show()
+        end
+        
+        -- Ensure proper positioning and scaling
+        local db = addon.db and addon.db.profile and addon.db.profile.mainbars
+        if db and db.scale_petbar then
+            petBar:SetScale(db.scale_petbar)
+        end
+        
+        -- Update pet action buttons
+        for i = 1, NUM_PET_ACTION_SLOTS do
+            local button = _G["PetActionButton" .. i]
+            if button then
+                button:Show()
+            end
+        end
+    else
+        -- Hide pet bar when no pet and not in vehicle
+        if petBar:IsShown() then
+            petBar:Hide()
+        end
+    end
 end
 
 
