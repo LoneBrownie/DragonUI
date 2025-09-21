@@ -13,7 +13,7 @@ local _G = getfenv(0);
 
 -- constants
 local faction = UnitFactionGroup('player');
--- ✅ REMOVED: old and new xpbar constants will be handled by RetailUI pattern
+--  REMOVED: old and new xpbar constants will be handled by RetailUI pattern
 local MainMenuBarMixin = {};
 local pUiMainBar = CreateFrame(
 	'Frame',
@@ -210,11 +210,11 @@ function MainMenuBarMixin:actionbar_setup()
 		ActionBarDownButton:Hide();
 		MainMenuBarPageNumber:Hide();
 	end
-	-- ✅ REMOVED: Bottom bars no longer parented to mainbar for independent positioning
+	--  REMOVED: Bottom bars no longer parented to mainbar for independent positioning
 	-- MultiBarBottomLeft:SetParent(pUiMainBar)
 	-- MultiBarBottomRight:SetParent(pUiMainBar)
 	MultiBarBottomRight:EnableMouse(false)
-	-- ✅ REMOVED: Bottom bars positioning handled by centralized system
+	--  REMOVED: Bottom bars positioning handled by centralized system
 	-- MultiBarBottomRight:SetClearPoint('BOTTOMLEFT', MultiBarBottomLeftButton1, 'TOPLEFT', 0, 8)
 	-- MultiBarRight:SetClearPoint('TOPRIGHT', UIParent, 'RIGHT', -6, (Minimap:GetHeight() * 1.3))
 	MultiBarRight:SetScale(config.mainbars.scale_rightbar)
@@ -232,7 +232,7 @@ function addon.PositionActionBars()
     local db = addon.db and addon.db.profile and addon.db.profile.mainbars
     if not db then return end
 
-    -- ✅ ONLY HANDLE ORIENTATION - POSITION IS HANDLED BY CENTRALIZED SYSTEM
+    --  ONLY HANDLE ORIENTATION - POSITION IS HANDLED BY CENTRALIZED SYSTEM
     
     -- Configure MultiBarRight orientation
     if MultiBarRight then
@@ -281,7 +281,7 @@ function addon.PositionActionBars()
     end
 end
 function MainMenuBarMixin:statusbar_setup()
-    -- ✅ REMOVED: XP and Reputation bar setup will be handled by RetailUI pattern
+    --  REMOVED: XP and Reputation bar setup will be handled by RetailUI pattern
     -- This function now only handles other status bars if needed
     
     -- Setup pet bar initial configuration
@@ -306,7 +306,7 @@ local function ReplaceBlizzardRepExpBarFrame(frameBar)
     mainMenuExpBar:SetFrameStrata("LOW") -- RetailUI uses default/low strata
     mainMenuExpBar:ClearAllPoints()
     mainMenuExpBar:SetWidth(frameBar:GetWidth())
-    -- ✅ CRITICAL: RetailUI does NOT set height OR scale here, only width
+    --  CRITICAL: RetailUI does NOT set height OR scale here, only width
 
     -- Ensure the experience status bar matches the parent dimensions
     local expStatusBar = _G[mainMenuExpBar:GetName() .. "StatusBar"]
@@ -314,7 +314,7 @@ local function ReplaceBlizzardRepExpBarFrame(frameBar)
         expStatusBar:SetParent(mainMenuExpBar)
         expStatusBar:SetAllPoints(mainMenuExpBar)
         expStatusBar:SetWidth(frameBar:GetWidth())
-        -- ✅ CRITICAL: Also don't set height for status bar here
+        --  CRITICAL: Also don't set height for status bar here
     end
 
     -- Process background regions (RetailUI pattern)
@@ -348,18 +348,18 @@ local function ReplaceBlizzardRepExpBarFrame(frameBar)
     -- Reputation Watch Bar (RetailUI pattern - EXACT)
     local repWatchBar = ReputationWatchBar
     if repWatchBar then
-        -- ✅ CRITICAL FIX: Set parent to container and proper layering like RetailUI
+        --  CRITICAL FIX: Set parent to container and proper layering like RetailUI
         repWatchBar:SetParent(frameBar)
         repWatchBar:SetFrameStrata("LOW") -- RetailUI uses default/low strata
         repWatchBar:ClearAllPoints()
         repWatchBar:SetWidth(frameBar:GetWidth())
-        repWatchBar:SetScale(0.9) -- ✅ CRITICAL: Apply same scale as experience bar
+        repWatchBar:SetScale(0.9) --  CRITICAL: Apply same scale as experience bar
 
         local repStatusBar = ReputationWatchStatusBar
         if repStatusBar then
             repStatusBar:SetAllPoints(repWatchBar)
             repStatusBar:SetWidth(repWatchBar:GetWidth())
-            -- ✅ CRITICAL: RetailUI does NOT call SetParent for repStatusBar
+            --  CRITICAL: RetailUI does NOT call SetParent for repStatusBar
         end
 
         -- Reputation Background Texture (RetailUI pattern - EXACT)
@@ -447,7 +447,7 @@ local function MainMenuExpBar_Update()
     local mainMenuExpBar = MainMenuExpBar
     mainMenuExpBar:ClearAllPoints()
     mainMenuExpBar:SetWidth(addon.ActionBarFrames.repexpbar:GetWidth())
-    mainMenuExpBar:SetHeight(addon.ActionBarFrames.repexpbar:GetHeight()) -- ✅ CRITICAL: Always set height like RetailUI
+    mainMenuExpBar:SetHeight(addon.ActionBarFrames.repexpbar:GetHeight()) --  CRITICAL: Always set height like RetailUI
     mainMenuExpBar:SetPoint("LEFT", addon.ActionBarFrames.repexpbar, "LEFT", 0, 0)
 
     local repWatchBar = ReputationWatchBar
@@ -470,15 +470,15 @@ local function ReputationWatchBar_Update()
     if factionInfo then
         local repWatchBar = ReputationWatchBar
         if repWatchBar then
-            -- ✅ CRITICAL FIX: Set parent to container and proper layering like RetailUI
+            --  CRITICAL FIX: Set parent to container and proper layering like RetailUI
             repWatchBar:SetParent(addon.ActionBarFrames.repexpbar)
             repWatchBar:SetFrameStrata("LOW") -- RetailUI uses default/low strata
             repWatchBar:ClearAllPoints()
             repWatchBar:SetHeight(addon.ActionBarFrames.repexpbar:GetHeight())
-            repWatchBar:SetScale(0.9) -- ✅ CRITICAL: Apply same scale as experience bar
+            repWatchBar:SetScale(0.9) --  CRITICAL: Apply same scale as experience bar
             repWatchBar:SetPoint("LEFT", addon.ActionBarFrames.repexpbar, "LEFT", 0, 0)
             
-            -- ✅ CRITICAL: Fix the real text inside ReputationWatchStatusBar
+            --  CRITICAL: Fix the real text inside ReputationWatchStatusBar
             local repStatusBar = ReputationWatchStatusBar
             if repStatusBar then
                 -- Force ReputationWatchStatusBar to have a lower FrameLevel than its text
@@ -502,7 +502,7 @@ end
 
 
 -- update position for secondary action bars - LEGACY FUNCTION
--- ✅ NOTE: This function is kept for compatibility but bottom bars are now handled by centralized system
+--  NOTE: This function is kept for compatibility but bottom bars are now handled by centralized system
 function addon.RefreshUpperActionBarsPosition()
     if not MultiBarBottomLeftButton1 or not MultiBarBottomRight then return end
 
@@ -518,12 +518,7 @@ function addon.RefreshUpperActionBarsPosition()
         yOffset2 = 8
     end
 
-    -- ✅ REMOVED: Bottom bars positioning now handled by centralized system
-    -- MultiBarBottomLeftButton1:SetClearPoint('BOTTOMLEFT', ActionButton1, 'BOTTOMLEFT', 0, yOffset1)
-    -- MultiBarBottomRight:SetClearPoint('BOTTOMLEFT', MultiBarBottomLeftButton1, 'TOPLEFT', 0, yOffset2)
-    
-    -- ✅ REMOVED: Bottom bars are now completely independent from mainbar
-    -- MultiBarBottomLeftButton1:SetClearPoint('BOTTOMLEFT', ActionButton1, 'BOTTOMLEFT', 0, yOffset1)
+
 end
 
 function MainMenuBarMixin:initialize()
@@ -696,10 +691,10 @@ local function SetupActionBarDragHandlers()
         end
     end
     
-    -- ✅ REMOVED: XP and Rep bar drag handlers will be handled by RetailUI pattern
+    --  REMOVED: XP and Rep bar drag handlers will be handled by RetailUI pattern
 end
--- ✅ REMOVED: Rep bar event handling will be replaced with RetailUI pattern
--- ✅ REMOVED: Rep bar text setup will be replaced with RetailUI pattern
+--  REMOVED: Rep bar event handling will be replaced with RetailUI pattern
+--  REMOVED: Rep bar text setup will be replaced with RetailUI pattern
 -- configuration refresh function (RetailUI pattern)
 function addon.RefreshMainbars()
     if not pUiMainBar then return end
@@ -758,7 +753,7 @@ function addon.RefreshMainbars()
     end, 0.1)
 end
 
--- ✅ REMOVED: Diagnostic functions will be replaced with RetailUI pattern
+--  REMOVED: Diagnostic functions will be replaced with RetailUI pattern
 -- RetailUI Pattern: Initialize action bar system with XP/Rep bars
 local function InitializeActionBarSystem()
     CreateActionBarFrames()
@@ -853,7 +848,7 @@ initFrame:SetScript("OnEvent", function(self, event, addonName)
             if ReputationWatchBar_Update then ReputationWatchBar_Update() end
             if MainMenuExpBar_Update then MainMenuExpBar_Update() end
             
-            -- ✅ CRITICAL: Let WoW handle visibility naturally - don't force Show()
+            --  CRITICAL: Let WoW handle visibility naturally - don't force Show()
             
             -- Note: Scale is handled by individual update hooks, not here to avoid double scaling
         end, 0.5)
@@ -876,7 +871,7 @@ initFrame:SetScript("OnEvent", function(self, event, addonName)
         addon.core:ScheduleTimer(function()
             if ReputationWatchBar_Update then ReputationWatchBar_Update() end
             
-            -- ✅ CRITICAL: Let WoW handle visibility naturally - don't force Show()
+            --  CRITICAL: Let WoW handle visibility naturally - don't force Show()
         end, 0.1)
     elseif event == "PET_BAR_UPDATE" or event == "PET_BAR_UPDATE_COOLDOWN" or event == "UNIT_PET" then
         -- Handle pet bar visibility and updates
@@ -895,7 +890,7 @@ initFrame:SetScript("OnEvent", function(self, event, addonName)
     end
 end)
 
--- ✅ REMOVED: Duplicate RefreshMainbars function eliminated
+--  REMOVED: Duplicate RefreshMainbars function eliminated
 
 local function OnProfileChange()
     -- This function is called whenever the profile changes, resets, or is copied
@@ -946,8 +941,8 @@ function addon.RefreshMainbarPosition()
     end
 end
 
--- ✅ REMOVED: XP and Rep bar refresh functions will be handled by RetailUI pattern
--- ✅ REMOVED: UpdateExhaustionTick will be handled by RetailUI pattern
+--  REMOVED: XP and Rep bar refresh functions will be handled by RetailUI pattern
+--  REMOVED: UpdateExhaustionTick will be handled by RetailUI pattern
 
 -- Force profile refresh
 function addon.ForceProfileRefresh()
@@ -1013,7 +1008,7 @@ function addon.HideRepExpBarEditor(refresh)
             addon.UpdateActionBarWidgets()
         end
         
-        -- ✅ CRITICAL: Fix reputation bar layering after editor mode
+        --  CRITICAL: Fix reputation bar layering after editor mode
         addon.core:ScheduleTimer(function()
             local repWatchBar = ReputationWatchBar
             if repWatchBar and repWatchBar:IsVisible() then

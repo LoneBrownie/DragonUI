@@ -21,12 +21,12 @@ local function ReplaceBlizzardFrame(frame)
     watchFrame:ClearAllPoints()
     watchFrame:SetPoint("TOPRIGHT", frame, "TOPRIGHT", 0, 0)
 
-    -- ✅ EXACTO COMO RETAILUI (sin verificaciones)
+    --  EXACTO COMO RETAILUI (sin verificaciones)
     WatchFrameLines:SetPoint("TOPLEFT", WatchFrameHeader, 'BOTTOMLEFT', 0, -15)
 end
 local function GetQuestTrackerConfig()
     if not (addon.db and addon.db.profile and addon.db.profile.questtracker) then
-        return -100, -37, "TOPRIGHT", true -- ✅ defaults con show_header = true
+        return -100, -37, "TOPRIGHT", true --  defaults con show_header = true
     end
     local config = addon.db.profile.questtracker
     return config.x or -100, config.y or -37, config.anchor or "TOPRIGHT", config.show_header ~= false
@@ -49,23 +49,23 @@ local function WatchFrame_Update(self)
     local numObjectives
     local totalObjectives = 0
 
-    -- ✅ EXACTO COMO RETAILUI
+    --  EXACTO COMO RETAILUI
     for i = 1, #WATCHFRAME_OBJECTIVEHANDLERS do
         pixelsUsed, maxLineWidth, numObjectives = WATCHFRAME_OBJECTIVEHANDLERS[i](lineFrame, totalOffset, maxHeight, maxFrameWidth)
         totalObjectives = totalObjectives + numObjectives
     end
 
-    -- ✅ EXACTO COMO RETAILUI (usando .background, no .dragonUIBackground)
+    --  EXACTO COMO RETAILUI (usando .background, no .dragonUIBackground)
     local watchFrame = WatchFrame
     watchFrame.background = watchFrame.background or watchFrame:CreateTexture(nil, 'BACKGROUND')
     local background = watchFrame.background
     background:SetPoint('RIGHT', WatchFrameCollapseExpandButton, 'RIGHT', 0, 0)
     
-    -- ✅ FUNCIÓN ATLAS IGUAL QUE RETAILUI
+    --  FUNCIÓN ATLAS IGUAL QUE RETAILUI
     SetAtlasTexture(background, 'QuestTracker-Header')
     background:SetSize(watchFrame:GetWidth(), 36)
 
-    -- ✅ LÓGICA MODIFICADA: Verificar configuración show_header EN TIEMPO REAL
+    --  LÓGICA MODIFICADA: Verificar configuración show_header EN TIEMPO REAL
     local _, _, _, showHeader = GetQuestTrackerConfig()
     if totalObjectives > 0 and showHeader then
         background:Show()
@@ -80,7 +80,7 @@ end
 -- =============================================================================
 local function GetQuestTrackerConfig()
     if not (addon.db and addon.db.profile and addon.db.profile.questtracker) then
-        return -100, -37, "TOPRIGHT", false -- ✅ defaults con show_header = true
+        return -100, -37, "TOPRIGHT", false --  defaults con show_header = true
     end
     local config = addon.db.profile.questtracker
     return config.x or -100, config.y or -37, config.anchor or "TOPRIGHT", config.show_header ~= false
@@ -103,7 +103,7 @@ function addon.RefreshQuestTracker()
     if InCombatLockdown() then return end
     UpdateQuestTrackerPosition()
     
-    -- ✅ FORZAR ACTUALIZACIÓN DEL HEADER EN TIEMPO REAL
+    --  FORZAR ACTUALIZACIÓN DEL HEADER EN TIEMPO REAL
     if WatchFrame_Update and WatchFrame then
         WatchFrame_Update(WatchFrame)
     end
@@ -113,7 +113,7 @@ end
 -- INITIALIZATION (adapted from RetailUI OnEnable)
 -- =============================================================================
 function QuestTrackerModule:Initialize()
-    -- ✅ IGUAL QUE RETAILUI (CreateUIFrame equivalente)
+    --  IGUAL QUE RETAILUI (CreateUIFrame equivalente)
     self.questTrackerFrame = CreateFrame('Frame', 'DragonUI_QuestTrackerFrame', UIParent)
     self.questTrackerFrame:SetSize(230, 500)
     
@@ -123,7 +123,7 @@ function QuestTrackerModule:Initialize()
     -- Replace Blizzard frame (igual que RetailUI)
     ReplaceBlizzardFrame(self.questTrackerFrame)
     
-    -- ✅ HOOKS EXACTOS COMO RETAILUI (SecureHook equivalent)
+    --  HOOKS EXACTOS COMO RETAILUI (SecureHook equivalent)
     hooksecurefunc('WatchFrame_Collapse', WatchFrame_Collapse)
     hooksecurefunc('WatchFrame_Update', WatchFrame_Update)
     

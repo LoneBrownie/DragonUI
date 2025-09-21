@@ -208,18 +208,18 @@ local function UpdateClassification()
     end
 
     if coords then
-        frameElements.elite:SetTexture(TEXTURES.BOSS) -- ✅ AÑADIDO: SetTexture
+        frameElements.elite:SetTexture(TEXTURES.BOSS) --  AÑADIDO: SetTexture
 
         --  APLICAR FLIP HORIZONTAL A TODAS LAS DECORACIONES
         local left, right, top, bottom = coords[1], coords[2], coords[3], coords[4]
-        frameElements.elite:SetTexCoord(right, left, top, bottom) -- ✅ FLIPPED: right, left en lugar de left, right
+        frameElements.elite:SetTexCoord(right, left, top, bottom) --  FLIPPED: right, left en lugar de left, right
 
         --  USAR VALORES CORREGIDOS DEL DEBUG
         frameElements.elite:SetSize(51, 51) -- En lugar de coords[5], coords[6]
         frameElements.elite:SetPoint("CENTER", TargetFrameToTPortrait, "CENTER", -4, -2) -- En lugar de coords[7], coords[8]
-        frameElements.elite:SetDrawLayer("OVERLAY", 11) -- ✅ FORZAR DRAW LAYER
+        frameElements.elite:SetDrawLayer("OVERLAY", 11) --  FORZAR DRAW LAYER
         frameElements.elite:Show()
-        frameElements.elite:SetAlpha(1) -- ✅ ASEGURAR VISIBILIDAD
+        frameElements.elite:SetAlpha(1) --  ASEGURAR VISIBILIDAD
     else
         frameElements.elite:Hide()
     end
@@ -325,7 +325,7 @@ local function InitializeFrame()
         TargetFrameToTTextureFrameName:SetTextColor(1.0, 0.82, 0.0, 1.0)
         TargetFrameToTTextureFrameName:SetDrawLayer("BORDER", 1)
 
-        -- ✅ TRUNCADO AUTOMÁTICO COMO RETAILUI
+        --  TRUNCADO AUTOMÁTICO COMO RETAILUI
         TargetFrameToTTextureFrameName:SetWidth(65)
         TargetFrameToTTextureFrameName:SetJustifyH("LEFT")
     end

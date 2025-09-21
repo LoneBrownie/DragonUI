@@ -89,7 +89,7 @@ function TextSystem.CreateDualTextElements(parentFrame, barFrame, prefix, layer,
         local centerText = barFrame:CreateFontString(nil, layer, font)
         local fontPath, originalSize, flags = centerText:GetFont()
         if fontPath and originalSize then
-            centerText:SetFont(fontPath, originalSize + 1, flags)  -- ✅ FUENTE MÁS GRANDE
+            centerText:SetFont(fontPath, originalSize + 1, flags)  --  FUENTE MÁS GRANDE
         end
         centerText:SetPoint("CENTER", barFrame, "CENTER", 0, 0)
         centerText:SetJustifyH("CENTER")
@@ -102,7 +102,7 @@ function TextSystem.CreateDualTextElements(parentFrame, barFrame, prefix, layer,
         local leftText = barFrame:CreateFontString(nil, layer, font)
         local fontPath, originalSize, flags = leftText:GetFont()
         if fontPath and originalSize then
-            leftText:SetFont(fontPath, originalSize + 1, flags)  -- ✅ FUENTE MÁS GRANDE
+            leftText:SetFont(fontPath, originalSize + 1, flags)  --  FUENTE MÁS GRANDE
         end
         leftText:SetPoint("LEFT", barFrame, "LEFT", 6, 0)
         leftText:SetJustifyH("LEFT")
@@ -115,14 +115,14 @@ function TextSystem.CreateDualTextElements(parentFrame, barFrame, prefix, layer,
         local rightText = barFrame:CreateFontString(nil, layer, font)
         local fontPath, originalSize, flags = rightText:GetFont()
         if fontPath and originalSize then
-            rightText:SetFont(fontPath, originalSize + 1, flags)  -- ✅ FUENTE MÁS GRANDE
+            rightText:SetFont(fontPath, originalSize + 1, flags)  --  FUENTE MÁS GRANDE
         end
         
-        -- ✅ POSICIÓN ESPECIAL PARA TARGET MANA TEXT
+        --  POSICIÓN ESPECIAL PARA TARGET MANA TEXT
         if prefix == "TargetFrameMana" then
-            rightText:SetPoint("RIGHT", barFrame, "RIGHT", -13, 0) -- ✅ MÁS A LA IZQUIERDA
+            rightText:SetPoint("RIGHT", barFrame, "RIGHT", -13, 0) --  MÁS A LA IZQUIERDA
         else
-            rightText:SetPoint("RIGHT", barFrame, "RIGHT", -6, 0) -- ✅ POSICIÓN NORMAL
+            rightText:SetPoint("RIGHT", barFrame, "RIGHT", -6, 0) --  POSICIÓN NORMAL
         end
         
         rightText:SetJustifyH("RIGHT")
@@ -183,7 +183,7 @@ function TextSystem.IsMouseOverFrame(frame)
         return false
     end
     
-    -- ✅ USAR IsMouseOver() QUE ES MÁS CONFIABLE
+    --  USAR IsMouseOver() QUE ES MÁS CONFIABLE
     return frame:IsMouseOver()
 end
 
@@ -206,13 +206,13 @@ end
 -- SISTEMA HÍBRIDO - HOOK + HOVER + EVENTOS
 -- ===============================================================
 
--- ✅ FUNCIÓN: HookearStatusBar para actualización automática
+--  FUNCIÓN: HookearStatusBar para actualización automática
 function TextSystem.HookStatusBar(statusBar, parentFrame, prefix, frameType, unit, updateCallback)
     if not statusBar or not parentFrame then
         return
     end
     
-    -- ✅ HOOKEAR LA FUNCIÓN NATIVA SetValue
+    --  HOOKEAR LA FUNCIÓN NATIVA SetValue
     if not statusBar.DragonUIHooked then
         statusBar.DragonUIOriginalSetValue = statusBar.SetValue
         statusBar.SetValue = function(self, value)
@@ -236,7 +236,7 @@ end
 
 -- Función para actualizar texto de health/mana de cualquier unitframe
 function TextSystem.UpdateFrameText(frameType, unit, parentFrame, healthBar, manaBar, prefix)
-    -- ✅ VERIFICAR SI LA UNIDAD EXISTE Y ESTÁ VIVA
+    --  VERIFICAR SI LA UNIDAD EXISTE Y ESTÁ VIVA
     if not UnitExists(unit) or UnitIsDeadOrGhost(unit) then
         return TextSystem.ClearFrameText(parentFrame, prefix)
     end
@@ -282,9 +282,9 @@ end
 -- FUNCIONES DE SETUP INICIAL (HÍBRIDO)
 -- ===============================================================
 
--- ✅ FUNCIÓN PRINCIPAL: Setup para cualquier unitframe (HÍBRIDO)
+--  FUNCIÓN PRINCIPAL: Setup para cualquier unitframe (HÍBRIDO)
 function TextSystem.SetupFrameTextSystem(frameType, unit, parentFrame, healthBar, manaBar, prefix)
-    -- ✅ VALIDACIONES DE SEGURIDAD
+    --  VALIDACIONES DE SEGURIDAD
     if not parentFrame then
         print("|cFFFF0000[DragonUI TextSystem]|r ERROR: parentFrame is nil for frameType:", frameType)
         return {
@@ -305,24 +305,24 @@ function TextSystem.SetupFrameTextSystem(frameType, unit, parentFrame, healthBar
     
     print("|cFF00FF00[DragonUI TextSystem]|r Setting up text system for:", frameType, "with prefix:", prefix)
     
-    -- ✅ FUNCIÓN DE ACTUALIZACIÓN COMÚN
+    --  FUNCIÓN DE ACTUALIZACIÓN COMÚN
     local function updateCallback()
         TextSystem.UpdateFrameText(frameType, unit, parentFrame, healthBar, manaBar, prefix)
     end
     
-    -- ✅ CREAR ELEMENTOS DE TEXTO DUALES (CON FUENTE MÁS GRANDE)
+    --  CREAR ELEMENTOS DE TEXTO DUALES (CON FUENTE MÁS GRANDE)
     if healthBar then
         TextSystem.CreateDualTextElements(parentFrame, healthBar, prefix .. "Health", "OVERLAY", "TextStatusBarText")
-        -- ✅ HOOKEAR STATUSBAR PARA ACTUALIZACIÓN AUTOMÁTICA
+        --  HOOKEAR STATUSBAR PARA ACTUALIZACIÓN AUTOMÁTICA
         TextSystem.HookStatusBar(healthBar, parentFrame, prefix .. "Health", frameType, unit, updateCallback)
     end
     if manaBar then
         TextSystem.CreateDualTextElements(parentFrame, manaBar, prefix .. "Mana", "OVERLAY", "TextStatusBarText")
-        -- ✅ HOOKEAR STATUSBAR PARA ACTUALIZACIÓN AUTOMÁTICA
+        --  HOOKEAR STATUSBAR PARA ACTUALIZACIÓN AUTOMÁTICA
         TextSystem.HookStatusBar(manaBar, parentFrame, prefix .. "Mana", frameType, unit, updateCallback)
     end
     
-    -- ✅ CONFIGURAR EVENTOS DE HOVER (MANTENER)
+    --  CONFIGURAR EVENTOS DE HOVER (MANTENER)
     TextSystem.SetupHoverEvents(parentFrame, healthBar, manaBar, updateCallback)
     
     print("|cFF00FF00[DragonUI TextSystem]|r Text system configured successfully for:", frameType)
@@ -335,7 +335,7 @@ function TextSystem.SetupFrameTextSystem(frameType, unit, parentFrame, healthBar
     }
 end
 
--- ✅ FUNCIÓN: Configurar eventos de hover (MANTENER)
+--  FUNCIÓN: Configurar eventos de hover (MANTENER)
 function TextSystem.SetupHoverEvents(parentFrame, healthBar, manaBar, updateCallback)
     if healthBar then
         local healthHover = CreateFrame("Frame", nil, parentFrame)

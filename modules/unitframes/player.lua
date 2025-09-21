@@ -220,7 +220,7 @@ local function UpdateGlowVisibility()
 
     eliteGlowActive = IsEliteModeActive()
 
-    -- ✅ CORREGIDO: Control correcto del PlayerStatusTexture
+    --  CORREGIDO: Control correcto del PlayerStatusTexture
     if PlayerStatusTexture then
         if eliteGlowActive then
             -- En modo elite: ocultar completamente el glow original
@@ -387,7 +387,7 @@ end
 
 -- Frame update handler for animations
 local function PlayerFrame_OnUpdate(self, elapsed)
-    -- ✅ PROTEGER CON pcall PARA EVITAR CRASHES
+    --  PROTEGER CON pcall PARA EVITAR CRASHES
     local success, err = pcall(function()
         -- Rest icon animation
         if PlayerRestIcon and PlayerRestIcon:IsVisible() then
@@ -466,7 +466,7 @@ local function UpdatePlayerRoleIcon()
     local iconTexture = dragonFrame.PlayerRoleIcon
     local isTank, isHealer, isDamage = UnitGroupRolesAssigned("player")
 
-    -- ✅ MEJORAR: Usar lógica de RetailUI
+    --  MEJORAR: Usar lógica de RetailUI
     if isTank then
         iconTexture:SetTexture(TEXTURES.LFG_ICONS)
         iconTexture:SetTexCoord(unpack(ROLE_COORDS.TANK))
@@ -609,13 +609,13 @@ local function UpdatePlayerHealthBarColor()
     end
 
     if config.classcolor then
-        -- ✅ USAR TEXTURA STATUS (BLANCA) PARA CLASS COLOR
+        --  USAR TEXTURA STATUS (BLANCA) PARA CLASS COLOR
         local statusTexturePath = TEXTURES.HEALTH_STATUS
         if texture:GetTexture() ~= statusTexturePath then
             texture:SetTexture(statusTexturePath)
         end
 
-        -- ✅ APLICAR COLOR DE CLASE DEL PLAYER
+        --  APLICAR COLOR DE CLASE DEL PLAYER
         local _, class = UnitClass("player")
         local color = RAID_CLASS_COLORS[class]
         if color then
@@ -624,13 +624,13 @@ local function UpdatePlayerHealthBarColor()
             PlayerFrameHealthBar:SetStatusBarColor(1, 1, 1, 1)
         end
     else
-        -- ✅ USAR TEXTURA NORMAL (COLORED) SIN CLASS COLOR
+        --  USAR TEXTURA NORMAL (COLORED) SIN CLASS COLOR
         local normalTexturePath = TEXTURES.HEALTH_BAR
         if texture:GetTexture() ~= normalTexturePath then
             texture:SetTexture(normalTexturePath)
         end
 
-        -- ✅ COLOR BLANCO (la textura ya tiene color)
+        --  COLOR BLANCO (la textura ya tiene color)
         PlayerFrameHealthBar:SetStatusBarColor(1, 1, 1, 1)
     end
 end
@@ -643,7 +643,7 @@ local function UpdateHealthBarColor(statusBar, unit)
         return
     end
 
-    -- ✅ LLAMAR A LA NUEVA FUNCIÓN
+    --  LLAMAR A LA NUEVA FUNCIÓN
     UpdatePlayerHealthBarColor()
 end
 
@@ -663,7 +663,7 @@ local function UpdatePowerBarTexture(statusBar)
     local powerType, powerTypeString = UnitPowerType('player')
     local powerTexture = TEXTURES.POWER_BARS[powerTypeString] or TEXTURES.POWER_BARS.MANA
 
-    -- ✅ CAMBIAR TEXTURA según el tipo de poder actual
+    --  CAMBIAR TEXTURA según el tipo de poder actual
     local currentTexture = statusBar:GetStatusBarTexture():GetTexture()
     if currentTexture ~= powerTexture then
         statusBar:GetStatusBarTexture():SetTexture(powerTexture)
@@ -730,12 +730,12 @@ local function UpdatePlayerDragonDecoration()
             dragonFrame.PlayerFrameBorder:SetPoint('LEFT', PlayerFrameHealthBar, 'LEFT', -128, -29.5)
         end
 
-        -- ✅ NUEVO: Ocultar PlayerFrameDeco cuando hay decoración elite/rare
+        --  NUEVO: Ocultar PlayerFrameDeco cuando hay decoración elite/rare
         if dragonFrame.PlayerFrameDeco then
             dragonFrame.PlayerFrameDeco:Hide()
         end
 
-        -- ✅ NUEVO: Estirar mana bar hacia la izquierda
+        --  NUEVO: Estirar mana bar hacia la izquierda
         if PlayerFrameManaBar then
             local hasVehicleUI = UnitHasVehicleUI("player")
             local normalWidth = hasVehicleUI and 117 or 125
@@ -766,12 +766,12 @@ local function UpdatePlayerDragonDecoration()
             dragonFrame.PlayerFrameBorder:SetPoint('LEFT', PlayerFrameHealthBar, 'LEFT', -67, -28.5)
         end
 
-        -- ✅ NUEVO: Mostrar PlayerFrameDeco cuando no hay decoración
+        --  NUEVO: Mostrar PlayerFrameDeco cuando no hay decoración
         if dragonFrame.PlayerFrameDeco then
             dragonFrame.PlayerFrameDeco:Show()
         end
 
-        -- ✅ NUEVO: Restaurar tamaño normal de mana bar
+        --  NUEVO: Restaurar tamaño normal de mana bar
         if PlayerFrameManaBar then
             local hasVehicleUI = UnitHasVehicleUI("player")
 
@@ -865,7 +865,7 @@ local function CreatePlayerFrameTextures()
         statusFrame:Hide()
 
         local statusTexture = statusFrame:CreateTexture(nil, "OVERLAY")
-        statusTexture:SetTexture(ELITE_GLOW_COORDINATES.texture) -- ✅ Usar desde coordenadas
+        statusTexture:SetTexture(ELITE_GLOW_COORDINATES.texture) --  Usar desde coordenadas
         statusTexture:SetTexCoord(unpack(ELITE_GLOW_COORDINATES.texCoord))
         statusTexture:SetAllPoints(statusFrame)
         statusTexture:SetBlendMode("ADD")
@@ -882,7 +882,7 @@ local function CreatePlayerFrameTextures()
         combatFrame:Hide()
 
         local eliteCombatTexture = combatFrame:CreateTexture(nil, "OVERLAY")
-        eliteCombatTexture:SetTexture(ELITE_GLOW_COORDINATES.texture) -- ✅ Usar desde coordenadas
+        eliteCombatTexture:SetTexture(ELITE_GLOW_COORDINATES.texture) --  Usar desde coordenadas
         eliteCombatTexture:SetTexCoord(unpack(ELITE_GLOW_COORDINATES.texCoord))
         eliteCombatTexture:SetAllPoints(combatFrame)
         eliteCombatTexture:SetBlendMode("ADD")
@@ -939,17 +939,17 @@ local function CreatePlayerFrameTextures()
     if not dragonFrame.PlayerGroupIndicator then
         local groupIndicator = CreateFrame("Frame", "DragonUIPlayerGroupIndicator", PlayerFrame)
 
-        -- ✅ USAR TEXTURA uiunitframe como RetailUI
+        --  USAR TEXTURA uiunitframe como RetailUI
         local bgTexture = groupIndicator:CreateTexture(nil, "BACKGROUND")
         bgTexture:SetTexture(TEXTURES.BASE) -- Tu textura uiunitframe
-        bgTexture:SetTexCoord(0.927734375, 0.9970703125, 0.3125, 0.337890625) -- ✅ Coordenadas del GroupIndicator
+        bgTexture:SetTexCoord(0.927734375, 0.9970703125, 0.3125, 0.337890625) --  Coordenadas del GroupIndicator
         bgTexture:SetAllPoints(groupIndicator)
 
-        -- ✅ SIZING FIJO como en las coordenadas
+        --  SIZING FIJO como en las coordenadas
         groupIndicator:SetSize(71, 13)
         groupIndicator:SetPoint("BOTTOMLEFT", PlayerFrame, "TOP", 30, -19.5)
 
-        -- ✅ TEXTO CENTRADO como original
+        --  TEXTO CENTRADO como original
         local text = groupIndicator:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
         text:SetPoint("CENTER", groupIndicator, "CENTER", 0, 0)
         text:SetJustifyH("CENTER")
@@ -964,7 +964,7 @@ local function CreatePlayerFrameTextures()
 
         _G[PlayerFrame:GetName() .. 'GroupIndicator'] = groupIndicator
         _G[PlayerFrame:GetName() .. 'GroupIndicatorText'] = text
-        _G[PlayerFrame:GetName() .. 'GroupIndicatorMiddle'] = bgTexture -- ✅ Como original
+        _G[PlayerFrame:GetName() .. 'GroupIndicatorMiddle'] = bgTexture --  Como original
         dragonFrame.PlayerGroupIndicator = groupIndicator
     end
 
@@ -1112,16 +1112,16 @@ local function SetCombatFlashVisible(visible)
     if visible then
         combatPulseTimer = 0 -- Reset pulse timer
 
-        -- ✅ CAMBIAR DECORACIÓN A ICONO DE COMBATE (espadas cruzadas)
+        --  CAMBIAR DECORACIÓN A ICONO DE COMBATE (espadas cruzadas)
         dragonFrame.PlayerFrameDeco:SetTexCoord(0.9775390625, 0.9931640625, 0.259765625, 0.291015625)
-        -- ✅ AJUSTAR TAMAÑO PARA EL ICONO DE COMBATE
+        --  AJUSTAR TAMAÑO PARA EL ICONO DE COMBATE
         dragonFrame.PlayerFrameDeco:SetSize(16, 16) -- Más pequeño que el original (23x23)
         dragonFrame.PlayerFrameDeco:SetPoint('CENTER', PlayerPortrait, 'CENTER', 18, -20)
 
     else
-        -- ✅ RESTAURAR DECORACIÓN NORMAL
+        --  RESTAURAR DECORACIÓN NORMAL
         dragonFrame.PlayerFrameDeco:SetTexCoord(0.953125, 0.9755859375, 0.259765625, 0.3046875)
-        -- ✅ RESTAURAR TAMAÑO ORIGINAL
+        --  RESTAURAR TAMAÑO ORIGINAL
         dragonFrame.PlayerFrameDeco:SetSize(23, 23) -- Tamaño original
         dragonFrame.PlayerFrameDeco:SetPoint('CENTER', PlayerPortrait, 'CENTER', 16, -16.5)
 
@@ -1130,7 +1130,7 @@ local function SetCombatFlashVisible(visible)
     SetEliteCombatFlashVisible(visible) -- Use unified system
 end
 
--- ✅ FUNCIÓN PARA APLICAR POSICIÓN DESDE WIDGETS (COMO MINIMAP)
+--  FUNCIÓN PARA APLICAR POSICIÓN DESDE WIDGETS (COMO MINIMAP)
 local function ApplyWidgetPosition()
     local widgetConfig = addon:GetConfigValue("widgets", "player")
     if not widgetConfig then
@@ -1142,7 +1142,7 @@ local function ApplyWidgetPosition()
         }
     end
 
-    -- ✅ CLAVE: Posicionar el frame auxiliar
+    --  CLAVE: Posicionar el frame auxiliar
     Module.playerFrame:ClearAllPoints()
     Module.playerFrame:SetPoint(
         widgetConfig.anchor or "TOPLEFT", 
@@ -1152,7 +1152,7 @@ local function ApplyWidgetPosition()
         widgetConfig.posY or -4
     )
     
-    -- ✅ CLAVE: Anclar PlayerFrame al auxiliar (sistema RetailUI)
+    --  CLAVE: Anclar PlayerFrame al auxiliar (sistema RetailUI)
     PlayerFrame:ClearAllPoints()
     PlayerFrame:SetPoint("CENTER", Module.playerFrame, "CENTER", -15, -7)
 
@@ -1166,7 +1166,7 @@ local function ApplyPlayerConfig()
     -- Aplicar escala
     PlayerFrame:SetScale(config.scale or 1.0)
 
-    -- ✅ SIEMPRE usar posición de widgets (Editor Mode)
+    --  SIEMPRE usar posición de widgets (Editor Mode)
     ApplyWidgetPosition()
 
     -- Setup text system
@@ -1203,16 +1203,16 @@ end
 
 -- Refresh frame configuration
 local function RefreshPlayerFrame()
-    -- ✅ APLICAR CONFIGURACIÓN INMEDIATAMENTE
+    --  APLICAR CONFIGURACIÓN INMEDIATAMENTE
     ApplyPlayerConfig()
 
-    -- ✅ ACTUALIZAR CLASS COLOR
+    --  ACTUALIZAR CLASS COLOR
     UpdatePlayerHealthBarColor()
 
-    -- ✅ ACTUALIZAR DECORACIÓN DRAGON (importante para scale)
+    --  ACTUALIZAR DECORACIÓN DRAGON (importante para scale)
     UpdatePlayerDragonDecoration()
 
-    -- ✅ ACTUALIZAR SISTEMA DE TEXTOS
+    --  ACTUALIZAR SISTEMA DE TEXTOS
     if Module.textSystem then
         Module.textSystem.update()
     end
@@ -1223,10 +1223,10 @@ end
 -- ============================================================================
 -- INITIALIZATION
 -- ============================================================================
--- ✅ NUEVO: Hook para refresh automático de class color
+--  NUEVO: Hook para refresh automático de class color
 local function SetupPlayerClassColorHooks()
     if not _G.DragonUI_PlayerHealthHookSetup then
-        -- ✅ SOLO UN HOOK SIMPLE - cuando Blizzard actualiza la health bar
+        --  SOLO UN HOOK SIMPLE - cuando Blizzard actualiza la health bar
         hooksecurefunc("UnitFrameHealthBar_Update", function(statusbar, unit)
             if statusbar == PlayerFrameHealthBar and unit == "player" then
                 UpdatePlayerHealthBarColor()
@@ -1253,7 +1253,7 @@ local function InitializePlayerFrame()
     -- Create auxiliary frame
     Module.playerFrame = addon.CreateUIFrame(200, 75, "PlayerFrame")
 
-    -- ✅ REGISTRO AUTOMÁTICO EN EL SISTEMA CENTRALIZADO
+    --  REGISTRO AUTOMÁTICO EN EL SISTEMA CENTRALIZADO
     addon:RegisterEditableFrame({
         name = "player",
         frame = Module.playerFrame,
@@ -1282,15 +1282,15 @@ local function InitializePlayerFrame()
     -- Setup bar hooks for persistent colors
     if PlayerFrameHealthBar and PlayerFrameHealthBar.HookScript then
         PlayerFrameHealthBar:HookScript('OnValueChanged', function(self)
-            -- ✅ APLICAR CLASS COLOR EN CADA CAMBIO
+            --  APLICAR CLASS COLOR EN CADA CAMBIO
             UpdatePlayerHealthBarColor()
         end)
         PlayerFrameHealthBar:HookScript('OnShow', function(self)
-            -- ✅ APLICAR CLASS COLOR AL MOSTRAR
+            --  APLICAR CLASS COLOR AL MOSTRAR
             UpdatePlayerHealthBarColor()
         end)
         PlayerFrameHealthBar:HookScript('OnUpdate', function(self)
-            -- ✅ APLICAR CLASS COLOR EN UPDATES
+            --  APLICAR CLASS COLOR EN UPDATES
             UpdatePlayerHealthBarColor()
         end)
     end
@@ -1433,4 +1433,4 @@ addon.PlayerFrame = {
 
 print("|cFF00FF00[DragonUI]|r Player.lua LOADED")
 
--- ✅ FUNCIONES EDITOR MODE ELIMINADAS - AHORA USA SISTEMA CENTRALIZADO
+--  FUNCIONES EDITOR MODE ELIMINADAS - AHORA USA SISTEMA CENTRALIZADO

@@ -7,7 +7,7 @@ local gridOverlay = nil;
 local exitEditorButton = nil;
 local resetAllButton = nil;
 
--- ✅ BOTÓN DE SALIDA DEL MODO EDITOR
+--  BOTÓN DE SALIDA DEL MODO EDITOR
 local function createExitButton()
     if exitEditorButton then return; end
 
@@ -51,7 +51,7 @@ local function createExitButton()
     exitEditorButton:Hide(); -- Oculto por defecto
 end
 
--- ✅ BOTÓN DE RESET ALL POSITIONS - ESTILO PROFESIONAL
+--  BOTÓN DE RESET ALL POSITIONS - ESTILO PROFESIONAL
 local function createResetAllButton()
     if resetAllButton then return; end
 
@@ -97,15 +97,15 @@ local function createResetAllButton()
     resetAllButton:Hide(); -- Oculto por defecto
 end
 
--- ✅ TU GRID MEJORADO - AHORA CUADRADOS SIMÉTRICOS
+--  TU GRID MEJORADO - AHORA CUADRADOS SIMÉTRICOS
 local function createGridOverlay()
     if gridOverlay then return; end
 
-    -- ✅ CAMBIO: Hacer cuadrados SIMÉTRICOS con línea central EXACTA
+    --  CAMBIO: Hacer cuadrados SIMÉTRICOS con línea central EXACTA
     local screenWidth = GetScreenWidth()
     local screenHeight = GetScreenHeight()
     
-    -- ✅ ALGORITMO SIMÉTRICO: Partir desde el centro hacia afuera
+    --  ALGORITMO SIMÉTRICO: Partir desde el centro hacia afuera
     local cellSize = 32  -- Tamaño base de celda
     
     -- Calcular cuántas celdas completas caben desde el centro hacia cada lado
@@ -129,7 +129,7 @@ local function createGridOverlay()
     gridOverlay:SetFrameStrata("BACKGROUND")
     gridOverlay:SetFrameLevel(0)
 
-    -- ✅ AÑADIR CAPA DE FONDO OSCURA SEMI-TRANSPARENTE
+    --  AÑADIR CAPA DE FONDO OSCURA SEMI-TRANSPARENTE
     local background = gridOverlay:CreateTexture("DragonUIGridBackground", 'BACKGROUND')
     background:SetAllPoints(gridOverlay)
     background:SetTexture(0, 0, 0, 0.3)  -- Negro semi-transparente
@@ -169,7 +169,7 @@ local function createGridOverlay()
         line:SetPoint('BOTTOMRIGHT', gridOverlay, 'TOPRIGHT', 0, -y - (lineThickness / 2))
     end
     
-    -- ✅ DEBUG: Mostrar información de simetría
+    --  DEBUG: Mostrar información de simetría
     print("|cFFFFFF00[DragonUI Grid]|r Horizontal: " .. halfCellsHorizontal .. " celdas por lado (" .. totalHorizontalCells .. " total)")
     print("|cFFFFFF00[DragonUI Grid]|r Vertical: " .. halfCellsVertical .. " celdas por lado (" .. totalVerticalCells .. " total)")
     print("|cFFFFFF00[DragonUI Grid]|r Tamaño real: " .. string.format("%.1f", actualCellWidth) .. "x" .. string.format("%.1f", actualCellHeight))
@@ -190,15 +190,15 @@ function EditorMode:Show()
     exitEditorButton:Show()
     resetAllButton:Show()
 
-    -- ✅ NUEVO: USAR SISTEMA CENTRALIZADO - UNA SOLA LÍNEA
+    --  NUEVO: USAR SISTEMA CENTRALIZADO - UNA SOLA LÍNEA
     addon:ShowAllEditableFrames()
     
-    -- ✅ NEW: Enable action bar overlays for mouse blocking during editor mode
+    --  NEW: Enable action bar overlays for mouse blocking during editor mode
     if addon.EnableActionBarOverlays then
         addon.EnableActionBarOverlays()
     end
     
-    -- ✅ HOOK: Mantener escalas configuradas durante editor mode
+    --  HOOK: Mantener escalas configuradas durante editor mode
     EditorMode:InstallScaleHooks()
     
     -- Update overlay sizes after showing
@@ -218,15 +218,15 @@ function EditorMode:Hide()
     if exitEditorButton then exitEditorButton:Hide() end
     if resetAllButton then resetAllButton:Hide() end
 
-    -- ✅ NUEVO: USAR SISTEMA CENTRALIZADO - UNA SOLA LÍNEA
+    --  NUEVO: USAR SISTEMA CENTRALIZADO - UNA SOLA LÍNEA
     addon:HideAllEditableFrames(true) -- true = refresh and save positions
     
-    -- ✅ NEW: Disable action bar overlays to allow normal interaction with action buttons
+    --  NEW: Disable action bar overlays to allow normal interaction with action buttons
     if addon.DisableActionBarOverlays then
         addon.DisableActionBarOverlays()
     end
     
-    -- ✅ UNHOOK: Remover hooks de escala cuando se sale del editor mode
+    --  UNHOOK: Remover hooks de escala cuando se sale del editor mode
     EditorMode:RemoveScaleHooks()
     
     -- Refresh AceConfig to update button state
@@ -259,18 +259,18 @@ function EditorMode:IsActive()
     return gridOverlay and gridOverlay:IsShown()
 end
 
--- ✅ COMANDO SLASH
+--  COMANDO SLASH
 SLASH_DRAGONUI_EDITOR1 = "/duiedit"
 SLASH_DRAGONUI_EDITOR2 = "/dragonedit"
 SlashCmdList["DRAGONUI_EDITOR"] = function()
     EditorMode:Toggle()
 end
 
--- ✅ HOOKS PARA MANTENER ESCALAS DURANTE EDITOR MODE
+--  HOOKS PARA MANTENER ESCALAS DURANTE EDITOR MODE
 local scaleHooks = {}
 
 function EditorMode:InstallScaleHooks()
-    -- ✅ DISABLED: Conflicting with RetailUI pattern in mainbars.lua
+    --  DISABLED: Conflicting with RetailUI pattern in mainbars.lua
     -- Hook para MainMenuExpBar
     --[[ 
     if MainMenuExpBar and not scaleHooks.xpbar then
@@ -287,7 +287,7 @@ function EditorMode:InstallScaleHooks()
     end
     ]]--
     
-    -- ✅ DISABLED: Conflicting with RetailUI pattern in mainbars.lua
+    --  DISABLED: Conflicting with RetailUI pattern in mainbars.lua
     -- Hook para ReputationWatchBar
     --[[
     if ReputationWatchBar and not scaleHooks.repbar then
@@ -312,12 +312,12 @@ function EditorMode:RemoveScaleHooks()
     scaleHooks.repbar = nil
 end
 
--- ✅ FUNCIÓN DE CONFIRMACIÓN PARA RESET ALL POSITIONS
+--  FUNCIÓN DE CONFIRMACIÓN PARA RESET ALL POSITIONS
 function EditorMode:ShowResetConfirmation()
     StaticPopup_Show("DRAGONUI_RESET_ALL_POSITIONS")
 end
 
--- ✅ FUNCIÓN PARA RESETEAR SOLO WIDGETS USANDO ACE3 (FUERA DEL EDITOR MODE)
+--  FUNCIÓN PARA RESETEAR SOLO WIDGETS USANDO ACE3 (FUERA DEL EDITOR MODE)
 function EditorMode:ResetAllPositions()
     if not addon.db or not addon.db.profile then
         print("|cffFF0000[DragonUI]|r Error: Database not available")
@@ -341,7 +341,7 @@ function EditorMode:ResetAllPositions()
     ReloadUI()
 end
 
--- ✅ FUNCIÓN HELPER PARA DEEP COPY (si no existe ya en addon)
+--  FUNCIÓN HELPER PARA DEEP COPY (si no existe ya en addon)
 if not addon.CopyTable then
     function addon:CopyTable(orig)
         local orig_type = type(orig)
@@ -359,7 +359,7 @@ if not addon.CopyTable then
     end
 end
 
--- ✅ DEFINIR EL POPUP DE CONFIRMACIÓN
+--  DEFINIR EL POPUP DE CONFIRMACIÓN
 StaticPopupDialogs["DRAGONUI_RESET_ALL_POSITIONS"] = {
     text = "¿Estás seguro que quieres resetear todos los elementos de la interfaz a su posición original?",
     button1 = "Sí",

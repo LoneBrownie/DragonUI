@@ -20,7 +20,7 @@ function addon:CreateOptionsTable()
         name = "DragonUI",
         type = 'group',
         args = {
-            -- ✅ BOTÓN PARA ACTIVAR EL MODO DE EDICIÓN
+            --  BOTÓN PARA ACTIVAR EL MODO DE EDICIÓN
             toggle_editor_mode = {
                 type = 'execute',
                 name = function()
@@ -37,7 +37,7 @@ function addon:CreateOptionsTable()
                 end,
                 desc = "Unlock UI elements to move them with your mouse. A button will appear to exit this mode.",
                 func = function()
-                    -- ✅ CORRECCIÓN 3: Ocultar el tooltip para que no se quede pegado.
+                    --  CORRECCIÓN 3: Ocultar el tooltip para que no se quede pegado.
                     GameTooltip:Hide()
 
                     -- Usar la función de la librería para cerrar su propia ventana.
@@ -52,7 +52,7 @@ function addon:CreateOptionsTable()
                 disabled = false,
                 order = 0 -- El orden más bajo para que aparezca primero
             },
-            -- ✅ SEPARADOR VISUAL
+            --  SEPARADOR VISUAL
             editor_separator = {
                 type = 'header',
                 name = ' ', -- Un espacio en blanco actúa como separador
@@ -123,7 +123,7 @@ function addon:CreateOptionsTable()
                                 name = "Action Bar Positions",
                                 order = 4.5
                             },
-                            -- ✅ AÑADIMOS UNA DESCRIPCIÓN INTELIGENTE
+                            --  AÑADIMOS UNA DESCRIPCIÓN INTELIGENTE
                             editor_mode_desc = {
                                 type = 'description',
                                 name = "|cffFFD700Tip:|r Use the |cff00FF00/duiedit|r or |cff00FF00/dragonedit|r command to unlock and move the bars with your mouse.",
@@ -134,7 +134,7 @@ function addon:CreateOptionsTable()
                                 name = "Reset Bar Positions",
                                 desc = "Resets all action bars to their default positions using the centralized system.",
                                 func = function()
-                                    -- ✅ READ DEFAULTS FROM DATABASE.LUA
+                                    --  READ DEFAULTS FROM DATABASE.LUA
                                     local defaults = addon.defaults and addon.defaults.profile and
                                                          addon.defaults.profile.widgets
                                     if not defaults then
@@ -143,7 +143,7 @@ function addon:CreateOptionsTable()
                                         return
                                     end
 
-                                    -- ✅ APPLY EACH DEFAULT POSITION FROM DATABASE.LUA (EXCLUDING PETBAR - IT'S HANDLED SEPARATELY)
+                                    --  APPLY EACH DEFAULT POSITION FROM DATABASE.LUA (EXCLUDING PETBAR - IT'S HANDLED SEPARATELY)
                                     local barNames = {"mainbar", "rightbar", "leftbar", "bottombarleft",
                                                       "bottombarright"}
 
@@ -170,7 +170,7 @@ function addon:CreateOptionsTable()
                                         end
                                     end
 
-                                    -- ✅ HANDLE PETBAR SEPARATELY (from petbar.lua module)
+                                    --  HANDLE PETBAR SEPARATELY (from petbar.lua module)
                                     if defaults.petbar then
                                         if not addon.db.profile.widgets.petbar then
                                             addon.db.profile.widgets.petbar = {}
@@ -186,7 +186,7 @@ function addon:CreateOptionsTable()
                                         end
                                     end
 
-                                    -- ✅ ALSO RESET REPEXPBAR IF IT EXISTS IN DEFAULTS
+                                    --  ALSO RESET REPEXPBAR IF IT EXISTS IN DEFAULTS
                                     if defaults.repexpbar and addon.ActionBarFrames and addon.ActionBarFrames.repexpbar then
                                         if not addon.db.profile.widgets.repexpbar then
                                             addon.db.profile.widgets.repexpbar = {}
@@ -202,7 +202,7 @@ function addon:CreateOptionsTable()
                                             defaults.repexpbar.posX, defaults.repexpbar.posY)
                                     end
 
-                                    -- ✅ REPOSITION BLIZZARD FRAMES TO FOLLOW CONTAINERS
+                                    --  REPOSITION BLIZZARD FRAMES TO FOLLOW CONTAINERS
                                     if addon.UpdateActionBarWidgets then
                                         addon.UpdateActionBarWidgets()
                                     end
@@ -1469,7 +1469,7 @@ function addon:CreateOptionsTable()
                 type = "group",
                 order = 10,
                 args = {
-                    -- ✅ CONFIGURACIONES BÁSICAS DEL MINIMAP
+                    --  CONFIGURACIONES BÁSICAS DEL MINIMAP
                     scale = {
                         type = "range",
                         name = "Scale",
@@ -1596,7 +1596,7 @@ function addon:CreateOptionsTable()
                         order = 6
                     },
 
-                    -- ✅ SECCIÓN TIEMPO Y CALENDARIO INTEGRADA
+                    --  SECCIÓN TIEMPO Y CALENDARIO INTEGRADA
                     time_header = {
                         type = 'header',
                         name = "Time & Calendar",
@@ -1655,7 +1655,7 @@ function addon:CreateOptionsTable()
                         order = 4.8
                     },
 
-                    -- ✅ OTRAS CONFIGURACIONES DEL MINIMAP
+                    --  OTRAS CONFIGURACIONES DEL MINIMAP
                     display_header = {
                         type = 'header',
                         name = "Display Settings",
@@ -1681,7 +1681,7 @@ function addon:CreateOptionsTable()
                         order = 5.1
                     },
 
-                    -- ✅ POSICIONAMIENTO
+                    --  POSICIONAMIENTO
                     position_header = {
                         type = 'header',
                         name = "Position",
@@ -1692,7 +1692,7 @@ function addon:CreateOptionsTable()
                         name = "Reset Position",
                         desc = "Reset minimap to default position (top-right corner)",
                         func = function()
-                            -- ✅ SOLO RESETEAR SISTEMA WIDGETS
+                            --  SOLO RESETEAR SISTEMA WIDGETS
                             if not addon.db.profile.widgets then
                                 addon.db.profile.widgets = {}
                             end
@@ -2092,7 +2092,7 @@ function addon:CreateOptionsTable()
                                 end,
                                 order = 10,
                                 disabled = function()
-                                    -- ✅ CORRECCIÓN LÓGICA: Deshabilitar si el modo es "simple"
+                                    --  CORRECCIÓN LÓGICA: Deshabilitar si el modo es "simple"
                                     return (addon.db.profile.castbar.target and
                                                addon.db.profile.castbar.target.text_mode) == "simple"
                                 end
@@ -2116,7 +2116,7 @@ function addon:CreateOptionsTable()
                                 end,
                                 order = 11,
                                 disabled = function()
-                                    -- ✅ CORRECCIÓN LÓGICA: Deshabilitar si el modo es "simple"
+                                    --  CORRECCIÓN LÓGICA: Deshabilitar si el modo es "simple"
                                     return (addon.db.profile.castbar.target and
                                                addon.db.profile.castbar.target.text_mode) == "simple"
                                 end
@@ -2597,7 +2597,7 @@ function addon:CreateOptionsTable()
                                 end,
                                 set = function(info, value)
                                     addon.db.profile.unitframe.scale = value
-                                    -- ✅ TRIGGER DIRECTO SIN THROTTLING
+                                    --  TRIGGER DIRECTO SIN THROTTLING
                                     if addon.RefreshUnitFrames then
                                         addon.RefreshUnitFrames()
                                     end
@@ -2624,7 +2624,7 @@ function addon:CreateOptionsTable()
                                 end,
                                 set = function(info, value)
                                     addon.db.profile.unitframe.player.scale = value
-                                    -- ✅ REFRESH AUTOMÁTICO
+                                    --  REFRESH AUTOMÁTICO
                                     if addon.PlayerFrame and addon.PlayerFrame.RefreshPlayerFrame then
                                         addon.PlayerFrame.RefreshPlayerFrame()
                                     end
@@ -2640,7 +2640,7 @@ function addon:CreateOptionsTable()
                                 end,
                                 set = function(info, value)
                                     addon.db.profile.unitframe.player.classcolor = value
-                                    -- ✅ TRIGGER INMEDIATO
+                                    --  TRIGGER INMEDIATO
                                     if addon.PlayerFrame and addon.PlayerFrame.UpdatePlayerHealthBarColor then
                                         addon.PlayerFrame.UpdatePlayerHealthBarColor()
                                     end
@@ -2656,7 +2656,7 @@ function addon:CreateOptionsTable()
                                 end,
                                 set = function(info, value)
                                     addon.db.profile.unitframe.player.breakUpLargeNumbers = value
-                                    -- ✅ AUTO-REFRESH
+                                    --  AUTO-REFRESH
                                     if addon.PlayerFrame and addon.PlayerFrame.RefreshPlayerFrame then
                                         addon.PlayerFrame.RefreshPlayerFrame()
                                     end
@@ -2678,7 +2678,7 @@ function addon:CreateOptionsTable()
                                 end,
                                 set = function(info, value)
                                     addon.db.profile.unitframe.player.textFormat = value
-                                    -- ✅ AUTO-REFRESH
+                                    --  AUTO-REFRESH
                                     if addon.PlayerFrame and addon.PlayerFrame.RefreshPlayerFrame then
                                         addon.PlayerFrame.RefreshPlayerFrame()
                                     end
@@ -2694,7 +2694,7 @@ function addon:CreateOptionsTable()
                                 end,
                                 set = function(info, value)
                                     addon.db.profile.unitframe.player.showHealthTextAlways = value
-                                    -- ✅ AUTO-REFRESH
+                                    --  AUTO-REFRESH
                                     if addon.PlayerFrame and addon.PlayerFrame.RefreshPlayerFrame then
                                         addon.PlayerFrame.RefreshPlayerFrame()
                                     end
@@ -2710,7 +2710,7 @@ function addon:CreateOptionsTable()
                                 end,
                                 set = function(info, value)
                                     addon.db.profile.unitframe.player.showManaTextAlways = value
-                                    -- ✅ AUTO-REFRESH
+                                    --  AUTO-REFRESH
                                     if addon.PlayerFrame and addon.PlayerFrame.RefreshPlayerFrame then
                                         addon.PlayerFrame.RefreshPlayerFrame()
                                     end
@@ -2732,7 +2732,7 @@ function addon:CreateOptionsTable()
                                 end,
                                 set = function(info, value)
                                     addon.db.profile.unitframe.player.dragon_decoration = value
-                                    -- ✅ AUTO-REFRESH
+                                    --  AUTO-REFRESH
                                     if addon.PlayerFrame and addon.PlayerFrame.RefreshPlayerFrame then
                                         addon.PlayerFrame.RefreshPlayerFrame()
                                     end
@@ -2780,7 +2780,7 @@ function addon:CreateOptionsTable()
                                 end,
                                 set = function(info, value)
                                     addon.db.profile.unitframe.target.scale = value
-                                    -- ✅ AUTO-REFRESH
+                                    --  AUTO-REFRESH
                                     if addon.TargetFrame and addon.TargetFrame.RefreshTargetFrame then
                                         addon.TargetFrame.RefreshTargetFrame()
                                     end
@@ -2796,7 +2796,7 @@ function addon:CreateOptionsTable()
                                 end,
                                 set = function(info, value)
                                     addon.db.profile.unitframe.target.classcolor = value
-                                    -- ✅ TRIGGER INMEDIATO
+                                    --  TRIGGER INMEDIATO
                                     if addon.TargetFrame and addon.TargetFrame.UpdateTargetHealthBarColor then
                                         addon.TargetFrame.UpdateTargetHealthBarColor()
                                     end
@@ -2812,7 +2812,7 @@ function addon:CreateOptionsTable()
                                 end,
                                 set = function(info, value)
                                     addon.db.profile.unitframe.target.breakUpLargeNumbers = value
-                                    -- ✅ AUTO-REFRESH
+                                    --  AUTO-REFRESH
                                     if addon.TargetFrame and addon.TargetFrame.RefreshTargetFrame then
                                         addon.TargetFrame.RefreshTargetFrame()
                                     end
@@ -2834,7 +2834,7 @@ function addon:CreateOptionsTable()
                                 end,
                                 set = function(info, value)
                                     addon.db.profile.unitframe.target.textFormat = value
-                                    -- ✅ AUTO-REFRESH
+                                    --  AUTO-REFRESH
                                     if addon.TargetFrame and addon.TargetFrame.RefreshTargetFrame then
                                         addon.TargetFrame.RefreshTargetFrame()
                                     end
@@ -2850,7 +2850,7 @@ function addon:CreateOptionsTable()
                                 end,
                                 set = function(info, value)
                                     addon.db.profile.unitframe.target.showHealthTextAlways = value
-                                    -- ✅ AUTO-REFRESH
+                                    --  AUTO-REFRESH
                                     if addon.TargetFrame and addon.TargetFrame.RefreshTargetFrame then
                                         addon.TargetFrame.RefreshTargetFrame()
                                     end
@@ -2866,7 +2866,7 @@ function addon:CreateOptionsTable()
                                 end,
                                 set = function(info, value)
                                     addon.db.profile.unitframe.target.showManaTextAlways = value
-                                    -- ✅ AUTO-REFRESH
+                                    --  AUTO-REFRESH
                                     if addon.TargetFrame and addon.TargetFrame.RefreshTargetFrame then
                                         addon.TargetFrame.RefreshTargetFrame()
                                     end
@@ -2882,7 +2882,7 @@ function addon:CreateOptionsTable()
                                 end,
                                 set = function(info, value)
                                     addon.db.profile.unitframe.target.enableThreatGlow = value
-                                    -- ✅ AUTO-REFRESH
+                                    --  AUTO-REFRESH
                                     if addon.TargetFrame and addon.TargetFrame.RefreshTargetFrame then
                                         addon.TargetFrame.RefreshTargetFrame()
                                     end
@@ -3357,7 +3357,7 @@ function addon:CreateOptionsTable()
                                 end,
                                 set = function(info, value)
                                     addon.db.profile.unitframe.party.scale = value
-                                    -- ✅ AUTO-REFRESH
+                                    --  AUTO-REFRESH
                                     if addon.RefreshPartyFrames then
                                         addon.RefreshPartyFrames()
                                     end
@@ -3373,7 +3373,7 @@ function addon:CreateOptionsTable()
                                 end,
                                 set = function(info, value)
                                     addon.db.profile.unitframe.party.classcolor = value
-                                    -- ✅ AUTO-REFRESH
+                                    --  AUTO-REFRESH
                                     if addon.RefreshPartyFrames then
                                         addon.RefreshPartyFrames()
                                     end
@@ -3389,7 +3389,7 @@ function addon:CreateOptionsTable()
                                 end,
                                 set = function(info, value)
                                     addon.db.profile.unitframe.party.breakUpLargeNumbers = value
-                                    -- ✅ AUTO-REFRESH
+                                    --  AUTO-REFRESH
                                     if addon.RefreshPartyFrames then
                                         addon.RefreshPartyFrames()
                                     end
@@ -3397,7 +3397,7 @@ function addon:CreateOptionsTable()
                                 order = 3
                             },
                             -- ❌ ELIMINADAS: textFormat, showHealthTextAlways, showManaTextAlways
-                            -- ✅ RAZÓN: El party ya no usa el sistema de textos personalizado
+                            --  RAZÓN: El party ya no usa el sistema de textos personalizado
                             orientation = {
                                 type = 'select',
                                 name = "Orientation",
@@ -3411,7 +3411,7 @@ function addon:CreateOptionsTable()
                                 end,
                                 set = function(info, value)
                                     addon.db.profile.unitframe.party.orientation = value
-                                    -- ✅ AUTO-REFRESH
+                                    --  AUTO-REFRESH
                                     if addon.RefreshPartyFrames then
                                         addon.RefreshPartyFrames()
                                     end
@@ -3430,7 +3430,7 @@ function addon:CreateOptionsTable()
                                 end,
                                 set = function(info, value)
                                     addon.db.profile.unitframe.party.padding = value
-                                    -- ✅ AUTO-REFRESH
+                                    --  AUTO-REFRESH
                                     if addon.RefreshPartyFrames then
                                         addon.RefreshPartyFrames()
                                     end
@@ -3446,7 +3446,7 @@ function addon:CreateOptionsTable()
                                 end,
                                 set = function(info, value)
                                     addon.db.profile.unitframe.party.override = value
-                                    -- ✅ AUTO-REFRESH
+                                    --  AUTO-REFRESH
                                     if addon.RefreshPartyFrames then
                                         addon.RefreshPartyFrames()
                                     end
@@ -3465,7 +3465,7 @@ function addon:CreateOptionsTable()
                                 end,
                                 set = function(info, value)
                                     addon.db.profile.unitframe.party.x = value
-                                    -- ✅ AUTO-REFRESH INMEDIATO
+                                    --  AUTO-REFRESH INMEDIATO
                                     if addon.RefreshPartyFrames then
                                         addon.RefreshPartyFrames()
                                     end
@@ -3487,7 +3487,7 @@ function addon:CreateOptionsTable()
                                 end,
                                 set = function(info, value)
                                     addon.db.profile.unitframe.party.y = value
-                                    -- ✅ AUTO-REFRESH INMEDIATO
+                                    --  AUTO-REFRESH INMEDIATO
                                     if addon.RefreshPartyFrames then
                                         addon.RefreshPartyFrames()
                                     end

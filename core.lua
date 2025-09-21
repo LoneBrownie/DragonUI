@@ -269,7 +269,7 @@ function addon.core:SlashCommand(input)
             self:Print("Editor mode not available. Make sure the editor_mode module is loaded.");
         end
     elseif input:lower() == "debug" or input:lower() == "test" then
-        -- ✅ COMANDO DE DIAGNÓSTICO DEL SISTEMA CENTRALIZADO
+        --  COMANDO DE DIAGNÓSTICO DEL SISTEMA CENTRALIZADO
         self:Print("=== DragonUI Centralized System Debug ===");
         
         if addon.EditableFrames then
@@ -303,7 +303,7 @@ end
 -- FUNCIONES GLOBALES PARA EL SISTEMA DE MOVILIDAD 
 ---------------------------------------------------
 
--- ✅ FUNCIÓN AUXILIAR PARA CONTAR ELEMENTOS EN TABLA
+--  FUNCIÓN AUXILIAR PARA CONTAR ELEMENTOS EN TABLA
 function addon:tcount(tbl)
     local count = 0
     for _ in pairs(tbl) do count = count + 1 end
@@ -323,7 +323,7 @@ function CreateUIFrame(width, height, frameName)
     frame:SetScript("OnDragStop", function(self)
         self:StopMovingOrSizing()
         
-        -- ✅ AUTO-SAVE: Buscar este frame en EditableFrames y guardar posición automáticamente
+        --  AUTO-SAVE: Buscar este frame en EditableFrames y guardar posición automáticamente
         for frameName, frameData in pairs(addon.EditableFrames) do
             if frameData.frame == self then
                 -- Guardar posición automáticamente
@@ -532,7 +532,7 @@ function addon:RegisterEditableFrame(frameInfo)
     print("|cFF00FF00[DragonUI]|r Registered editable frame:", frameInfo.name)
 end
 
--- ✅ FUNCIÓN PARA MOSTRAR TODOS LOS FRAMES EN EDITOR MODE
+--  FUNCIÓN PARA MOSTRAR TODOS LOS FRAMES EN EDITOR MODE
 function addon:ShowAllEditableFrames()
     for name, frameData in pairs(self.EditableFrames) do
         if frameData.frame then

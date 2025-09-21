@@ -101,7 +101,7 @@ local defaults = {
         },
         -- ACTIONBAR SETTINGS
         mainbars = {
-            -- ✅ Only keep orientation and scale settings - position handled by centralized system
+            --  Only keep orientation and scale settings - position handled by centralized system
             left = {
                 horizontal = false
             },
@@ -233,7 +233,7 @@ local defaults = {
             addon_button_fade = false
         },
 
-        -- ✅ BUFFS SETTINGS (NUEVO)
+        --  BUFFS SETTINGS (NUEVO)
         buffs = {
             enabled = true,
             show_toggle_button = true

@@ -84,7 +84,7 @@ for _, unitType in ipairs({"player", "target", "focus"}) do
         holdTime = 0,
         castSucceeded = false,
         graceTime = 0,
-        selfInterrupt = false  -- ✅ Flag para interrupciones naturales
+        selfInterrupt = false  --  Flag para interrupciones naturales
     }
     CastbarModule.frames[unitType] = {}
     CastbarModule.lastRefreshTime[unitType] = 0
@@ -619,7 +619,7 @@ function CastbarModule:HandleCastStart(unitType, unit)
     state.isChanneling = false
     state.holdTime = 0
     state.spellName = name
-    state.selfInterrupt = false  -- ✅ Reset flag
+    state.selfInterrupt = false  --  Reset flag
     
     if unitType == "player" then
         state.castSucceeded = false
@@ -629,13 +629,13 @@ function CastbarModule:HandleCastStart(unitType, unit)
     local start, finish, duration = ParseCastTimes(startTime, endTime)
     state.maxValue = duration
     
-    -- ✅ FIX: Calcular progreso actual basado en tiempo transcurrido
+    --  FIX: Calcular progreso actual basado en tiempo transcurrido
     local currentTime = GetTime()
     local elapsed = currentTime - start
     state.currentValue = max(0, min(elapsed, duration))
     
     frames.castbar:SetMinMaxValues(0, state.maxValue)
-    frames.castbar:SetValue(state.currentValue)  -- ✅ Usar progreso calculado
+    frames.castbar:SetValue(state.currentValue)  --  Usar progreso calculado
     frames.castbar:Show()
     
     if frames.background and frames.background ~= frames.textBackground then
@@ -651,7 +651,7 @@ function CastbarModule:HandleCastStart(unitType, unit)
     frames.castbar:SetStatusBarColor(1, 0.7, 0, 1)
     ForceStatusBarLayer(frames.castbar)
     
-    -- ✅ FIX: Actualizar clipping con progreso real
+    --  FIX: Actualizar clipping con progreso real
     if frames.castbar.UpdateTextureClipping then
         local progress = state.currentValue / state.maxValue
         frames.castbar:UpdateTextureClipping(progress, false)
@@ -678,7 +678,7 @@ function CastbarModule:HandleCastStart(unitType, unit)
     
     UpdateTimeText(unitType)
     
-    -- ✅ FIX: Actualizar posición del spark con progreso real
+    --  FIX: Actualizar posición del spark con progreso real
     if frames.spark and frames.spark:IsShown() then
         local progress = state.currentValue / state.maxValue
         local actualWidth = frames.castbar:GetWidth() * progress
@@ -708,7 +708,7 @@ function CastbarModule:HandleChannelStart(unitType, unit)
     state.isChanneling = true
     state.holdTime = 0
     state.spellName = name
-    state.selfInterrupt = false  -- ✅ Reset flag
+    state.selfInterrupt = false  --  Reset flag
     
     if unitType == "player" then
         state.castSucceeded = false
@@ -718,13 +718,13 @@ function CastbarModule:HandleChannelStart(unitType, unit)
     local start, finish, duration = ParseCastTimes(startTime, endTime)
     state.maxValue = duration
     
-    -- ✅ FIX: Calcular progreso actual para channels (restante)
+    --  FIX: Calcular progreso actual para channels (restante)
     local currentTime = GetTime()
     local elapsed = currentTime - start
     state.currentValue = max(0, duration - elapsed)  -- Channels van hacia abajo
     
     frames.castbar:SetMinMaxValues(0, state.maxValue)
-    frames.castbar:SetValue(state.currentValue)  -- ✅ Usar progreso calculado
+    frames.castbar:SetValue(state.currentValue)  --  Usar progreso calculado
     frames.castbar:Show()
     
     if frames.background and frames.background ~= frames.textBackground then
@@ -743,7 +743,7 @@ function CastbarModule:HandleChannelStart(unitType, unit)
         frames.castbar:SetStatusBarColor(1, 1, 1, 1)
     end
     
-    -- ✅ FIX: Actualizar clipping con progreso real
+    --  FIX: Actualizar clipping con progreso real
     if frames.castbar.UpdateTextureClipping then
         local progress = state.currentValue / state.maxValue
         frames.castbar:UpdateTextureClipping(progress, true)
@@ -771,7 +771,7 @@ function CastbarModule:HandleChannelStart(unitType, unit)
     UpdateTimeText(unitType)
     UpdateChannelTicks(frames.castbar, frames.ticks, name)
     
-    -- ✅ FIX: Actualizar posición del spark con progreso real para channels
+    --  FIX: Actualizar posición del spark con progreso real para channels
     if frames.spark and frames.spark:IsShown() then
         local progress = state.currentValue / state.maxValue
         local actualWidth = frames.castbar:GetWidth() * progress
@@ -797,7 +797,7 @@ function CastbarModule:HandleCastStop(unitType, isInterrupted)
     local cfg = GetConfig(unitType)
     if not cfg then return end
     
-    -- ✅ MEJORADO: Lógica más robusta
+    --  MEJORADO: Lógica más robusta
     if isInterrupted and not state.selfInterrupt then
         -- Verdadera interrupción
         if frames.shield then frames.shield:Hide() end
@@ -826,7 +826,7 @@ function CastbarModule:HandleCastStop(unitType, isInterrupted)
         end
     end
     
-    -- ✅ NUEVO: Reset flag al final (siempre)
+    --  NUEVO: Reset flag al final (siempre)
     state.selfInterrupt = false
 end
 
@@ -911,7 +911,7 @@ function CastbarModule:OnUpdate(unitType, castbar, elapsed)
     
     -- Update casting/channeling
     if state.casting or state.isChanneling then
-        -- ✅ ELIMINADO: Ya no verificamos UnitCastingInfo/UnitChannelInfo aquí
+        --  ELIMINADO: Ya no verificamos UnitCastingInfo/UnitChannelInfo aquí
         -- Esto causaba falsos "interrupted" con lag porque el OnUpdate
         -- corría antes que los eventos llegaran del servidor
         
@@ -991,7 +991,7 @@ function CastbarModule:RefreshCastbar(unitType)
     local yPos = cfg.y_position or 200
     
     if unitType == "player" then
-        -- ✅ USAR ANCHOR FRAME PARA PLAYER CASTBAR (SISTEMA CENTRALIZADO)
+        --  USAR ANCHOR FRAME PARA PLAYER CASTBAR (SISTEMA CENTRALIZADO)
         if self.anchor then
             anchorFrame = self.anchor
             anchorPoint = "CENTER"
@@ -1116,7 +1116,7 @@ function CastbarModule:HideCastbar(unitType)
     state.holdTime = 0
     state.maxValue = 0
     state.currentValue = 0
-    state.selfInterrupt = false  -- ✅ Reset flag
+    state.selfInterrupt = false  --  Reset flag
     
     if unitType == "player" then
         state.castSucceeded = false
@@ -1154,7 +1154,7 @@ function CastbarModule:HandleCastingEvent(event, unit)
     elseif event == 'UNIT_SPELLCAST_CHANNEL_START' then
         self:HandleChannelStart(unitType, unit)
     elseif event == 'UNIT_SPELLCAST_STOP' or event == 'UNIT_SPELLCAST_CHANNEL_STOP' then
-        -- ✅ UNIFICADO: Misma lógica para ambos eventos
+        --  UNIFICADO: Misma lógica para ambos eventos
         local state = self.states[unitType]
         
         -- Para channels, marcar como terminado naturalmente
@@ -1164,7 +1164,7 @@ function CastbarModule:HandleCastingEvent(event, unit)
         
         self:HandleCastStop(unitType, false)  -- Siempre completado naturalmente
     elseif event == 'UNIT_SPELLCAST_FAILED' then
-        -- ✅ NUEVO: Manejo de fallos 
+        --  NUEVO: Manejo de fallos 
         local state = self.states[unitType]
         if unitType == "player" then
             state.castSucceeded = false
@@ -1300,10 +1300,10 @@ local function CreateCastbarAnchorFrame()
         return CastbarModule.anchor
     end
 
-    -- ✅ USAR FUNCIÓN CENTRALIZADA DE CORE.LUA
+    --  USAR FUNCIÓN CENTRALIZADA DE CORE.LUA
     CastbarModule.anchor = addon.CreateUIFrame(256, 16, "PlayerCastbar")
     
-    -- ✅ PERSONALIZAR TEXTO PARA CASTBAR
+    --  PERSONALIZAR TEXTO PARA CASTBAR
     if CastbarModule.anchor.editorText then
         CastbarModule.anchor.editorText:SetText("Player Castbar")
     end
@@ -1311,14 +1311,14 @@ local function CreateCastbarAnchorFrame()
     return CastbarModule.anchor
 end
 
--- ✅ FUNCIÓN PARA APLICAR POSICIÓN DESDE WIDGETS (COMO party.lua)
+--  FUNCIÓN PARA APLICAR POSICIÓN DESDE WIDGETS (COMO party.lua)
 local function ApplyWidgetPosition()
     if not CastbarModule.anchor then
         print("|cFFFF0000[DragonUI]|r Castbar anchor frame not created")
         return
     end
 
-    -- ✅ ASEGURAR QUE EXISTE LA CONFIGURACIÓN
+    --  ASEGURAR QUE EXISTE LA CONFIGURACIÓN
     if not addon.db or not addon.db.profile or not addon.db.profile.widgets then
         print("|cFFFF0000[DragonUI]|r No widgets configuration found")
         return
@@ -1332,16 +1332,16 @@ local function ApplyWidgetPosition()
         CastbarModule.anchor:SetPoint(anchor, UIParent, anchor, widgetConfig.posX, widgetConfig.posY)
         print("|cFF00FF00[DragonUI]|r Player castbar positioned via widgets:", anchor, widgetConfig.posX, widgetConfig.posY)
     else
-        -- ✅ POSICIÓN POR DEFECTO COMO RETAILUI
+        --  POSICIÓN POR DEFECTO COMO RETAILUI
         CastbarModule.anchor:ClearAllPoints()
         CastbarModule.anchor:SetPoint("BOTTOM", UIParent, "BOTTOM", 0, 270)
         print("|cFF00FF00[DragonUI]|r Player castbar positioned with defaults: BOTTOM 0 270")
     end
 end
 
--- ✅ FUNCIONES REQUERIDAS POR EL SISTEMA CENTRALIZADO
+--  FUNCIONES REQUERIDAS POR EL SISTEMA CENTRALIZADO
 function CastbarModule:LoadDefaultSettings()
-    -- ✅ ASEGURAR QUE EXISTE LA CONFIGURACIÓN EN WIDGETS
+    --  ASEGURAR QUE EXISTE LA CONFIGURACIÓN EN WIDGETS
     if not addon.db.profile.widgets then
         addon.db.profile.widgets = {}
     end
@@ -1355,7 +1355,7 @@ function CastbarModule:LoadDefaultSettings()
         print("|cFF00FF00[DragonUI]|r Player castbar: Created default widget settings")
     end
     
-    -- ✅ ASEGURAR QUE EXISTE LA CONFIGURACIÓN EN CASTBAR
+    --  ASEGURAR QUE EXISTE LA CONFIGURACIÓN EN CASTBAR
     if not addon.db.profile.castbar then
         addon.db.profile.castbar = {}
     end
@@ -1369,20 +1369,20 @@ end
 
 function CastbarModule:UpdateWidgets()
     ApplyWidgetPosition()
-    -- ✅ REPOSICIONAR EL CASTBAR DEL PLAYER RELATIVO AL ANCHOR ACTUALIZADO
+    --  REPOSICIONAR EL CASTBAR DEL PLAYER RELATIVO AL ANCHOR ACTUALIZADO
     if not InCombatLockdown() then
         -- El castbar del player debería seguir al anchor
         self:RefreshCastbar("player")
     end
 end
 
--- ✅ FUNCIÓN PARA VERIFICAR SI EL CASTBAR DEBE ESTAR VISIBLE
+--  FUNCIÓN PARA VERIFICAR SI EL CASTBAR DEBE ESTAR VISIBLE
 local function ShouldPlayerCastbarBeVisible()
     local cfg = GetConfig("player")
     return cfg and cfg.enabled
 end
 
--- ✅ FUNCIONES DE TESTEO PARA EL EDITOR
+--  FUNCIONES DE TESTEO PARA EL EDITOR
 local function ShowPlayerCastbarTest()
     -- Mostrar el castbar aunque no haya casting
     local frames = CastbarModule.frames.player
@@ -1406,7 +1406,7 @@ local function HidePlayerCastbarTest()
     CastbarModule:HideCastbar("player")
 end
 
--- ✅ FUNCIÓN AUXILIAR PARA MOSTRAR CASTBAR (USADA EN TESTS)
+--  FUNCIÓN AUXILIAR PARA MOSTRAR CASTBAR (USADA EN TESTS)
 function CastbarModule:ShowCastbar(unitType, spellName, currentValue, maxValue, duration, isChanneling, isInterrupted)
     local frames = self.frames[unitType]
     if not frames.castbar then
@@ -1449,20 +1449,20 @@ function CastbarModule:ShowCastbar(unitType, spellName, currentValue, maxValue, 
     ForceStatusBarLayer(frames.castbar)
 end
 
--- ✅ FUNCIÓN DE INICIALIZACIÓN DEL SISTEMA CENTRALIZADO
+--  FUNCIÓN DE INICIALIZACIÓN DEL SISTEMA CENTRALIZADO
 local function InitializeCastbarForEditor()
     -- Crear el anchor frame
     CreateCastbarAnchorFrame()
     
-    -- ✅ REGISTRO COMPLETO CON TODAS LAS FUNCIONES (COMO party.lua)
+    --  REGISTRO COMPLETO CON TODAS LAS FUNCIONES (COMO party.lua)
     addon:RegisterEditableFrame({
         name = "PlayerCastbar",
         frame = CastbarModule.anchor,
-        configPath = {"widgets", "playerCastbar"},  -- ✅ CORREGIDO: Array en lugar de string
-        hasTarget = ShouldPlayerCastbarBeVisible,  -- ✅ Visibilidad condicional
-        showTest = ShowPlayerCastbarTest,  -- ✅ CORREGIDO: Minúscula como party.lua
-        hideTest = HidePlayerCastbarTest,  -- ✅ CORREGIDO: Minúscula como party.lua
-        onHide = function() CastbarModule:UpdateWidgets() end,  -- ✅ AÑADIDO: Para aplicar cambios
+        configPath = {"widgets", "playerCastbar"},  --  CORREGIDO: Array en lugar de string
+        hasTarget = ShouldPlayerCastbarBeVisible,  --  Visibilidad condicional
+        showTest = ShowPlayerCastbarTest,  --  CORREGIDO: Minúscula como party.lua
+        hideTest = HidePlayerCastbarTest,  --  CORREGIDO: Minúscula como party.lua
+        onHide = function() CastbarModule:UpdateWidgets() end,  --  AÑADIDO: Para aplicar cambios
         LoadDefaultSettings = function() CastbarModule:LoadDefaultSettings() end,
         UpdateWidgets = function() CastbarModule:UpdateWidgets() end
     })
@@ -1475,10 +1475,10 @@ end
 -- INITIALIZATION
 -- ============================================================================
 
--- ✅ Initialize centralized system for editor
+--  Initialize centralized system for editor
 InitializeCastbarForEditor()
 
--- ✅ LISTENER PARA CUANDO EL ADDON ESTÉ COMPLETAMENTE CARGADO
+--  LISTENER PARA CUANDO EL ADDON ESTÉ COMPLETAMENTE CARGADO
 local readyFrame = CreateFrame("Frame")
 readyFrame:RegisterEvent("ADDON_LOADED")
 readyFrame:SetScript("OnEvent", function(self, event, addonName)

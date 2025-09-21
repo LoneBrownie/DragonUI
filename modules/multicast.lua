@@ -239,7 +239,7 @@ function addon.RefreshMulticast(fullRefresh)
     local btnsize = additionalConfig.size or 37
     local space = additionalConfig.spacing or 4
     
-    -- ✅ UPDATE POSSESS BUTTONS - ONLY SIZE, NO REPOSITIONING
+    --  UPDATE POSSESS BUTTONS - ONLY SIZE, NO REPOSITIONING
     for index = 1, NUM_POSSESS_SLOTS do
         local button = _G["PossessButton"..index]
         if button then
@@ -248,7 +248,7 @@ function addon.RefreshMulticast(fullRefresh)
         end
     end
     
-    -- ✅ UPDATE TOTEM BUTTONS - ONLY SIZE, NO REPOSITIONING  
+    --  UPDATE TOTEM BUTTONS - ONLY SIZE, NO REPOSITIONING  
     if MultiCastActionBarFrame and class == 'SHAMAN' then
         -- Update totem slot buttons
         for i = 1, 4 do

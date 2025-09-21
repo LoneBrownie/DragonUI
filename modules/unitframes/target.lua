@@ -17,7 +17,7 @@ local Module = {
 -- UTILITY FUNCTIONS FOR CENTRALIZED SYSTEM
 -- ============================================================================
 
--- ✅ FUNCIÓN PARA APLICAR POSICIÓN DESDE WIDGETS (COMO PLAYER.LUA)
+--  FUNCIÓN PARA APLICAR POSICIÓN DESDE WIDGETS (COMO PLAYER.LUA)
 local function ApplyWidgetPosition()
     if not Module.targetFrame then
         return
@@ -45,21 +45,21 @@ local function ApplyWidgetPosition()
     end
 end
 
--- ✅ FUNCIÓN PARA VERIFICAR SI EL TARGET FRAME DEBE ESTAR VISIBLE
+--  FUNCIÓN PARA VERIFICAR SI EL TARGET FRAME DEBE ESTAR VISIBLE
 local function ShouldTargetFrameBeVisible()
     return UnitExists("target")
 end
 
--- ✅ FUNCIONES DE TESTEO SIMPLIFICADAS (estilo RetailUI)
+--  FUNCIONES DE TESTEO SIMPLIFICADAS (estilo RetailUI)
 local function ShowTargetFrameTest()
-    -- ✅ SISTEMA SIMPLE: Solo llamar al método ShowTest del frame
+    --  SISTEMA SIMPLE: Solo llamar al método ShowTest del frame
     if TargetFrame and TargetFrame.ShowTest then
         TargetFrame:ShowTest()
     end
 end
 
 local function HideTargetFrameTest()
-    -- ✅ SISTEMA SIMPLE: Solo llamar al método HideTest del frame
+    --  SISTEMA SIMPLE: Solo llamar al método HideTest del frame
     if TargetFrame and TargetFrame.HideTest then
         TargetFrame:HideTest()
     end
@@ -174,13 +174,13 @@ local function UpdateTargetHealthBarColor()
     end
 
     if config.classcolor and UnitIsPlayer("target") then
-        -- ✅ USAR TEXTURA BLANCA (STATUS) PARA CLASS COLOR
+        --  USAR TEXTURA BLANCA (STATUS) PARA CLASS COLOR
         local statusTexturePath = "Interface\\AddOns\\DragonUI\\Textures\\Unitframe\\UI-HUD-UnitFrame-Target-PortraitOn-Bar-Health-Status"
         if texture:GetTexture() ~= statusTexturePath then
             texture:SetTexture(statusTexturePath)
         end
         
-        -- ✅ APLICAR COLOR DE CLASE
+        --  APLICAR COLOR DE CLASE
         local _, class = UnitClass("target")
         local color = RAID_CLASS_COLORS[class]
         if color then
@@ -189,13 +189,13 @@ local function UpdateTargetHealthBarColor()
             texture:SetVertexColor(1, 1, 1, 1)
         end
     else
-        -- ✅ USAR TEXTURA NORMAL (COLORED) SIN CLASS COLOR
+        --  USAR TEXTURA NORMAL (COLORED) SIN CLASS COLOR
         local normalTexturePath = "Interface\\AddOns\\DragonUI\\Textures\\Unitframe\\UI-HUD-UnitFrame-Target-PortraitOn-Bar-Health"
         if texture:GetTexture() ~= normalTexturePath then
             texture:SetTexture(normalTexturePath)
         end
         
-        -- ✅ COLOR BLANCO (la textura ya tiene color)
+        --  COLOR BLANCO (la textura ya tiene color)
         texture:SetVertexColor(1, 1, 1, 1)
     end
 end
@@ -211,7 +211,7 @@ local function SetupBarHooks()
             healthTexture:SetDrawLayer("ARTWORK", 1)
         end
 
-        -- ✅ HOOK PRINCIPAL: Actualizar color cuando cambie el valor
+        --  HOOK PRINCIPAL: Actualizar color cuando cambie el valor
         hooksecurefunc(TargetFrameHealthBar, "SetValue", function(self)
             if not UnitExists("target") then
                 return
@@ -228,7 +228,7 @@ local function SetupBarHooks()
                 return
             end
 
-            -- ✅ APLICAR CLASS COLOR SI ESTÁ HABILITADO
+            --  APLICAR CLASS COLOR SI ESTÁ HABILITADO
             UpdateTargetHealthBarColor()
 
             -- Update texture coords
@@ -352,7 +352,7 @@ local function UpdateClassification()
     local name = UnitName("target")
     local coords = nil
 
-    -- ✅ CLASIFICACIONES OFICIALES DEL JUEGO
+    --  CLASIFICACIONES OFICIALES DEL JUEGO
     if classification == "worldboss" then
         coords = BOSS_COORDS.elite
     elseif classification == "elite" then
@@ -362,11 +362,11 @@ local function UpdateClassification()
     elseif classification == "rare" then
         coords = BOSS_COORDS.rare
     else
-        -- ✅ FALLBACK 1: Famous NPCs (Developer & Special Characters)
+        --  FALLBACK 1: Famous NPCs (Developer & Special Characters)
         if name and FAMOUS_NPCS[name] then
             coords = BOSS_COORDS.elite
 
-            -- ✅ THROTTLE: Solo mostrar mensaje una vez por target + cooldown
+            --  THROTTLE: Solo mostrar mensaje una vez por target + cooldown
             local now = GetTime()
             if updateCache.lastFamousTarget ~= name or (now - updateCache.lastFamousMessage) > 5 then
                 print("|cFFFFD23FYou found the DragonUI developer|r")
@@ -375,7 +375,7 @@ local function UpdateClassification()
                 updateCache.lastFamousTarget = name
             end
         else
-            -- ✅ FALLBACK 2: Level -1 (Skull = Boss real)
+            --  FALLBACK 2: Level -1 (Skull = Boss real)
             local level = UnitLevel("target")
             if level == -1 then
                 coords = BOSS_COORDS.elite
@@ -422,19 +422,19 @@ local function InitializeFrame()
         return
     end
 
-    -- ✅ CREAR OVERLAY FRAME PARA EL SISTEMA CENTRALIZADO
+    --  CREAR OVERLAY FRAME PARA EL SISTEMA CENTRALIZADO
     if not Module.targetFrame then
         Module.targetFrame = addon.CreateUIFrame(200, 75, "TargetFrame")
         
-        -- ✅ REGISTRO AUTOMÁTICO EN EL SISTEMA CENTRALIZADO
+        --  REGISTRO AUTOMÁTICO EN EL SISTEMA CENTRALIZADO
         addon:RegisterEditableFrame({
             name = "target",
             frame = Module.targetFrame,
             blizzardFrame = TargetFrame,
             configPath = {"widgets", "target"},
             hasTarget = ShouldTargetFrameBeVisible, -- Solo visible cuando hay target
-            showTest = ShowTargetFrameTest,         -- ✅ NUEVO: Mostrar frame fake
-            hideTest = HideTargetFrameTest,         -- ✅ NUEVO: Ocultar frame fake
+            showTest = ShowTargetFrameTest,         --  NUEVO: Mostrar frame fake
+            hideTest = HideTargetFrameTest,         --  NUEVO: Ocultar frame fake
             onHide = function()
                 ApplyWidgetPosition() -- Aplicar nueva configuración al salir del editor
             end,
@@ -570,16 +570,16 @@ local function InitializeFrame()
     TargetFrame:SetClampedToScreen(false)
     TargetFrame:SetScale(config.scale or 1)
 
-    -- ✅ APLICAR POSICIÓN DESDE WIDGETS SIEMPRE
+    --  APLICAR POSICIÓN DESDE WIDGETS SIEMPRE
     ApplyWidgetPosition()
 
     Module.configured = true
-    -- ✅ HOOK CRÍTICO: Proteger contra resets de Blizzard (SIN C_Timer)
+    --  HOOK CRÍTICO: Proteger contra resets de Blizzard (SIN C_Timer)
     if not Module.classificationHooked then
         -- Hook la función que Blizzard usa para cambiar clasificaciones
         if _G.TargetFrame_CheckClassification then
             hooksecurefunc("TargetFrame_CheckClassification", function()
-                -- ✅ SIN C_Timer - Usar frame con OnUpdate para delay mínimo
+                --  SIN C_Timer - Usar frame con OnUpdate para delay mínimo
                 if UnitExists("target") then
                     local delayFrame = CreateFrame("Frame")
                     local elapsed = 0
@@ -610,17 +610,17 @@ local function InitializeFrame()
         print("|cFF00FF00[DragonUI]|r Classification protection hooks installed")
     end
 
-    -- ✅ MÉTODOS ShowTest Y HideTest EXACTAMENTE COMO RETAILUI
+    --  MÉTODOS ShowTest Y HideTest EXACTAMENTE COMO RETAILUI
     if not TargetFrame.ShowTest then
         TargetFrame.ShowTest = function(self)
-            -- ✅ MOSTRAR FRAME CON DATOS DEL PLAYER Y NUESTRAS TEXTURAS PERSONALIZADAS
+            --  MOSTRAR FRAME CON DATOS DEL PLAYER Y NUESTRAS TEXTURAS PERSONALIZADAS
             self:Show()
             
-            -- ✅ ASEGURAR QUE EL TARGETFRAME ESTÉ EN STRATA BAJO PARA QUE EL EDITOR ESTÉ ENCIMA
+            --  ASEGURAR QUE EL TARGETFRAME ESTÉ EN STRATA BAJO PARA QUE EL EDITOR ESTÉ ENCIMA
             self:SetFrameStrata("MEDIUM")
             self:SetFrameLevel(10) -- Nivel bajo para que el frame verde esté encima
             
-            -- ✅ ASEGURAR QUE NUESTRAS TEXTURAS PERSONALIZADAS ESTÉN VISIBLES
+            --  ASEGURAR QUE NUESTRAS TEXTURAS PERSONALIZADAS ESTÉN VISIBLES
             if frameElements.background then
                 frameElements.background:Show()
             end
@@ -628,42 +628,42 @@ local function InitializeFrame()
                 frameElements.border:Show()
             end
             
-            -- ✅ PORTRAIT DEL PLAYER (como RetailUI)
+            --  PORTRAIT DEL PLAYER (como RetailUI)
             if TargetFramePortrait then
                 SetPortraitTexture(TargetFramePortrait, "player")
             end
             
-            -- ✅ BACKGROUND CON COLOR DEL PLAYER Y NUESTRA TEXTURA
+            --  BACKGROUND CON COLOR DEL PLAYER Y NUESTRA TEXTURA
             if TargetFrameNameBackground then
                 local r, g, b = UnitSelectionColor("player")
                 TargetFrameNameBackground:SetVertexColor(r, g, b, 0.8)
                 TargetFrameNameBackground:Show()
             end
             
-            -- ✅ NOMBRE Y NIVEL DEL PLAYER (conservar color original)
+            --  NOMBRE Y NIVEL DEL PLAYER (conservar color original)
             local nameText = TargetFrameTextureFrameName
             if nameText then
-                -- ✅ GUARDAR COLOR ORIGINAL ANTES DE CAMBIAR
+                --  GUARDAR COLOR ORIGINAL ANTES DE CAMBIAR
                 if not nameText.originalColor then
                     local r, g, b, a = nameText:GetTextColor()
                     nameText.originalColor = {r, g, b, a}
                 end
                 nameText:SetText(UnitName("player"))
-                -- ✅ NO CAMBIAR COLOR - mantener el original
+                --  NO CAMBIAR COLOR - mantener el original
             end
             
             local levelText = TargetFrameTextureFrameLevelText  
             if levelText then
-                -- ✅ GUARDAR COLOR ORIGINAL ANTES DE CAMBIAR
+                --  GUARDAR COLOR ORIGINAL ANTES DE CAMBIAR
                 if not levelText.originalColor then
                     local r, g, b, a = levelText:GetTextColor()
                     levelText.originalColor = {r, g, b, a}
                 end
                 levelText:SetText(UnitLevel("player"))
-                -- ✅ NO CAMBIAR COLOR - mantener el original
+                --  NO CAMBIAR COLOR - mantener el original
             end
             
-            -- ✅ HEALTH BAR CON NUESTRO SISTEMA DE CLASS COLOR
+            --  HEALTH BAR CON NUESTRO SISTEMA DE CLASS COLOR
             local healthBar = TargetFrameHealthBar
             if healthBar then
                 local curHealth = UnitHealth("player")
@@ -671,16 +671,16 @@ local function InitializeFrame()
                 healthBar:SetMinMaxValues(0, maxHealth)
                 healthBar:SetValue(curHealth)
                 
-                -- ✅ APLICAR NUESTRO SISTEMA DE CLASS COLOR
+                --  APLICAR NUESTRO SISTEMA DE CLASS COLOR
                 local texture = healthBar:GetStatusBarTexture()
                 if texture then
                     local config = GetConfig()
                     if config.classcolor then
-                        -- ✅ USAR TEXTURA STATUS PARA CLASS COLOR
+                        --  USAR TEXTURA STATUS PARA CLASS COLOR
                         local statusTexturePath = "Interface\\AddOns\\DragonUI\\Textures\\Unitframe\\UI-HUD-UnitFrame-Target-PortraitOn-Bar-Health-Status"
                         texture:SetTexture(statusTexturePath)
                         
-                        -- ✅ APLICAR COLOR DE CLASE DEL PLAYER
+                        --  APLICAR COLOR DE CLASE DEL PLAYER
                         local _, class = UnitClass("player")
                         local color = RAID_CLASS_COLORS[class]
                         if color then
@@ -689,20 +689,20 @@ local function InitializeFrame()
                             texture:SetVertexColor(1, 1, 1, 1)
                         end
                     else
-                        -- ✅ USAR TEXTURA NORMAL SIN CLASS COLOR
+                        --  USAR TEXTURA NORMAL SIN CLASS COLOR
                         local normalTexturePath = "Interface\\AddOns\\DragonUI\\Textures\\Unitframe\\UI-HUD-UnitFrame-Target-PortraitOn-Bar-Health"
                         texture:SetTexture(normalTexturePath)
                         texture:SetVertexColor(1, 1, 1, 1)
                     end
                     
-                    -- ✅ APLICAR COORDS DE TEXTURA
+                    --  APLICAR COORDS DE TEXTURA
                     texture:SetTexCoord(0, curHealth / maxHealth, 0, 1)
                 end
                 
                 healthBar:Show()
             end
             
-            -- ✅ MANA BAR CON NUESTRO SISTEMA DE TEXTURAS DE PODER
+            --  MANA BAR CON NUESTRO SISTEMA DE TEXTURAS DE PODER
             local manaBar = TargetFrameManaBar
             if manaBar then
                 local powerType = UnitPowerType("player")
@@ -711,7 +711,7 @@ local function InitializeFrame()
                 manaBar:SetMinMaxValues(0, maxMana)
                 manaBar:SetValue(curMana)
                 
-                -- ✅ APLICAR NUESTRA TEXTURA DE PODER PERSONALIZADA
+                --  APLICAR NUESTRA TEXTURA DE PODER PERSONALIZADA
                 local texture = manaBar:GetStatusBarTexture()
                 if texture then
                     local powerName = POWER_MAP[powerType] or "Mana"
@@ -720,7 +720,7 @@ local function InitializeFrame()
                     texture:SetDrawLayer("ARTWORK", 1)
                     texture:SetVertexColor(1, 1, 1, 1)
                     
-                    -- ✅ APLICAR COORDS DE TEXTURA
+                    --  APLICAR COORDS DE TEXTURA
                     if maxMana > 0 then
                         texture:SetTexCoord(0, curMana / maxMana, 0, 1)
                     end
@@ -729,13 +729,13 @@ local function InitializeFrame()
                 manaBar:Show()
             end
             
-            -- ✅ MOSTRAR DECORACIÓN ELITE SI EL PLAYER ES ESPECIAL
+            --  MOSTRAR DECORACIÓN ELITE SI EL PLAYER ES ESPECIAL
             if frameElements.elite then
                 local classification = UnitClassification("player")
                 local name = UnitName("player")
                 local coords = nil
                 
-                -- ✅ VERIFICAR SI EL PLAYER ES FAMOSO O TIENE CLASIFICACIÓN ESPECIAL
+                --  VERIFICAR SI EL PLAYER ES FAMOSO O TIENE CLASIFICACIÓN ESPECIAL
                 if name and FAMOUS_NPCS[name] then
                     coords = BOSS_COORDS.elite
                 elseif classification and classification ~= "normal" then
@@ -752,18 +752,18 @@ local function InitializeFrame()
                 end
             end
             
-            -- ✅ OCULTAR THREAT INDICATORS (no aplican en fake frame)
+            --  OCULTAR THREAT INDICATORS (no aplican en fake frame)
             if frameElements.threatNumeric then
                 frameElements.threatNumeric:Hide()
             end
         end
         
         TargetFrame.HideTest = function(self)
-            -- ✅ RESTAURAR STRATA ORIGINAL DEL TARGETFRAME
+            --  RESTAURAR STRATA ORIGINAL DEL TARGETFRAME
             self:SetFrameStrata("LOW")
             self:SetFrameLevel(1) -- Nivel normal
             
-            -- ✅ RESTAURAR COLORES ORIGINALES DE LOS TEXTOS
+            --  RESTAURAR COLORES ORIGINALES DE LOS TEXTOS
             local nameText = TargetFrameTextureFrameName
             if nameText and nameText.originalColor then
                 nameText:SetVertexColor(nameText.originalColor[1], nameText.originalColor[2], 
@@ -776,7 +776,7 @@ local function InitializeFrame()
                                         levelText.originalColor[3], levelText.originalColor[4])
             end
             
-            -- ✅ SIMPLE: Solo ocultar si no hay target real
+            --  SIMPLE: Solo ocultar si no hay target real
             if not UnitExists("target") then
                 self:Hide()
             end
@@ -801,7 +801,7 @@ local function OnEvent(self, event, ...)
     elseif event == "PLAYER_ENTERING_WORLD" then
         InitializeFrame()
         
-        -- ✅ CONFIGURAR TEXT SYSTEM AQUÍ PARA ASEGURAR QUE ESTÉ DISPONIBLE
+        --  CONFIGURAR TEXT SYSTEM AQUÍ PARA ASEGURAR QUE ESTÉ DISPONIBLE
         if addon.TextSystem and not Module.textSystem then
             Module.textSystem = addon.TextSystem.SetupFrameTextSystem("target", "target", TargetFrame, TargetFrameHealthBar,
                 TargetFrameManaBar, "TargetFrame")
@@ -830,7 +830,7 @@ local function OnEvent(self, event, ...)
     local unit = ...
     if unit == "target" and UnitExists("target") then
         UpdateClassification()
-        UpdateTargetHealthBarColor() -- ✅ ACTUALIZAR COLOR TAMBIÉN
+        UpdateTargetHealthBarColor() --  ACTUALIZAR COLOR TAMBIÉN
         if Module.textSystem then
             Module.textSystem.update()
         end
@@ -854,7 +854,7 @@ local function OnEvent(self, event, ...)
         "UNIT_NAME_UPDATE" then
         local unit = ...
         if unit == "target" and UnitExists("target") then
-            -- ✅ SIN C_Timer - Actualización directa
+            --  SIN C_Timer - Actualización directa
             UpdateClassification()
         end
     
@@ -882,7 +882,7 @@ if not Module.eventsFrame then
     Module.eventsFrame:RegisterEvent("UNIT_LEVEL")
     Module.eventsFrame:RegisterEvent("UNIT_NAME_UPDATE")
     Module.eventsFrame:RegisterEvent("UNIT_PORTRAIT_UPDATE")
-    -- ✅ EVENTOS CRÍTICOS PARA EL TEXT SYSTEM
+    --  EVENTOS CRÍTICOS PARA EL TEXT SYSTEM
     Module.eventsFrame:RegisterEvent("UNIT_HEALTH")
     Module.eventsFrame:RegisterEvent("UNIT_MAXHEALTH") 
     Module.eventsFrame:RegisterEvent("UNIT_POWER_UPDATE")
@@ -905,13 +905,13 @@ local function RefreshFrame()
         InitializeFrame()
     end
 
-    -- ✅ APLICAR CONFIGURACIÓN INMEDIATAMENTE (incluyendo scale)
+    --  APLICAR CONFIGURACIÓN INMEDIATAMENTE (incluyendo scale)
     local config = GetConfig()
     
-    -- ✅ APLICAR SCALE INMEDIATAMENTE
+    --  APLICAR SCALE INMEDIATAMENTE
     TargetFrame:SetScale(config.scale or 1)
     
-    -- ✅ APLICAR POSICIÓN DESDE WIDGETS INMEDIATAMENTE
+    --  APLICAR POSICIÓN DESDE WIDGETS INMEDIATAMENTE
     ApplyWidgetPosition()
 
     -- Only update dynamic content
@@ -919,7 +919,7 @@ local function RefreshFrame()
         UpdateNameBackground()
         UpdateClassification()
         UpdateThreat()
-        UpdateTargetHealthBarColor() -- ✅ ASEGURAR CLASS COLOR
+        UpdateTargetHealthBarColor() --  ASEGURAR CLASS COLOR
         if Module.textSystem then
             Module.textSystem.update()
         end
@@ -932,7 +932,7 @@ local function ResetFrame()
         addon:SetConfigValue("unitframe", "target", key, value)
     end
 
-    -- ✅ RESETEAR WIDGETS TAMBIÉN
+    --  RESETEAR WIDGETS TAMBIÉN
     if not addon.db.profile.widgets then
         addon.db.profile.widgets = {}
     end
@@ -960,7 +960,7 @@ addon.TargetFrame = {
         return Module.targetFrame
     end,
     ChangeTargetFrame = RefreshFrame,
-    UpdateTargetHealthBarColor = UpdateTargetHealthBarColorPublic  -- ✅ NUEVA FUNCIÓN PÚBLICA
+    UpdateTargetHealthBarColor = UpdateTargetHealthBarColorPublic  --  NUEVA FUNCIÓN PÚBLICA
 }
 
 -- Legacy compatibility
@@ -976,7 +976,7 @@ end
 -- CENTRALIZED SYSTEM SUPPORT FUNCTIONS (like player.lua)
 -- ============================================================================
 
--- ✅ FUNCIONES REQUERIDAS POR EL SISTEMA CENTRALIZADO
+--  FUNCIONES REQUERIDAS POR EL SISTEMA CENTRALIZADO
 function Module:LoadDefaultSettings()
     if not addon.db.profile.widgets then
         addon.db.profile.widgets = {}
@@ -1004,17 +1004,17 @@ end
 
 print("|cFF00FF00[DragonUI]|r Target module loaded and optimized v2.0 - CENTRALIZED SYSTEM")
 
--- ✅ HOOK AUTOMÁTICO PARA CLASS COLOR (compatible con Ace3)
+--  HOOK AUTOMÁTICO PARA CLASS COLOR (compatible con Ace3)
 local function SetupTargetClassColorHooks()
     if not _G.DragonUI_TargetHealthHookSetup then
-        -- ✅ HOOK cuando Blizzard actualiza la health bar
+        --  HOOK cuando Blizzard actualiza la health bar
         hooksecurefunc("UnitFrameHealthBar_Update", function(statusbar, unit)
             if statusbar == TargetFrameHealthBar and unit == "target" then
                 UpdateTargetHealthBarColor()
             end
         end)
         
-        -- ✅ HOOK cuando cambia el target
+        --  HOOK cuando cambia el target
         hooksecurefunc("TargetFrame_Update", function()
             if UnitExists("target") then
                 UpdateTargetHealthBarColor()
@@ -1026,5 +1026,5 @@ local function SetupTargetClassColorHooks()
     end
 end
 
--- ✅ INICIALIZAR EL HOOK
+--  INICIALIZAR EL HOOK
 SetupTargetClassColorHooks()

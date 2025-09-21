@@ -15,22 +15,22 @@ local CreateFrame = CreateFrame;
 local UIParent = UIParent;
 local hooksecurefunc = hooksecurefunc;
 
--- ✅ MIGRACIÓN A SISTEMA DE WIDGETS - CreateUIFrame como RetailUI
+--  MIGRACIÓN A SISTEMA DE WIDGETS - CreateUIFrame como RetailUI
 local petbarFrame = CreateUIFrame(326, 30, "Petbar")
 
 
--- ✅ OBJETO EDITOR PARA INTEGRACIÓN CON SISTEMA CENTRALIZADO
+--  OBJETO EDITOR PARA INTEGRACIÓN CON SISTEMA CENTRALIZADO
 local PetbarEditor = {
     ShowPetbarTest = function()
-        -- ✅ EN EDITOR MODE: Siempre mostrar para permitir edición
-        -- ✅ El sistema centralizado ya maneja la visibilidad con hasTarget
+        --  EN EDITOR MODE: Siempre mostrar para permitir edición
+        --  El sistema centralizado ya maneja la visibilidad con hasTarget
         HideUIFrame(petbarFrame, {})
         print("|cFF00FF00[DragonUI]|r Petbar editor mode activated")
     end,
     
     HidePetbarTest = function(refresh)
-        -- ✅ EN EDITOR MODE: Siempre guardar posición 
-        SaveUIFramePosition(petbarFrame, "widgets", "petbar") -- ✅ CORREGIDO: Usar formato de 2 parámetros
+        --  EN EDITOR MODE: Siempre guardar posición 
+        SaveUIFramePosition(petbarFrame, "widgets", "petbar") --  CORREGIDO: Usar formato de 2 parámetros
         ShowUIFrame(petbarFrame)
         
         if refresh and addon.RefreshPetbar then
@@ -40,7 +40,7 @@ local PetbarEditor = {
     end
 }
 
--- ✅ APLICAR POSICIÓN DESDE WIDGETS AL INICIALIZAR
+--  APLICAR POSICIÓN DESDE WIDGETS AL INICIALIZAR
 local function ApplyPetbarPosition()
     -- RetailUI pattern: Apply position from database
     if addon.db and addon.db.profile.widgets and addon.db.profile.widgets.petbar then
@@ -54,17 +54,17 @@ end
 
 
 
--- ✅ INICIALIZACIÓN DIRECTA ESTILO RETAILUI - SIN DELAYS
+--  INICIALIZACIÓN DIRECTA ESTILO RETAILUI - SIN DELAYS
 -- Usar event handler directo como mainbars.lua
 
--- ✅ INICIALIZACIÓN DIRECTA - NO USAR DRAGONUI_READY QUE CAUSA DELAYS
+--  INICIALIZACIÓN DIRECTA - NO USAR DRAGONUI_READY QUE CAUSA DELAYS
 
--- ✅ ELIMINAMOS LOS HOOKS DEL SISTEMA LEGACY - YA NO NECESITAMOS POSICIONAMIENTO MANUAL
+--  ELIMINAMOS LOS HOOKS DEL SISTEMA LEGACY - YA NO NECESITAMOS POSICIONAMIENTO MANUAL
 -- El sistema de widgets maneja la posición directamente
 
-local petbar = CreateFrame('Frame', 'pUiPetBar', petbarFrame, 'SecureHandlerStateTemplate') -- ✅ CHILD del petbarFrame
-petbar:SetAllPoints(petbarFrame) -- ✅ ANCHOR AL NUEVO FRAME DE WIDGETS
-petbar:SetFrameStrata("MEDIUM") -- ✅ DEBAJO del overlay verde que está en FULLSCREEN
+local petbar = CreateFrame('Frame', 'pUiPetBar', petbarFrame, 'SecureHandlerStateTemplate') --  CHILD del petbarFrame
+petbar:SetAllPoints(petbarFrame) --  ANCHOR AL NUEVO FRAME DE WIDGETS
+petbar:SetFrameStrata("MEDIUM") --  DEBAJO del overlay verde que está en FULLSCREEN
 
 local function petbutton_updatestate(self, event)
 	local petActionButton, petActionIcon, petAutoCastableTexture, petAutoCastShine
@@ -136,7 +136,7 @@ end
 local function petbutton_position()
 	-- RetailUI pattern: No combat check during addon load
 	
-	-- ✅ USAR NUEVO FRAME DE WIDGETS
+	--  USAR NUEVO FRAME DE WIDGETS
 	if not pUiPetBar or not petbarFrame then
 		print("DragonUI: Pet bar frame not available")
 		return
@@ -180,7 +180,7 @@ local function petbutton_position()
 	end
 end
 
--- ✅ INICIALIZACIÓN USANDO SISTEMA DE WIDGETS - SIMPLIFICADA ESTILO RETAILUI
+--  INICIALIZACIÓN USANDO SISTEMA DE WIDGETS - SIMPLIFICADA ESTILO RETAILUI
 local function InitializePetbar()
     -- RetailUI pattern: Initialize immediately, no combat checks during addon load
     if config and config.additional then
@@ -253,7 +253,7 @@ petbar:SetScript('OnEvent',OnEvent);
 -- Initialization tracking similar to RetailUI
 local petBarInitialized = false
 
--- ✅ EVENT HANDLER DIRECTO ESTILO RETAILUI
+--  EVENT HANDLER DIRECTO ESTILO RETAILUI
 local petInitFrame = CreateFrame("Frame")
 petInitFrame:RegisterEvent("ADDON_LOADED")
 petInitFrame:SetScript("OnEvent", function(self, event, addonName)
@@ -264,12 +264,12 @@ petInitFrame:SetScript("OnEvent", function(self, event, addonName)
 	end
 end)
 
--- ✅ REFRESH FUNCTION USANDO SISTEMA DE WIDGETS
+--  REFRESH FUNCTION USANDO SISTEMA DE WIDGETS
 function addon.RefreshPetbar()
 	if InCombatLockdown() then return end
 	if not pUiPetBar or not petbarFrame then return end
 	
-	-- ✅ APLICAR POSICIÓN DESDE WIDGETS (solo evitar en editor mode si está activo)
+	--  APLICAR POSICIÓN DESDE WIDGETS (solo evitar en editor mode si está activo)
 	if not (addon.EditorMode and addon.EditorMode:IsActive()) then
 		ApplyPetbarPosition()
 	end
@@ -350,13 +350,13 @@ function addon.GetPetbarStatus()
 	}
 end
 
--- ✅ REGISTRO EN SISTEMA CENTRALIZADO - INTEGRACIÓN COMPLETA
+--  REGISTRO EN SISTEMA CENTRALIZADO - INTEGRACIÓN COMPLETA
 local function RegisterPetbarEditor()
     if addon.RegisterEditableFrame and petbarFrame then
         addon:RegisterEditableFrame({
             name = "Petbar",
             frame = petbarFrame,
-            configPath = {"widgets", "petbar"}, -- ✅ CORREGIDO: Array como otros frames
+            configPath = {"widgets", "petbar"}, --  CORREGIDO: Array como otros frames
             showTest = PetbarEditor.ShowPetbarTest, 
             hideTest = PetbarEditor.HidePetbarTest  
         })
@@ -366,5 +366,5 @@ local function RegisterPetbarEditor()
     end
 end
 
--- ✅ REGISTRAR INMEDIATAMENTE COMO CASTBAR - NO ESPERAR EVENTOS
+--  REGISTRAR INMEDIATAMENTE COMO CASTBAR - NO ESPERAR EVENTOS
 RegisterPetbarEditor()
