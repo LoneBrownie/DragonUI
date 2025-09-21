@@ -86,15 +86,10 @@ local defaults = {
                 posX = -3,
                 posY = 45
             },
-            xpbar = {
+            repexpbar = {
                 anchor = "BOTTOM",
-                posX = 0,
+                posX = 27,
                 posY = 6
-            },
-            repbar = {
-                anchor = "BOTTOM",
-                posX = 0,
-                posY = -5
             }
         },
         -- Quest Tracker
