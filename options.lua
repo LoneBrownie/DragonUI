@@ -26,8 +26,8 @@ function addon:CreateOptionsTable()
                 name = function()
                     -- El nombre del botón cambia dinámicamente y maneja la lógica de estado
                     if addon.EditorMode then
-                        local success, isActive = pcall(function() 
-                            return addon.EditorMode:IsActive() 
+                        local success, isActive = pcall(function()
+                            return addon.EditorMode:IsActive()
                         end)
                         if success and isActive then
                             return "|cffFF6347Exit Editor Mode|r"
@@ -127,39 +127,91 @@ function addon:CreateOptionsTable()
                             editor_mode_desc = {
                                 type = 'description',
                                 name = "|cffFFD700Tip:|r Use the |cff00FF00/duiedit|r or |cff00FF00/dragonedit|r command to unlock and move the bars with your mouse.",
-                                order = 4.51,
+                                order = 4.51
                             },
                             reset_positions = {
                                 type = 'execute',
                                 name = "Reset Bar Positions",
                                 desc = "Resets all action bars to their default positions using the centralized system.",
                                 func = function()
-                                    -- Reset widget positions to defaults
-                                    local defaults = {
-                                        mainbar = { anchor = "BOTTOM", posX = 0, posY = 75 },
-                                        rightbar = { anchor = "RIGHT", posX = -5, posY = -70 },
-                                        leftbar = { anchor = "RIGHT", posX = -45, posY = -70 },
-                                        bottombarleft = { anchor = "BOTTOM", posX = 0, posY = 120 },
-                                        bottombarright = { anchor = "BOTTOM", posX = 0, posY = 160 },
-                                    }
-                                    
-                                    for barName, defaultPos in pairs(defaults) do
-                                        if not addon.db.profile.widgets[barName] then
-                                            addon.db.profile.widgets[barName] = {}
-                                        end
-                                        addon.db.profile.widgets[barName].anchor = defaultPos.anchor
-                                        addon.db.profile.widgets[barName].posX = defaultPos.posX
-                                        addon.db.profile.widgets[barName].posY = defaultPos.posY
-                                        
-                                        -- Apply position immediately
-                                        local frameInfo = addon:GetEditableFrameInfo(barName)
-                                        if frameInfo and frameInfo.frame then
-                                            ApplyUIFramePosition(frameInfo.frame, "widgets." .. barName)
+                                    -- ✅ READ DEFAULTS FROM DATABASE.LUA
+                                    local defaults = addon.defaults and addon.defaults.profile and
+                                                         addon.defaults.profile.widgets
+                                    if not defaults then
+                                        print(
+                                            "|cffFF0000[DragonUI]|r Error: Could not find default positions in database.lua")
+                                        return
+                                    end
+
+                                    -- ✅ APPLY EACH DEFAULT POSITION FROM DATABASE.LUA (EXCLUDING PETBAR - IT'S HANDLED SEPARATELY)
+                                    local barNames = {"mainbar", "rightbar", "leftbar", "bottombarleft",
+                                                      "bottombarright"}
+
+                                    for _, barName in ipairs(barNames) do
+                                        if defaults[barName] then
+                                            -- Ensure widgets table exists
+                                            if not addon.db.profile.widgets[barName] then
+                                                addon.db.profile.widgets[barName] = {}
+                                            end
+
+                                            -- Apply default values from database.lua
+                                            addon.db.profile.widgets[barName].anchor = defaults[barName].anchor
+                                            addon.db.profile.widgets[barName].posX = defaults[barName].posX
+                                            addon.db.profile.widgets[barName].posY = defaults[barName].posY
+
+                                            -- Apply position immediately if frame exists
+                                            if addon.ActionBarFrames and addon.ActionBarFrames[barName] then
+                                                local frame = addon.ActionBarFrames[barName]
+                                                frame:ClearAllPoints()
+                                                frame:SetPoint(defaults[barName].anchor, UIParent,
+                                                    defaults[barName].anchor, defaults[barName].posX,
+                                                    defaults[barName].posY)
+                                            end
                                         end
                                     end
+
+                                    -- ✅ HANDLE PETBAR SEPARATELY (from petbar.lua module)
+                                    if defaults.petbar then
+                                        if not addon.db.profile.widgets.petbar then
+                                            addon.db.profile.widgets.petbar = {}
+                                        end
+                                        
+                                        addon.db.profile.widgets.petbar.anchor = defaults.petbar.anchor
+                                        addon.db.profile.widgets.petbar.posX = defaults.petbar.posX
+                                        addon.db.profile.widgets.petbar.posY = defaults.petbar.posY
+                                        
+                                        -- Refresh petbar immediately using its own refresh function
+                                        if addon.RefreshPetbar then
+                                            addon.RefreshPetbar()
+                                        end
+                                    end
+
+                                    -- ✅ ALSO RESET REPEXPBAR IF IT EXISTS IN DEFAULTS
+                                    if defaults.repexpbar and addon.ActionBarFrames and addon.ActionBarFrames.repexpbar then
+                                        if not addon.db.profile.widgets.repexpbar then
+                                            addon.db.profile.widgets.repexpbar = {}
+                                        end
+
+                                        addon.db.profile.widgets.repexpbar.anchor = defaults.repexpbar.anchor
+                                        addon.db.profile.widgets.repexpbar.posX = defaults.repexpbar.posX
+                                        addon.db.profile.widgets.repexpbar.posY = defaults.repexpbar.posY
+
+                                        local frame = addon.ActionBarFrames.repexpbar
+                                        frame:ClearAllPoints()
+                                        frame:SetPoint(defaults.repexpbar.anchor, UIParent, defaults.repexpbar.anchor,
+                                            defaults.repexpbar.posX, defaults.repexpbar.posY)
+                                    end
+
+                                    -- ✅ REPOSITION BLIZZARD FRAMES TO FOLLOW CONTAINERS
+                                    if addon.UpdateActionBarWidgets then
+                                        addon.UpdateActionBarWidgets()
+                                    end
+
+                                    print(
+                                        "|cff00FF00[DragonUI]|r Action bar positions reset to defaults from database.lua")
                                 end,
                                 order = 4.6
-                            },
+                            }
                         }
                     },
                     buttons = {
@@ -1892,7 +1944,7 @@ function addon:CreateOptionsTable()
                                 end,
                                 order = 1
                             },
-                                                       sizeX = {
+                            sizeX = {
                                 type = 'range',
                                 name = "Width",
                                 desc = "Width of the target castbar",
@@ -2170,7 +2222,7 @@ function addon:CreateOptionsTable()
                                 end,
                                 order = 1
                             },
-                            
+
                             sizeX = {
                                 type = 'range',
                                 name = "Width",
@@ -3112,7 +3164,7 @@ function addon:CreateOptionsTable()
                                     end
                                 end,
                                 order = 6
-                            },
+                            }
                             -- X/Y Position options removed - now using centralized widget system
                         }
                     },

@@ -589,7 +589,7 @@ local function PositionActionBarsToContainers_Initial()
         MultiBarBottomRight:SetPoint("CENTER", addon.ActionBarFrames.bottombarright, "CENTER")
     end
     
-    -- ✅ REMOVED: XP and Rep bar positioning will be handled by RetailUI pattern
+
 end
 
 -- Position action bars to their container frames

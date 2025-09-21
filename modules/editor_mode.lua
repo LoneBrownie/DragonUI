@@ -5,18 +5,43 @@ addon.EditorMode = EditorMode;
 
 local gridOverlay = nil;
 local exitEditorButton = nil;
+local resetAllButton = nil;
 
 -- ✅ BOTÓN DE SALIDA DEL MODO EDITOR
 local function createExitButton()
     if exitEditorButton then return; end
 
-    -- Crear el botón
+    -- Crear el botón con estilo profesional
     exitEditorButton = CreateFrame("Button", "DragonUIExitEditorButton", UIParent, "UIPanelButtonTemplate");
     exitEditorButton:SetText("Exit Edit Mode");
-    exitEditorButton:SetSize(100, 24);
+    exitEditorButton:SetSize(140, 28); -- Mismo tamaño que Reset button
     exitEditorButton:SetPoint("CENTER", UIParent, "CENTER", 0, 200); -- Posición flotante centrada
     exitEditorButton:SetFrameStrata("DIALOG"); -- Asegura que esté por encima de otros elementos
     exitEditorButton:SetFrameLevel(100);
+
+    
+    -- Estilo profesional: Mismo color rojo que Reset button
+    local normalTexture = exitEditorButton:GetNormalTexture()
+    if normalTexture then
+        normalTexture:SetVertexColor(0.8, 0.3, 0.3, 1) -- Rojo profesional (igual que Reset)
+    end
+    
+    local highlightTexture = exitEditorButton:GetHighlightTexture()
+    if highlightTexture then
+        highlightTexture:SetVertexColor(1, 0.4, 0.4, 1) -- Rojo claro al pasar ratón (igual que Reset)
+    end
+    
+    local pushedTexture = exitEditorButton:GetPushedTexture()
+    if pushedTexture then
+        pushedTexture:SetVertexColor(0.6, 0.2, 0.2, 1) -- Rojo oscuro al presionar (igual que Reset)
+    end
+    
+    -- Texto en blanco para contraste
+    local fontString = exitEditorButton:GetFontString()
+    if fontString then
+        fontString:SetTextColor(1, 1, 1, 1) -- Texto blanco
+        fontString:SetFont("Fonts\\FRIZQT__.TTF", 12, "OUTLINE") -- Fuente profesional
+    end
 
     -- Asignar la acción de salida
     exitEditorButton:SetScript("OnClick", function()
@@ -24,6 +49,52 @@ local function createExitButton()
     end);
 
     exitEditorButton:Hide(); -- Oculto por defecto
+end
+
+-- ✅ BOTÓN DE RESET ALL POSITIONS - ESTILO PROFESIONAL
+local function createResetAllButton()
+    if resetAllButton then return; end
+
+    -- Crear el botón con estilo profesional sincronizado
+    resetAllButton = CreateFrame("Button", "DragonUIResetAllButton", UIParent, "UIPanelButtonTemplate");
+    resetAllButton:SetText("Reset All Positions");
+    resetAllButton:SetSize(140, 28); -- Mismo tamaño que Exit button
+    resetAllButton:SetPoint("CENTER", UIParent, "CENTER", 0, 165); -- Separación uniforme
+    resetAllButton:SetFrameStrata("DIALOG");
+    resetAllButton:SetFrameLevel(100);
+
+    -- Estilo profesional: Rojo elegante para acción destructiva
+    local normalTexture = resetAllButton:GetNormalTexture()
+    if normalTexture then
+        normalTexture:SetVertexColor(0.8, 0.3, 0.3, 1) -- Rojo profesional (menos saturado)
+    end
+    
+    local highlightTexture = resetAllButton:GetHighlightTexture()
+    if highlightTexture then
+        highlightTexture:SetVertexColor(1, 0.4, 0.4, 1) -- Rojo claro al pasar ratón
+    end
+    
+    local pushedTexture = resetAllButton:GetPushedTexture()
+    if pushedTexture then
+        pushedTexture:SetVertexColor(0.6, 0.2, 0.2, 1) -- Rojo oscuro al presionar
+    end
+    
+    -- Texto en blanco para contraste perfecto
+    local fontString = resetAllButton:GetFontString()
+    if fontString then
+        fontString:SetTextColor(1, 1, 1, 1) -- Texto blanco
+        fontString:SetFont("Fonts\\FRIZQT__.TTF", 12, "OUTLINE") -- Fuente profesional
+    end
+
+    -- ESTRATEGIA: Primero salir del editor mode, luego confirmar
+    resetAllButton:SetScript("OnClick", function()
+        -- 1. Salir del editor mode primero (igual que Exit button)
+        EditorMode:Hide()
+        -- 2. Mostrar confirmación fuera del editor mode
+        EditorMode:ShowResetConfirmation()
+    end);
+
+    resetAllButton:Hide(); -- Oculto por defecto
 end
 
 -- ✅ TU GRID MEJORADO - AHORA CUADRADOS SIMÉTRICOS
@@ -114,8 +185,10 @@ function EditorMode:Show()
 
     createGridOverlay()
     createExitButton()
+    createResetAllButton()
     gridOverlay:Show()
     exitEditorButton:Show()
+    resetAllButton:Show()
 
     -- ✅ NUEVO: USAR SISTEMA CENTRALIZADO - UNA SOLA LÍNEA
     addon:ShowAllEditableFrames()
@@ -143,6 +216,7 @@ end
 function EditorMode:Hide()
     if gridOverlay then gridOverlay:Hide() end
     if exitEditorButton then exitEditorButton:Hide() end
+    if resetAllButton then resetAllButton:Hide() end
 
     -- ✅ NUEVO: USAR SISTEMA CENTRALIZADO - UNA SOLA LÍNEA
     addon:HideAllEditableFrames(true) -- true = refresh and save positions
@@ -237,3 +311,64 @@ function EditorMode:RemoveScaleHooks()
     scaleHooks.xpbar = nil
     scaleHooks.repbar = nil
 end
+
+-- ✅ FUNCIÓN DE CONFIRMACIÓN PARA RESET ALL POSITIONS
+function EditorMode:ShowResetConfirmation()
+    StaticPopup_Show("DRAGONUI_RESET_ALL_POSITIONS")
+end
+
+-- ✅ FUNCIÓN PARA RESETEAR SOLO WIDGETS USANDO ACE3 (FUERA DEL EDITOR MODE)
+function EditorMode:ResetAllPositions()
+    if not addon.db or not addon.db.profile then
+        print("|cffFF0000[DragonUI]|r Error: Database not available")
+        return
+    end
+    
+    print("|cff00FF00[DragonUI]|r Resetting all UI widget positions using Ace3...")
+    
+    -- Resetear solo la sección widgets usando los defaults de Ace3
+    if addon.defaults and addon.defaults.profile and addon.defaults.profile.widgets then
+        -- Usar deep copy de los defaults para widgets (preserva el resto de configuración)
+        addon.db.profile.widgets = addon:CopyTable(addon.defaults.profile.widgets)
+        print("|cff00FF00[DragonUI]|r Widget positions reset to defaults")
+    else
+        print("|cffFF0000[DragonUI]|r Error: Could not find default widget positions")
+        return
+    end
+    
+    -- Usar ReloadUI para aplicar completamente los cambios (como reset de perfil)
+    print("|cffFFFF00[DragonUI]|r Reloading UI to apply changes...")
+    ReloadUI()
+end
+
+-- ✅ FUNCIÓN HELPER PARA DEEP COPY (si no existe ya en addon)
+if not addon.CopyTable then
+    function addon:CopyTable(orig)
+        local orig_type = type(orig)
+        local copy
+        if orig_type == 'table' then
+            copy = {}
+            for orig_key, orig_value in next, orig, nil do
+                copy[addon:CopyTable(orig_key)] = addon:CopyTable(orig_value)
+            end
+            setmetatable(copy, addon:CopyTable(getmetatable(orig)))
+        else -- number, string, boolean, etc
+            copy = orig
+        end
+        return copy
+    end
+end
+
+-- ✅ DEFINIR EL POPUP DE CONFIRMACIÓN
+StaticPopupDialogs["DRAGONUI_RESET_ALL_POSITIONS"] = {
+    text = "¿Estás seguro que quieres resetear todos los elementos de la interfaz a su posición original?",
+    button1 = "Sí",
+    button2 = "No",
+    OnAccept = function()
+        EditorMode:ResetAllPositions()
+    end,
+    timeout = 0,
+    whileDead = true,
+    hideOnEscape = true,
+    preferredIndex = 3,
+}
