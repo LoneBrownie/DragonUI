@@ -58,6 +58,98 @@ function addon:CreateOptionsTable()
                 name = ' ', -- Un espacio en blanco actúa como separador
                 order = 0.5
             },
+            
+            -- NUEVA SECCIÓN: MODULES
+            modules = {
+                type = 'group',
+                name = "Modules",
+                desc = "Enable or disable specific DragonUI modules",
+                order = 0.6,
+                args = {
+                    description = {
+                        type = 'description',
+                        name = "|cffFFD700Module Control|r\n\nEnable or disable specific DragonUI modules. When disabled, the original Blizzard UI will be shown instead.",
+                        order = 1
+                    },
+                    
+                    castbars_header = {
+                        type = 'header',
+                        name = "Cast Bars",
+                        order = 10
+                    },
+                    
+                    player_castbar_enabled = {
+                        type = 'toggle',
+                        name = "Player Castbar",
+                        desc = "Enable DragonUI player castbar. When disabled, shows default Blizzard castbar.",
+                        get = function()
+                            return addon.db.profile.castbar.enabled
+                        end,
+                        set = function(info, val)
+                            addon.db.profile.castbar.enabled = val
+                            if addon.RefreshCastbar then
+                                addon.RefreshCastbar()
+                            end
+                        end,
+                        order = 11
+                    },
+                    
+                    target_castbar_enabled = {
+                        type = 'toggle',
+                        name = "Target Castbar",
+                        desc = "Enable DragonUI target castbar. When disabled, shows default Blizzard castbar.",
+                        get = function()
+                            if not addon.db.profile.castbar.target then
+                                return true
+                            end
+                            local value = addon.db.profile.castbar.target.enabled
+                            if value == nil then
+                                return true
+                            end
+                            return value == true
+                        end,
+                        set = function(info, val)
+                            if not addon.db.profile.castbar.target then
+                                addon.db.profile.castbar.target = {}
+                            end
+                            addon.db.profile.castbar.target.enabled = val
+                            if addon.RefreshTargetCastbar then
+                                addon.RefreshTargetCastbar()
+                            end
+                        end,
+                        order = 12
+                    },
+                    
+                    focus_castbar_enabled = {
+                        type = 'toggle',
+                        name = "Focus Castbar",
+                        desc = "Enable DragonUI focus castbar. When disabled, shows default Blizzard castbar.",
+                        get = function()
+                            return addon.db.profile.castbar.focus.enabled
+                        end,
+                        set = function(info, value)
+                            addon.db.profile.castbar.focus.enabled = value
+                            if addon.RefreshFocusCastbar then
+                                addon.RefreshFocusCastbar()
+                            end
+                        end,
+                        order = 13
+                    },
+                    
+                    -- Placeholder para futuros módulos
+                    coming_soon_header = {
+                        type = 'header',
+                        name = "Other Modules",
+                        order = 20
+                    },
+                    
+                    coming_soon = {
+                        type = 'description',
+                        name = "|cffFFD700More modules will be added here soon...|r\n\nPlanned modules: Unit Frames, Minimap, Chat, Buffs, etc.",
+                        order = 21
+                    }
+                }
+            },
             actionbars = {
                 type = 'group',
                 name = "Action Bars",
@@ -1724,19 +1816,6 @@ function addon:CreateOptionsTable()
                         name = "Player Castbar",
                         order = 1,
                         args = {
-                            enabled = {
-                                type = 'toggle',
-                                name = "Enable Cast Bar",
-                                desc = "Enable the improved cast bar",
-                                get = function()
-                                    return addon.db.profile.castbar.enabled
-                                end,
-                                set = function(info, val)
-                                    addon.db.profile.castbar.enabled = val
-                                    addon.RefreshCastbar()
-                                end,
-                                order = 1
-                            },
                             sizeX = {
                                 type = 'range',
                                 name = "Width",
@@ -1751,7 +1830,7 @@ function addon:CreateOptionsTable()
                                     addon.db.profile.castbar.sizeX = val
                                     addon.RefreshCastbar()
                                 end,
-                                order = 4
+                                order = 1
                             },
                             sizeY = {
                                 type = 'range',
@@ -1767,7 +1846,7 @@ function addon:CreateOptionsTable()
                                     addon.db.profile.castbar.sizeY = val
                                     addon.RefreshCastbar()
                                 end,
-                                order = 5
+                                order = 2
                             },
                             scale = {
                                 type = 'range',
@@ -1783,7 +1862,7 @@ function addon:CreateOptionsTable()
                                     addon.db.profile.castbar.scale = val
                                     addon.RefreshCastbar()
                                 end,
-                                order = 6
+                                order = 3
                             },
                             showIcon = {
                                 type = 'toggle',
@@ -1796,7 +1875,7 @@ function addon:CreateOptionsTable()
                                     addon.db.profile.castbar.showIcon = val
                                     addon.RefreshCastbar()
                                 end,
-                                order = 7
+                                order = 4
                             },
                             sizeIcon = {
                                 type = 'range',
@@ -1812,7 +1891,7 @@ function addon:CreateOptionsTable()
                                     addon.db.profile.castbar.sizeIcon = val
                                     addon.RefreshCastbar()
                                 end,
-                                order = 8,
+                                order = 5,
                                 disabled = function()
                                     return not addon.db.profile.castbar.showIcon
                                 end
@@ -1832,7 +1911,7 @@ function addon:CreateOptionsTable()
                                     addon.db.profile.castbar.text_mode = val
                                     addon.RefreshCastbar()
                                 end,
-                                order = 9
+                                order = 6
                             },
                             precision_time = {
                                 type = 'range',
@@ -1847,7 +1926,7 @@ function addon:CreateOptionsTable()
                                 set = function(info, val)
                                     addon.db.profile.castbar.precision_time = val
                                 end,
-                                order = 10,
+                                order = 7,
                                 disabled = function()
                                     return addon.db.profile.castbar.text_mode == "simple"
                                 end
@@ -1865,7 +1944,7 @@ function addon:CreateOptionsTable()
                                 set = function(info, val)
                                     addon.db.profile.castbar.precision_max = val
                                 end,
-                                order = 11,
+                                order = 8,
                                 disabled = function()
                                     return addon.db.profile.castbar.text_mode == "simple"
                                 end
@@ -1884,7 +1963,7 @@ function addon:CreateOptionsTable()
                                     addon.db.profile.castbar.holdTime = val
                                     addon.RefreshCastbar()
                                 end,
-                                order = 12
+                                order = 9
                             },
                             holdTimeInterrupt = {
                                 type = 'range',
@@ -1900,7 +1979,7 @@ function addon:CreateOptionsTable()
                                     addon.db.profile.castbar.holdTimeInterrupt = val
                                     addon.RefreshCastbar()
                                 end,
-                                order = 13
+                                order = 10
                             },
                             reset_position = {
                                 type = 'execute',
@@ -1911,7 +1990,7 @@ function addon:CreateOptionsTable()
                                     addon.db.profile.castbar.y_position = addon.defaults.profile.castbar.y_position
                                     addon.RefreshCastbar()
                                 end,
-                                order = 14
+                                order = 11
                             }
                         }
                     },
@@ -1921,29 +2000,6 @@ function addon:CreateOptionsTable()
                         name = "Target Castbar",
                         order = 2,
                         args = {
-                            enabled = {
-                                type = 'toggle',
-                                name = "Enable Target Castbar",
-                                desc = "Enable or disable the target castbar",
-                                get = function()
-                                    if not addon.db.profile.castbar.target then
-                                        return true
-                                    end
-                                    local value = addon.db.profile.castbar.target.enabled
-                                    if value == nil then
-                                        return true
-                                    end
-                                    return value == true
-                                end,
-                                set = function(info, val)
-                                    if not addon.db.profile.castbar.target then
-                                        addon.db.profile.castbar.target = {}
-                                    end
-                                    addon.db.profile.castbar.target.enabled = val
-                                    addon.RefreshTargetCastbar()
-                                end,
-                                order = 1
-                            },
                             sizeX = {
                                 type = 'range',
                                 name = "Width",
@@ -1962,7 +2018,7 @@ function addon:CreateOptionsTable()
                                     addon.db.profile.castbar.target.sizeX = val
                                     addon.RefreshTargetCastbar()
                                 end,
-                                order = 4
+                                order = 1
                             },
                             sizeY = {
                                 type = 'range',
@@ -1982,7 +2038,7 @@ function addon:CreateOptionsTable()
                                     addon.db.profile.castbar.target.sizeY = val
                                     addon.RefreshTargetCastbar()
                                 end,
-                                order = 5
+                                order = 2
                             },
                             scale = {
                                 type = 'range',
@@ -2002,7 +2058,7 @@ function addon:CreateOptionsTable()
                                     addon.db.profile.castbar.target.scale = val
                                     addon.RefreshTargetCastbar()
                                 end,
-                                order = 6
+                                order = 3
                             },
                             showIcon = {
                                 type = 'toggle',
@@ -2025,7 +2081,7 @@ function addon:CreateOptionsTable()
                                     addon.db.profile.castbar.target.showIcon = val
                                     addon.RefreshTargetCastbar()
                                 end,
-                                order = 7
+                                order = 4
                             },
                             sizeIcon = {
                                 type = 'range',
@@ -2046,7 +2102,7 @@ function addon:CreateOptionsTable()
                                     addon.db.profile.castbar.target.sizeIcon = val
                                     addon.RefreshTargetCastbar()
                                 end,
-                                order = 8,
+                                order = 5,
                                 disabled = function()
                                     return not (addon.db.profile.castbar.target and
                                                addon.db.profile.castbar.target.showIcon)
@@ -2071,7 +2127,7 @@ function addon:CreateOptionsTable()
                                     addon.db.profile.castbar.target.text_mode = val
                                     addon.RefreshTargetCastbar()
                                 end,
-                                order = 9
+                                order = 6
                             },
                             precision_time = {
                                 type = 'range',
@@ -2090,7 +2146,7 @@ function addon:CreateOptionsTable()
                                     end
                                     addon.db.profile.castbar.target.precision_time = val
                                 end,
-                                order = 10,
+                                order = 7,
                                 disabled = function()
                                     --  CORRECCIÓN LÓGICA: Deshabilitar si el modo es "simple"
                                     return (addon.db.profile.castbar.target and
@@ -2114,7 +2170,7 @@ function addon:CreateOptionsTable()
                                     end
                                     addon.db.profile.castbar.target.precision_max = val
                                 end,
-                                order = 11,
+                                order = 8,
                                 disabled = function()
                                     --  CORRECCIÓN LÓGICA: Deshabilitar si el modo es "simple"
                                     return (addon.db.profile.castbar.target and
@@ -2142,7 +2198,7 @@ function addon:CreateOptionsTable()
                                     addon.db.profile.castbar.target.autoAdjust = val
                                     addon.RefreshTargetCastbar()
                                 end,
-                                order = 12
+                                order = 9
                             },
                             holdTime = {
                                 type = 'range',
@@ -2163,7 +2219,7 @@ function addon:CreateOptionsTable()
                                     addon.db.profile.castbar.target.holdTime = val
                                     addon.RefreshTargetCastbar()
                                 end,
-                                order = 13
+                                order = 10
                             },
                             holdTimeInterrupt = {
                                 type = 'range',
@@ -2183,7 +2239,7 @@ function addon:CreateOptionsTable()
                                     addon.db.profile.castbar.target.holdTimeInterrupt = val
                                     addon.RefreshTargetCastbar()
                                 end,
-                                order = 14
+                                order = 11
                             },
                             reset_position = {
                                 type = 'execute',
@@ -2197,7 +2253,7 @@ function addon:CreateOptionsTable()
                                     addon.db.profile.castbar.target.y_position = -20
                                     addon.RefreshTargetCastbar()
                                 end,
-                                order = 15
+                                order = 12
                             }
                         }
                     },
@@ -2207,22 +2263,6 @@ function addon:CreateOptionsTable()
                         name = "Focus Castbar",
                         order = 3,
                         args = {
-                            enabled = {
-                                type = 'toggle',
-                                name = "Enable Focus Castbar",
-                                desc = "Enable or disable the focus castbar",
-                                get = function()
-                                    return addon.db.profile.castbar.focus.enabled
-                                end,
-                                set = function(info, value)
-                                    addon.db.profile.castbar.focus.enabled = value
-                                    if addon.RefreshFocusCastbar then
-                                        addon.RefreshFocusCastbar()
-                                    end
-                                end,
-                                order = 1
-                            },
-
                             sizeX = {
                                 type = 'range',
                                 name = "Width",
@@ -2239,7 +2279,7 @@ function addon:CreateOptionsTable()
                                         addon.RefreshFocusCastbar()
                                     end
                                 end,
-                                order = 4
+                                order = 1
                             },
                             sizeY = {
                                 type = 'range',
@@ -2257,7 +2297,7 @@ function addon:CreateOptionsTable()
                                         addon.RefreshFocusCastbar()
                                     end
                                 end,
-                                order = 5
+                                order = 2
                             },
                             scale = {
                                 type = 'range',
@@ -2275,7 +2315,7 @@ function addon:CreateOptionsTable()
                                         addon.RefreshFocusCastbar()
                                     end
                                 end,
-                                order = 6
+                                order = 3
                             },
                             showIcon = {
                                 type = 'toggle',
@@ -2290,7 +2330,7 @@ function addon:CreateOptionsTable()
                                         addon.RefreshFocusCastbar()
                                     end
                                 end,
-                                order = 7
+                                order = 4
                             },
                             sizeIcon = {
                                 type = 'range',
@@ -2308,7 +2348,7 @@ function addon:CreateOptionsTable()
                                         addon.RefreshFocusCastbar()
                                     end
                                 end,
-                                order = 8,
+                                order = 5,
                                 disabled = function()
                                     return not addon.db.profile.castbar.focus.showIcon
                                 end
@@ -2330,7 +2370,7 @@ function addon:CreateOptionsTable()
                                         addon.RefreshFocusCastbar()
                                     end
                                 end,
-                                order = 9
+                                order = 6
                             },
                             precision_time = {
                                 type = 'range',
@@ -2345,7 +2385,7 @@ function addon:CreateOptionsTable()
                                 set = function(info, val)
                                     addon.db.profile.castbar.focus.precision_time = val
                                 end,
-                                order = 10,
+                                order = 7,
                                 disabled = function()
                                     return addon.db.profile.castbar.focus.text_mode == "simple"
                                 end
@@ -2363,7 +2403,7 @@ function addon:CreateOptionsTable()
                                 set = function(info, val)
                                     addon.db.profile.castbar.focus.precision_max = val
                                 end,
-                                order = 11,
+                                order = 8,
                                 disabled = function()
                                     return addon.db.profile.castbar.focus.text_mode == "simple"
                                 end
@@ -2381,7 +2421,7 @@ function addon:CreateOptionsTable()
                                         addon.RefreshFocusCastbar()
                                     end
                                 end,
-                                order = 12
+                                order = 9
                             },
                             holdTime = {
                                 type = 'range',
@@ -2399,7 +2439,7 @@ function addon:CreateOptionsTable()
                                         addon.RefreshFocusCastbar()
                                     end
                                 end,
-                                order = 13
+                                order = 10
                             },
                             holdTimeInterrupt = {
                                 type = 'range',
@@ -2417,7 +2457,7 @@ function addon:CreateOptionsTable()
                                         addon.RefreshFocusCastbar()
                                     end
                                 end,
-                                order = 14
+                                order = 11
                             },
                             reset_position = {
                                 type = 'execute',
@@ -2429,7 +2469,7 @@ function addon:CreateOptionsTable()
                                     addon.db.profile.castbar.focus.y_position = defaults.y_position
                                     addon.RefreshFocusCastbar()
                                 end,
-                                order = 15
+                                order = 12
                             }
                         }
                     }
