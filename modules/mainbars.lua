@@ -375,6 +375,8 @@ local function ReplaceBlizzardRepExpBarFrame(frameBar)
         -- Reputation Watch Bar Text (if exists)
         local repText = ReputationWatchBarText
         if repText then
+            repText:SetParent(repWatchBar)
+            repText:SetFrameLevel(repWatchBar:GetFrameLevel() + 10) -- Higher than bar
             repText:SetPoint("CENTER", repWatchBar, "CENTER", 0, 2)
             repText:SetDrawLayer("OVERLAY", 7)
             repText:Show() -- Ensure text is visible
@@ -461,14 +463,27 @@ local function ReputationWatchBar_Update()
             repWatchBar:SetHeight(addon.ActionBarFrames.repexpbar:GetHeight())
             repWatchBar:SetScale(0.9) -- ✅ CRITICAL: Apply same scale as experience bar
             repWatchBar:SetPoint("LEFT", addon.ActionBarFrames.repexpbar, "LEFT", 0, 0)
-            -- ✅ CRITICAL: RetailUI does NOT call Show() explicitly - it shows automatically
+            
+            -- ✅ CRITICAL: Fix the real text inside ReputationWatchStatusBar
+            local repStatusBar = ReputationWatchStatusBar
+            if repStatusBar then
+                -- Force ReputationWatchStatusBar to have a lower FrameLevel than its text
+                repStatusBar:SetFrameLevel(repWatchBar:GetFrameLevel() - 1)
+                
+                -- Find and fix the actual text inside the status bar
+                for i = 1, repStatusBar:GetNumRegions() do
+                    local region = select(i, repStatusBar:GetRegions())
+                    if region and region:GetObjectType() == "FontString" then
+                        -- This is the real reputation text!
+                        region:SetDrawLayer("OVERLAY", 7)
+                        region:Show()
+                        break
+                    end
+                end
+            end
         end
     end
-    -- ✅ CRITICAL: RetailUI does NOT have Hide() logic here - let WoW handle visibility
 end
--- ✅ REMOVED: XP/Rep bar functions will be replaced with RetailUI pattern
--- ✅ REMOVED: XP/Rep bar event handling will be replaced with RetailUI pattern
--- ✅ REMOVED: All XP/Rep bar hooks will be replaced with RetailUI pattern
 
 
 
@@ -890,6 +905,8 @@ function addon.ForceProfileRefresh()
     OnProfileChange()
 end
 
+
+
 -- RetailUI Pattern: Editor mode functions for XP/Rep bar
 function addon.ShowRepExpBarEditor()
     if addon.ActionBarFrames.repexpbar and addon.HideUIFrame then
@@ -907,6 +924,34 @@ function addon.HideRepExpBarEditor(refresh)
         if refresh and addon.UpdateActionBarWidgets then
             addon.UpdateActionBarWidgets()
         end
+        
+        -- ✅ CRITICAL: Fix reputation bar layering after editor mode
+        addon.core:ScheduleTimer(function()
+            local repWatchBar = ReputationWatchBar
+            if repWatchBar and repWatchBar:IsVisible() then
+                -- Restore the original FrameLevel that editor mode changed
+                repWatchBar:SetFrameLevel(101) -- Back to original level
+                repWatchBar:SetFrameStrata("LOW")
+                
+                -- Fix the real text inside ReputationWatchStatusBar
+                local repStatusBar = ReputationWatchStatusBar
+                if repStatusBar then
+                    -- Force ReputationWatchStatusBar to have a lower FrameLevel
+                    repStatusBar:SetFrameLevel(100) -- Just below repWatchBar
+                    
+                    -- Find and fix the actual text inside the status bar
+                    for i = 1, repStatusBar:GetNumRegions() do
+                        local region = select(i, repStatusBar:GetRegions())
+                        if region and region:GetObjectType() == "FontString" then
+                            -- This is the real reputation text!
+                            region:SetDrawLayer("OVERLAY", 7)
+                            region:Show()
+                            break
+                        end
+                    end
+                end
+            end
+        end, 0.1)
     end
 end
 
