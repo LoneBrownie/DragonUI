@@ -9,34 +9,19 @@
     <Script file="petbar.lua"/>
     <Script file="multicast.lua"/>
     <Script file="micromenu.lua"/>
-
-    <!-- Minimap modules -->
-    <!-- <Script file="minimap_atlas.lua"/> -->
-    <!-- <Script file="minimap_core.lua"/> -->
-    <!-- <Script file="minimap_map.lua"/> -->
-    <!-- <Script file="minimap_time.lua"/> -->
-    <!-- <Script file="minimap_auras.lua"/> -->
-     <Script file="BuffFrame.lua"/> 
+    <Script file="BuffFrame.lua"/> 
     <Script file="minimap.lua"/>    
     <Script file="questtracker.lua"/>   
-
-
-
-    <!-- ✅ NUEVA ESTRUCTURA DE UNITFRAMES -->
+    <!-- NUEVA ESTRUCTURA DE UNITFRAMES -->
     <Include file="unitframes\unitframes.xml"/>
-
     <!-- Cast Bar module -->
-    <!-- <Script file="castbar_refactored.lua"/> --> <!-- Old complex module - DISABLED -->
-    <Script file="castbar.lua"/>                <!-- New simple module based on RetailUI -->
+    <Script file="castbar.lua"/>               
     <!-- Chat module -->
     <Script file="Chat.lua"/>
-
     <!-- Game Menu module -->
     <Script file="gamemenu.lua"/>
-
     <!-- Editor Mode module -->
     <Script file="editor_mode.lua"/>
-
     <!-- Conflict Detection module -->
     <Script file="compatibility.lua"/>
 </Ui>
