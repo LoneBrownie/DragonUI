@@ -12,7 +12,7 @@
     <Script file="BuffFrame.lua"/> 
     <Script file="minimap.lua"/>    
     <Script file="questtracker.lua"/>   
-    <!-- NUEVA ESTRUCTURA DE UNITFRAMES -->
+    <!-- UnitFrames -->
     <Include file="unitframes\unitframes.xml"/>
     <!-- Cast Bar module -->
     <Script file="castbar.lua"/>               
