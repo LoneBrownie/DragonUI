@@ -1,5 +1,5 @@
 local addon = select(2, ...)
-
+addon._dir = "Interface\\AddOns\\DragonUI\\assets\\"
 -- ============================================================================
 -- CONFIGURATION FUNCTIONS (ALWAYS AVAILABLE)
 -- ============================================================================
@@ -992,7 +992,33 @@ local function InitializeMainbars()
     ApplyMainbarsSystem()
 
     -- Set up event handlers
+local function ApplyModernExpBarVisual()
+    local exhaustionStateID = GetRestState()
+    local mainMenuExpBar = MainMenuExpBar
+    local exhaustionTick = ExhaustionTick
+   
 
+    -- Aplica la textura personalizada
+    mainMenuExpBar:SetStatusBarTexture(addon._dir .. "uiexperiencebar")
+    mainMenuExpBar:SetStatusBarColor(1, 1, 1, 1)
+    
+    
+
+    -- Lógica de TexCoord y color según exhaustion
+    if exhaustionStateID == 1 then
+        exhaustionTick:Show()
+        mainMenuExpBar:GetStatusBarTexture():SetTexCoord(574/2048, 1137/2048, 34/64, 43/64)
+
+    elseif exhaustionStateID == 2 then
+        exhaustionTick:Hide()
+        mainMenuExpBar:GetStatusBarTexture():SetTexCoord(1/2048, 570/2048, 42/64, 51/64)
+
+    else
+        exhaustionTick:Hide()
+        mainMenuExpBar:GetStatusBarTexture():SetTexCoord(0, 1, 0, 1)
+
+    end
+end
     -- Single event handler for addon initialization
     local initFrame = CreateFrame("Frame")
     initFrame:RegisterEvent("ADDON_LOADED")
@@ -1005,6 +1031,13 @@ local function InitializeMainbars()
     initFrame:RegisterEvent("UNIT_EXITED_VEHICLE")
     initFrame:RegisterEvent("UNIT_ENTERED_VEHICLE")
     initFrame:RegisterEvent("PLAYER_LOGIN")
+
+    local eventFrame = CreateFrame("Frame")
+eventFrame:RegisterEvent("PLAYER_ENTERING_WORLD")
+eventFrame:RegisterEvent("UPDATE_EXHAUSTION")
+eventFrame:SetScript("OnEvent", function(self, event)
+    ApplyModernExpBarVisual()
+end)
 
     initFrame:SetScript("OnEvent", function(self, event, addonName)
         if event == "ADDON_LOADED" and addonName == "DragonUI" then
