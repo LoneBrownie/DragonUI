@@ -299,35 +299,41 @@ local function InitializeMainbars()
     -- CORE MAINBAR FUNCTIONS (From working code)
     -- ============================================================================
 
-    function MainMenuBarMixin:actionbutton_setup()
-        for _, obj in ipairs({MainMenuBar:GetChildren(), MainMenuBarArtFrame:GetChildren()}) do
-            obj:SetParent(pUiMainBar)
-        end
+   function MainMenuBarMixin:actionbutton_setup()
+    for _, obj in ipairs({MainMenuBar:GetChildren(), MainMenuBarArtFrame:GetChildren()}) do
+        obj:SetParent(pUiMainBar)
+    end
 
-        for index = 1, NUM_ACTIONBAR_BUTTONS do
-            pUiMainBar:SetFrameRef('ActionButton' .. index, _G['ActionButton' .. index])
-        end
+    for index = 1, NUM_ACTIONBAR_BUTTONS do
+        pUiMainBar:SetFrameRef('ActionButton' .. index, _G['ActionButton' .. index])
+    end
 
+    -- Aplicar SetThreeSlice solo si el fondo NO está oculto
+    local shouldHideBackground = addon.db and addon.db.profile and addon.db.profile.buttons and 
+                                addon.db.profile.buttons.hide_main_bar_background
+    
+    if not shouldHideBackground then
         for index = 1, NUM_ACTIONBAR_BUTTONS - 1 do
             local ActionButtons = _G['ActionButton' .. index]
             do_action.SetThreeSlice(ActionButtons);
         end
-
-        for index = 2, NUM_ACTIONBAR_BUTTONS do
-            local ActionButtons = _G['ActionButton' .. index]
-            ActionButtons:SetParent(pUiMainBar)
-            ActionButtons:SetClearPoint('LEFT', _G['ActionButton' .. (index - 1)], 'RIGHT', 7, 0)
-
-            local BottomLeftButtons = _G['MultiBarBottomLeftButton' .. index]
-            BottomLeftButtons:SetClearPoint('LEFT', _G['MultiBarBottomLeftButton' .. (index - 1)], 'RIGHT', 7, 0)
-
-            local BottomRightButtons = _G['MultiBarBottomRightButton' .. index]
-            BottomRightButtons:SetClearPoint('LEFT', _G['MultiBarBottomRightButton' .. (index - 1)], 'RIGHT', 7, 0)
-
-            local BonusActionButtons = _G['BonusActionButton' .. index]
-            BonusActionButtons:SetClearPoint('LEFT', _G['BonusActionButton' .. (index - 1)], 'RIGHT', 7, 0)
-        end
     end
+
+    for index = 2, NUM_ACTIONBAR_BUTTONS do
+        local ActionButtons = _G['ActionButton' .. index]
+        ActionButtons:SetParent(pUiMainBar)
+        ActionButtons:SetClearPoint('LEFT', _G['ActionButton' .. (index - 1)], 'RIGHT', 7, 0)
+
+        local BottomLeftButtons = _G['MultiBarBottomLeftButton' .. index]
+        BottomLeftButtons:SetClearPoint('LEFT', _G['MultiBarBottomLeftButton' .. (index - 1)], 'RIGHT', 7, 0)
+
+        local BottomRightButtons = _G['MultiBarBottomRightButton' .. index]
+        BottomRightButtons:SetClearPoint('LEFT', _G['MultiBarBottomRightButton' .. (index - 1)], 'RIGHT', 7, 0)
+
+        local BonusActionButtons = _G['BonusActionButton' .. index]
+        BonusActionButtons:SetClearPoint('LEFT', _G['BonusActionButton' .. (index - 1)], 'RIGHT', 7, 0)
+    end
+end
 
     function MainMenuBarMixin:actionbar_art_setup()
         -- setup art frames
@@ -345,56 +351,27 @@ local function InitializeMainbars()
     end
 
     function MainMenuBarMixin:update_main_bar_background()
-        local alpha = (addon.db and addon.db.profile and addon.db.profile.buttons and
-                          addon.db.profile.buttons.hide_main_bar_background) and 0 or 1
+    local alpha = (addon.db and addon.db.profile and addon.db.profile.buttons and
+                      addon.db.profile.buttons.hide_main_bar_background) and 0 or 1
 
-        -- handle button background textures
-        for i = 1, NUM_ACTIONBAR_BUTTONS do
-            local button = _G["ActionButton" .. i]
-            if button then
-                if button.NormalTexture then
-                    button.NormalTexture:SetAlpha(alpha)
-                end
-                for j = 1, button:GetNumRegions() do
-                    local region = select(j, button:GetRegions())
-                    if region and region:GetObjectType() == "Texture" and region:GetDrawLayer() == "BACKGROUND" and
-                        region ~= button:GetNormalTexture() then
-                        region:SetAlpha(alpha)
-                    end
-                end
+    -- handle button background textures
+    for i = 1, NUM_ACTIONBAR_BUTTONS do
+        local button = _G["ActionButton" .. i]
+        if button then
+            if button.NormalTexture then
+                button.NormalTexture:SetAlpha(alpha)
             end
-        end
-
-        if pUiMainBar then
-            -- hide loose textures within pUiMainBar
-            for i = 1, pUiMainBar:GetNumRegions() do
-                local region = select(i, pUiMainBar:GetRegions())
+            
+            -- Ocultar también las texturas aplicadas por SetThreeSlice
+            local regions = {button:GetRegions()}
+            for j = 1, #regions do
+                local region = regions[j]
                 if region and region:GetObjectType() == "Texture" then
-                    local texPath = region:GetTexture()
-                    if texPath and not string.find(texPath, "ICON") then
-                        region:SetAlpha(alpha)
-                    end
-                end
-            end
-
-            -- hide child frame textures with protection for UI elements
-            for i = 1, pUiMainBar:GetNumChildren() do
-                local child = select(i, pUiMainBar:GetChildren())
-                local name = child and child:GetName()
-
-                -- protect important UI elements from being hidden
-                if child and name ~= "pUiMainBarArt" and not string.find(name or "", "ActionButton") and name ~=
-                    "MultiBarBottomLeft" and name ~= "MultiBarBottomRight" and name ~= "MicroButtonAndBagsBar" and
-                    not string.find(name or "", "MicroButton") and not string.find(name or "", "Bag") and name ~=
-                    "CharacterMicroButton" and name ~= "SpellbookMicroButton" and name ~= "TalentMicroButton" and name ~=
-                    "AchievementMicroButton" and name ~= "bagsFrame" and name ~= "MainMenuBarBackpackButton" and name ~=
-                    "QuestLogMicroButton" and name ~= "SocialsMicroButton" and name ~= "PVPMicroButton" and name ~=
-                    "LFGMicroButton" and name ~= "MainMenuMicroButton" and name ~= "HelpMicroButton" and name ~=
-                    "MainMenuExpBar" and name ~= "ReputationWatchBar" then
-
-                    for j = 1, child:GetNumRegions() do
-                        local region = select(j, child:GetRegions())
-                        if region and region:GetObjectType() == "Texture" then
+                    local drawLayer = region:GetDrawLayer()
+                    -- Ocultar texturas de fondo y artwork que no sean iconos
+                    if (drawLayer == "BACKGROUND" or drawLayer == "ARTWORK") and region ~= button:GetNormalTexture() then
+                        local texPath = region:GetTexture()
+                        if texPath and not string.find(texPath, "ICON") and not string.find(texPath, "Interface\\Icons") then
                             region:SetAlpha(alpha)
                         end
                     end
@@ -402,6 +379,44 @@ local function InitializeMainbars()
             end
         end
     end
+
+    if pUiMainBar then
+        -- hide loose textures within pUiMainBar
+        for i = 1, pUiMainBar:GetNumRegions() do
+            local region = select(i, pUiMainBar:GetRegions())
+            if region and region:GetObjectType() == "Texture" then
+                local texPath = region:GetTexture()
+                if texPath and not string.find(texPath, "ICON") then
+                    region:SetAlpha(alpha)
+                end
+            end
+        end
+
+        -- hide child frame textures with protection for UI elements
+        for i = 1, pUiMainBar:GetNumChildren() do
+            local child = select(i, pUiMainBar:GetChildren())
+            local name = child and child:GetName()
+
+            -- protect important UI elements from being hidden
+            if child and name ~= "pUiMainBarArt" and not string.find(name or "", "ActionButton") and name ~=
+                "MultiBarBottomLeft" and name ~= "MultiBarBottomRight" and name ~= "MicroButtonAndBagsBar" and
+                not string.find(name or "", "MicroButton") and not string.find(name or "", "Bag") and name ~=
+                "CharacterMicroButton" and name ~= "SpellbookMicroButton" and name ~= "TalentMicroButton" and name ~=
+                "AchievementMicroButton" and name ~= "bagsFrame" and name ~= "MainMenuBarBackpackButton" and name ~=
+                "QuestLogMicroButton" and name ~= "SocialsMicroButton" and name ~= "PVPMicroButton" and name ~=
+                "LFGMicroButton" and name ~= "MainMenuMicroButton" and name ~= "HelpMicroButton" and name ~=
+                "MainMenuExpBar" and name ~= "ReputationWatchBar" then
+
+                for j = 1, child:GetNumRegions() do
+                    local region = select(j, child:GetRegions())
+                    if region and region:GetObjectType() == "Texture" then
+                        region:SetAlpha(alpha)
+                    end
+                end
+            end
+        end
+    end
+end
 
     function MainMenuBarMixin:actionbar_setup()
         ActionButton1:SetParent(pUiMainBar)
