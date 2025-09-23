@@ -88,7 +88,7 @@ local defaults = {
             },
             repexpbar = {
                 anchor = "BOTTOM",
-                posX = 0,
+                posX = 1,
                 posY = 7
             }
         },

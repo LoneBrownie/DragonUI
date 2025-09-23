@@ -292,7 +292,7 @@ local function InitializeMainbars()
 
         MainbarsModule.originalStates = {}
         MainbarsModule.applied = false
-       
+
     end
 
     -- ============================================================================
@@ -506,30 +506,30 @@ local function InitializeMainbars()
             -- Enable mouse interaction
             PetActionBarFrame:EnableMouse(true)
         end
-        
+
         -- Initial setup for XP/Rep bars with NEW style sizes
         if MainMenuExpBar then
             MainMenuExpBar:SetClearPoint('BOTTOM', UIParent, 0, 6)
             MainMenuExpBar:SetFrameLevel(1) -- Lower level for editor overlay visibility
             -- Set NEW style size immediately
             MainMenuExpBar:SetSize(537, 10)
-            
+
             if MainMenuBarExpText then
                 MainMenuBarExpText:SetParent(MainMenuExpBar)
                 -- Text will be positioned later based on style
             end
         end
-        
+
         -- Setup reputation bar with NEW style sizes
         if ReputationWatchBar then
             ReputationWatchBar:SetFrameLevel(1) -- Lower level for editor overlay visibility
             -- Set NEW style size immediately
             ReputationWatchBar:SetSize(537, 10)
-            
+
             if ReputationWatchStatusBar then
                 -- Set NEW style size for status bar too
                 ReputationWatchStatusBar:SetSize(537, 10)
-                
+
                 -- CRITICAL: Configure reputation text properly from the start
                 if ReputationWatchStatusBarText then
                     -- Ensure correct parent
@@ -545,50 +545,49 @@ local function InitializeMainbars()
         end
     end
 
-
     -- Connect XP/Rep bars to the editor system
     local function ConnectBarsToEditor()
-    if not addon.ActionBarFrames.repexpbar then
-        return
-    end
+        if not addon.ActionBarFrames.repexpbar then
+            return
+        end
 
-    local mainMenuExpBar = MainMenuExpBar
-    if mainMenuExpBar then
-        mainMenuExpBar:SetParent(addon.ActionBarFrames.repexpbar)
-        mainMenuExpBar:ClearAllPoints()
-        mainMenuExpBar:SetSize(537, 10)
-        mainMenuExpBar:SetFrameLevel(1)
-        mainMenuExpBar:SetScale(0.9)
-        mainMenuExpBar:SetFrameStrata("MEDIUM")
-        
-        -- COMPORTAMIENTO CORRECTO: Posición inicial
-        mainMenuExpBar:SetPoint("CENTER", addon.ActionBarFrames.repexpbar, "CENTER", 0, 0)
-    end
+        local mainMenuExpBar = MainMenuExpBar
+        if mainMenuExpBar then
+            mainMenuExpBar:SetParent(addon.ActionBarFrames.repexpbar)
+            mainMenuExpBar:ClearAllPoints()
+            mainMenuExpBar:SetSize(537, 10)
+            mainMenuExpBar:SetFrameLevel(1)
+            mainMenuExpBar:SetScale(0.9)
+            mainMenuExpBar:SetFrameStrata("MEDIUM")
 
-    local repWatchBar = ReputationWatchBar
-    if repWatchBar then
-        repWatchBar:SetParent(addon.ActionBarFrames.repexpbar)
-        repWatchBar:ClearAllPoints()
-        repWatchBar:SetSize(537, 10)
-        repWatchBar:SetScale(0.9)
-        repWatchBar:SetFrameLevel(1)
-        repWatchBar:SetFrameStrata("MEDIUM")
-        
-        -- COMPORTAMIENTO CORRECTO: Rep va arriba, luego UpdateBarPositions ajusta XP
-        repWatchBar:SetPoint("CENTER", addon.ActionBarFrames.repexpbar, "CENTER", 0, 0)
-        
-        if ReputationWatchStatusBar then
-            ReputationWatchStatusBar:SetSize(537, 10)
-            
-            if ReputationWatchStatusBarText then
-                ReputationWatchStatusBarText:SetParent(ReputationWatchStatusBar)
-                ReputationWatchStatusBarText:SetDrawLayer("OVERLAY", 2)
-                ReputationWatchStatusBarText:SetClearPoint('CENTER', ReputationWatchStatusBar, 'CENTER', 0, 1)
-                ReputationWatchStatusBarText:Hide()
+            -- COMPORTAMIENTO CORRECTO: Posición inicial
+            mainMenuExpBar:SetPoint("CENTER", addon.ActionBarFrames.repexpbar, "CENTER", 0, 0)
+        end
+
+        local repWatchBar = ReputationWatchBar
+        if repWatchBar then
+            repWatchBar:SetParent(addon.ActionBarFrames.repexpbar)
+            repWatchBar:ClearAllPoints()
+            repWatchBar:SetSize(537, 10)
+            repWatchBar:SetScale(0.9)
+            repWatchBar:SetFrameLevel(1)
+            repWatchBar:SetFrameStrata("MEDIUM")
+
+            -- COMPORTAMIENTO CORRECTO: Rep va arriba, luego UpdateBarPositions ajusta XP
+            repWatchBar:SetPoint("CENTER", addon.ActionBarFrames.repexpbar, "CENTER", 0, 0)
+
+            if ReputationWatchStatusBar then
+                ReputationWatchStatusBar:SetSize(537, 10)
+
+                if ReputationWatchStatusBarText then
+                    ReputationWatchStatusBarText:SetParent(ReputationWatchStatusBar)
+                    ReputationWatchStatusBarText:SetDrawLayer("OVERLAY", 2)
+                    ReputationWatchStatusBarText:SetClearPoint('CENTER', ReputationWatchStatusBar, 'CENTER', 0, 1)
+                    ReputationWatchStatusBarText:Hide()
+                end
             end
         end
     end
-end
 
     -- Force reputation text configuration (ensures text is properly configured but hidden by default)
     local function ForceReputationTextConfiguration()
@@ -606,51 +605,51 @@ end
 
     -- Update bar positioning when needed
     local function UpdateBarPositions()
-    if not addon.ActionBarFrames.repexpbar then
-        return
-    end
-
-    local mainMenuExpBar = MainMenuExpBar
-    local repWatchBar = ReputationWatchBar
-    
-    if repWatchBar and repWatchBar:IsShown() then
-        -- Cuando Rep está visible: Rep toma la posición original de XP (centro)
-        repWatchBar:ClearAllPoints()
-        repWatchBar:SetSize(537, 10)
-        repWatchBar:SetScale(0.9)
-        repWatchBar:SetFrameLevel(1)
-        repWatchBar:SetPoint("CENTER", addon.ActionBarFrames.repexpbar, "CENTER", 0, -3)
-        
-        -- XP se mueve hacia abajo
-        if mainMenuExpBar then
-            mainMenuExpBar:ClearAllPoints()
-            mainMenuExpBar:SetSize(537, 10)
-            mainMenuExpBar:SetFrameLevel(1)
-            mainMenuExpBar:SetScale(0.9)
-            mainMenuExpBar:SetPoint("CENTER", addon.ActionBarFrames.repexpbar, "CENTER", 0, -22)
+        if not addon.ActionBarFrames.repexpbar then
+            return
         end
-        
-        if ReputationWatchStatusBar then
-            ReputationWatchStatusBar:SetSize(537, 10)
-            
-            if ReputationWatchStatusBarText then
-                ReputationWatchStatusBarText:SetParent(ReputationWatchStatusBar)
-                ReputationWatchStatusBarText:SetDrawLayer("OVERLAY", 2)
-                ReputationWatchStatusBarText:SetClearPoint('CENTER', ReputationWatchStatusBar, 'CENTER', 0, 1)
-                ReputationWatchStatusBarText:Hide()
+
+        local mainMenuExpBar = MainMenuExpBar
+        local repWatchBar = ReputationWatchBar
+
+        if repWatchBar and repWatchBar:IsShown() then
+            -- Cuando Rep está visible: Rep toma la posición original de XP (centro)
+            repWatchBar:ClearAllPoints()
+            repWatchBar:SetSize(537, 10)
+            repWatchBar:SetScale(0.9)
+            repWatchBar:SetFrameLevel(1)
+            repWatchBar:SetPoint("CENTER", addon.ActionBarFrames.repexpbar, "CENTER", 0, -3)
+
+            -- XP se mueve hacia abajo
+            if mainMenuExpBar then
+                mainMenuExpBar:ClearAllPoints()
+                mainMenuExpBar:SetSize(537, 10)
+                mainMenuExpBar:SetFrameLevel(1)
+                mainMenuExpBar:SetScale(0.9)
+                mainMenuExpBar:SetPoint("CENTER", addon.ActionBarFrames.repexpbar, "CENTER", 0, -22)
+            end
+
+            if ReputationWatchStatusBar then
+                ReputationWatchStatusBar:SetSize(537, 10)
+
+                if ReputationWatchStatusBarText then
+                    ReputationWatchStatusBarText:SetParent(ReputationWatchStatusBar)
+                    ReputationWatchStatusBarText:SetDrawLayer("OVERLAY", 2)
+                    ReputationWatchStatusBarText:SetClearPoint('CENTER', ReputationWatchStatusBar, 'CENTER', 0, 1)
+                    ReputationWatchStatusBarText:Hide()
+                end
+            end
+        else
+            -- Cuando Rep NO está visible: XP vuelve al centro
+            if mainMenuExpBar then
+                mainMenuExpBar:ClearAllPoints()
+                mainMenuExpBar:SetSize(537, 10)
+                mainMenuExpBar:SetFrameLevel(1)
+                mainMenuExpBar:SetScale(0.9)
+                mainMenuExpBar:SetPoint("CENTER", addon.ActionBarFrames.repexpbar, "CENTER", 0, 0)
             end
         end
-    else
-        -- Cuando Rep NO está visible: XP vuelve al centro
-        if mainMenuExpBar then
-            mainMenuExpBar:ClearAllPoints()
-            mainMenuExpBar:SetSize(537, 10)
-            mainMenuExpBar:SetFrameLevel(1)
-            mainMenuExpBar:SetScale(0.9)
-            mainMenuExpBar:SetPoint("CENTER", addon.ActionBarFrames.repexpbar, "CENTER", 0, 0)
-        end
     end
-end
     local function RemoveBlizzardFrames()
         local blizzFrames = {MainMenuBarPerformanceBar, MainMenuBarTexture0, MainMenuBarTexture1, MainMenuBarTexture2,
                              MainMenuBarTexture3, MainMenuBarMaxLevelBar, ReputationXPBarTexture1,
@@ -683,7 +682,6 @@ end
             MultiCastActionBarFrame:EnableMouse(false)
         end
     end
-
 
     function MainMenuBarMixin:initialize()
         self:actionbutton_setup();
@@ -896,15 +894,12 @@ end
         end
     end
 
-  
-
     -- Apply the mainbars system
     local function ApplyMainbarsSystem()
         if MainbarsModule.applied then
             return
         end
 
-      
         MainMenuBarMixin:initialize()
         addon.pUiMainBar = pUiMainBar
 
@@ -923,7 +918,7 @@ end
                         maxLevel = math.max(maxLevel, bar:GetFrameLevel())
                     end
                 end
-                
+
                 -- Set gryphon art frame level higher than all bars
                 pUiMainBarArt:SetFrameLevel(maxLevel + 10)
             end
@@ -932,14 +927,14 @@ end
         -- Set up hooks for XP/Rep bars - RESTORED FUNCTIONALITY
         -- Connect bars to editor system first
         ConnectBarsToEditor()
-        
+
         -- Force reputation text configuration
         ForceReputationTextConfiguration()
-        
+
         -- Hook for maintaining editor connection
         hooksecurefunc('MainMenuExpBar_Update', UpdateBarPositions)
         hooksecurefunc('ReputationWatchBar_Update', UpdateBarPositions)
-        
+
         -- Add the essential ReputationWatchBar_Update hook for styling only
         hooksecurefunc('ReputationWatchBar_Update', function()
             local name = GetWatchedFactionInfo()
@@ -948,31 +943,30 @@ end
                 if addon.ActionBarFrames.repexpbar then
                     UpdateBarPositions()
                 end
-                
+
                 -- Configure reputation status bar for NEW style only
                 if ReputationWatchStatusBar then
                     ReputationWatchStatusBar:SetHeight(10)
                     ReputationWatchStatusBar:SetClearPoint('TOPLEFT', ReputationWatchBar, 0, 3)
-                    
+
                     -- Set size to match NEW style (537x10)
                     ReputationWatchStatusBar:SetSize(537, 10)
-                    
+
                     if ReputationWatchStatusBarBackground then
                         ReputationWatchStatusBarBackground:SetAllPoints(ReputationWatchStatusBar)
                     end
-                    
+
                     -- Text positioning for NEW style with FIXED layering
                     if ReputationWatchStatusBarText then
                         -- NEW style text positioning (offset +1)
                         ReputationWatchStatusBarText:SetClearPoint('CENTER', ReputationWatchStatusBar, 'CENTER', 0, 1)
-                        
+
                         -- Reasonable layering - not excessively high
                         ReputationWatchStatusBarText:SetDrawLayer("OVERLAY", 2)
                     end
                 end
             end
         end)
-
 
         -- Position action bars immediately
         PositionActionBarsToContainers_Initial()
@@ -995,22 +989,22 @@ end
     -- Set up event handlers - NEW style only system
     local function ApplyDragonUIExpRepBarStyling()
         -- Always use NEW style system only
-        
+
         -- Setup both exp and rep bars with NEW styling system
         for _, bar in pairs({MainMenuExpBar, ReputationWatchStatusBar}) do
             if bar then
                 bar:GetStatusBarTexture():SetDrawLayer('BORDER')
-                
+
                 -- Create status texture if it doesn't exist
                 if not bar.status then
                     bar.status = bar:CreateTexture(nil, 'ARTWORK')
                 end
-                
+
                 -- Always apply NEW style (537x10 size)
                 bar:SetSize(537, 10)
                 bar.status:SetPoint('CENTER', 0, -2)
                 bar.status:set_atlas('ui-hud-experiencebar-round', true)
-                
+
                 -- Apply custom textures for reputation bar
                 if bar == ReputationWatchStatusBar then
                     bar:SetStatusBarTexture(addon._dir .. 'statusbarfill.tga')
@@ -1020,7 +1014,7 @@ end
                 end
             end
         end
-        
+
         -- Apply background styling for NEW style for MainMenuExpBar
         if MainMenuExpBar then
             -- Ensure MainMenuExpBar is properly centered
@@ -1028,7 +1022,7 @@ end
             if addon.ActionBarFrames.repexpbar then
                 MainMenuExpBar:SetPoint('CENTER', addon.ActionBarFrames.repexpbar, 'CENTER', 0, 0)
             end
-            
+
             for _, obj in pairs({MainMenuExpBar:GetRegions()}) do
                 if obj:GetObjectType() == 'Texture' and obj:GetDrawLayer() == 'BACKGROUND' then
                     obj:set_atlas('ui-hud-experiencebar-background', true)
@@ -1040,31 +1034,31 @@ end
     local function ApplyModernExpBarVisual()
         local exhaustionStateID = GetRestState()
         local mainMenuExpBar = MainMenuExpBar
-        
+
         if not mainMenuExpBar then
             return
         end
-        
+
         -- Always apply NEW style custom texture system
         mainMenuExpBar:SetStatusBarTexture(addon._dir .. "uiexperiencebar")
         mainMenuExpBar:SetStatusBarColor(1, 1, 1, 1)
-        
+
         -- Configure ExhaustionLevelFillBar
         if ExhaustionLevelFillBar then
             ExhaustionLevelFillBar:SetHeight(mainMenuExpBar:GetHeight())
             ExhaustionLevelFillBar:set_atlas('ui-hud-experiencebar-fill-prediction')
         end
-        
+
         -- Apply exhaustion-based TexCoords
         if exhaustionStateID == 1 then
             -- Rested state
-            mainMenuExpBar:GetStatusBarTexture():SetTexCoord(574/2048, 1137/2048, 34/64, 43/64)
+            mainMenuExpBar:GetStatusBarTexture():SetTexCoord(574 / 2048, 1137 / 2048, 34 / 64, 43 / 64)
             if ExhaustionLevelFillBar then
                 ExhaustionLevelFillBar:SetVertexColor(0.0, 0, 1, 0.45)
             end
         elseif exhaustionStateID == 2 then
             -- Tired state
-            mainMenuExpBar:GetStatusBarTexture():SetTexCoord(1/2048, 570/2048, 42/64, 51/64)
+            mainMenuExpBar:GetStatusBarTexture():SetTexCoord(1 / 2048, 570 / 2048, 42 / 64, 51 / 64)
             if ExhaustionLevelFillBar then
                 ExhaustionLevelFillBar:SetVertexColor(0.58, 0.0, 0.55, 0.45)
             end
@@ -1072,7 +1066,7 @@ end
             -- Normal state
             mainMenuExpBar:GetStatusBarTexture():SetTexCoord(0, 1, 0, 1)
         end
-        
+
         -- Never show ExhaustionTick (as requested)
         if ExhaustionTick then
             ExhaustionTick:Hide()
@@ -1245,5 +1239,5 @@ end)
 
 -- Public API for options
 function addon.RefreshMainbarsSystem()
-  
+
 end
