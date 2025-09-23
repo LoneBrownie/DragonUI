@@ -128,6 +128,8 @@ local function InitializeMainbars()
     pUiMainBarArt:SetFrameStrata('HIGH');
     pUiMainBarArt:SetFrameLevel(pUiMainBar:GetFrameLevel() + 4);
     pUiMainBarArt:SetAllPoints(pUiMainBar);
+    -- CRÍTICO: Desactivar mouse para evitar zona muerta en iconos
+    pUiMainBarArt:EnableMouse(false);
 
     -- ============================================================================
     -- ALL THE MAINBARS FUNCTIONS (ONLY WHEN ENABLED)
@@ -339,7 +341,8 @@ end
         -- setup art frames
         MainMenuBarArtFrame:SetParent(pUiMainBar)
         for _, art in pairs({MainMenuBarLeftEndCap, MainMenuBarRightEndCap}) do
-            art:SetParent(pUiMainBarArt)
+            -- CRÍTICO: Usar pUiMainBar para que se arrastren correctamente
+            art:SetParent(pUiMainBar)
             art:SetDrawLayer('ARTWORK')
         end
 
@@ -672,7 +675,21 @@ end
             end
         end
     end
+   -- Función específica para deshabilitar MainMenuBarMaxLevelBar
+    local function DisableMaxLevelBar()
+        if MainMenuBarMaxLevelBar then
+            MainMenuBarMaxLevelBar:Hide()
+            MainMenuBarMaxLevelBar:EnableMouse(false)
+            MainMenuBarMaxLevelBar:SetAlpha(0)
+            -- Asegurar que nunca interfiera
+            MainMenuBarMaxLevelBar:SetFrameLevel(0)
+        end
+    end
+
     local function RemoveBlizzardFrames()
+        -- Deshabilitar MainMenuBarMaxLevelBar inmediatamente
+        DisableMaxLevelBar()
+        
         local blizzFrames = {MainMenuBarPerformanceBar, MainMenuBarTexture0, MainMenuBarTexture1, MainMenuBarTexture2,
                              MainMenuBarTexture3, MainMenuBarMaxLevelBar, ReputationXPBarTexture1,
                              ReputationXPBarTexture2, ReputationXPBarTexture3, ReputationWatchBarTexture1,
@@ -685,6 +702,11 @@ end
         for _, frame in pairs(blizzFrames) do
             if frame then
                 frame:SetAlpha(0)
+                if frame == MainMenuBarMaxLevelBar then
+                    frame:EnableMouse(false)
+                    frame:Hide()
+                    frame:SetFrameLevel(0)
+                end
             end
         end
     end
@@ -904,6 +926,14 @@ end
     local function ApplyMainbarsSystem()
         if MainbarsModule.applied then
             return
+        end
+
+        -- CRÍTICO: Deshabilitar MainMenuBarMaxLevelBar INMEDIATAMENTE
+        if MainMenuBarMaxLevelBar then
+            MainMenuBarMaxLevelBar:Hide()
+            MainMenuBarMaxLevelBar:EnableMouse(false)
+            MainMenuBarMaxLevelBar:SetAlpha(0)
+            MainMenuBarMaxLevelBar:SetFrameLevel(0)
         end
 
         MainMenuBarMixin:initialize()
