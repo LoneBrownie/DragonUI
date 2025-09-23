@@ -7,6 +7,20 @@ local gridOverlay = nil;
 local exitEditorButton = nil;
 local resetAllButton = nil;
 
+-- StaticPopup para reiniciar UI después de salir del modo editor
+StaticPopupDialogs["DRAGONUI_RELOAD_UI"] = {
+    text = "UI elements have been repositioned. Reload UI to ensure all graphics display correctly?",
+    button1 = "Reload Now",
+    button2 = "Later",
+    OnAccept = function()
+        ReloadUI()
+    end,
+    timeout = 0,
+    whileDead = true,
+    hideOnEscape = true,
+    preferredIndex = 3,
+}
+
 --  BOTÓN DE SALIDA DEL MODO EDITOR
 local function createExitButton()
     if exitEditorButton then return; end
@@ -231,6 +245,9 @@ function EditorMode:Hide()
     
     -- Refresh AceConfig to update button state
     self:RefreshOptionsUI()
+    
+    -- NUEVO: Mostrar popup para reiniciar UI y arreglar elementos gráficos
+    StaticPopup_Show("DRAGONUI_RELOAD_UI")
     
     
 end
