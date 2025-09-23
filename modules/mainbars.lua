@@ -450,6 +450,13 @@ end
         end
     end
 
+    -- Register event to update page number when action bar page changes
+    event:RegisterEvents(function()
+        MainMenuBarPageNumber:SetText(GetActionBarPage());
+    end,
+        'ACTIONBAR_PAGE_CHANGED'
+    );
+
     function addon.PositionActionBars()
         if InCombatLockdown() then
             return
