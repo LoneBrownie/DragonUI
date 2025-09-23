@@ -506,104 +506,160 @@ local function InitializeMainbars()
             -- Enable mouse interaction
             PetActionBarFrame:EnableMouse(true)
         end
-    end
-
-    -- RetailUI Pattern: XP/Rep Bar Implementation (EXACT COPY)
-    local function ReplaceBlizzardRepExpBarFrame(frameBar)
-        -- Experience Bar (RetailUI pattern - EXACT implementation)
-        local mainMenuExpBar = MainMenuExpBar
-        mainMenuExpBar:SetFrameStrata("LOW") -- RetailUI uses default/low strata
-        mainMenuExpBar:ClearAllPoints()
-        mainMenuExpBar:SetWidth(frameBar:GetWidth())
-
-        -- Ensure the experience status bar matches the parent dimensions
-        local expStatusBar = _G[mainMenuExpBar:GetName() .. "StatusBar"]
-        if expStatusBar and expStatusBar ~= mainMenuExpBar then
-            expStatusBar:SetParent(mainMenuExpBar)
-            expStatusBar:SetAllPoints(mainMenuExpBar)
-            expStatusBar:SetWidth(frameBar:GetWidth())
-        end
-
-        -- Process background regions (RetailUI pattern)
-        for _, region in pairs {mainMenuExpBar:GetRegions()} do
-            if region:GetObjectType() == 'Texture' and region:GetDrawLayer() == 'BACKGROUND' then
-                SetAtlasTexture(region, 'ExperienceBar-Background')
+        
+        -- Initial setup for XP/Rep bars with NEW style sizes
+        if MainMenuExpBar then
+            MainMenuExpBar:SetClearPoint('BOTTOM', UIParent, 0, 6)
+            MainMenuExpBar:SetFrameLevel(1) -- Lower level for editor overlay visibility
+            -- Set NEW style size immediately
+            MainMenuExpBar:SetSize(537, 10)
+            
+            if MainMenuBarExpText then
+                MainMenuBarExpText:SetParent(MainMenuExpBar)
+                -- Text will be positioned later based on style
             end
         end
+        
+        -- Setup reputation bar with NEW style sizes
+        if ReputationWatchBar then
+            ReputationWatchBar:SetFrameLevel(1) -- Lower level for editor overlay visibility
+            -- Set NEW style size immediately
+            ReputationWatchBar:SetSize(537, 10)
+            
+            if ReputationWatchStatusBar then
+                -- Set NEW style size for status bar too
+                ReputationWatchStatusBar:SetSize(537, 10)
+                
+                -- CRITICAL: Configure reputation text properly from the start
+                if ReputationWatchStatusBarText then
+                    -- Ensure correct parent
+                    ReputationWatchStatusBarText:SetParent(ReputationWatchStatusBar)
+                    -- Set reasonable layering - not excessively high
+                    ReputationWatchStatusBarText:SetDrawLayer("OVERLAY", 2)
+                    -- Position for NEW style (offset +1)
+                    ReputationWatchStatusBarText:SetClearPoint('CENTER', ReputationWatchStatusBar, 'CENTER', 0, 1)
+                    -- IMPORTANT: Hide by default (only show on hover)
+                    ReputationWatchStatusBarText:Hide()
+                end
+            end
+        end
+    end
 
-        -- Exhaustion Level Bar
-        local exhaustionLevelBar = ExhaustionLevelFillBar
-        if exhaustionLevelBar then
-            exhaustionLevelBar:SetHeight(frameBar:GetHeight())
-            exhaustionLevelBar:SetWidth(frameBar:GetWidth()) -- Ensure width matches too
+
+    -- Connect XP/Rep bars to the editor system
+    local function ConnectBarsToEditor()
+        if not addon.ActionBarFrames.repexpbar then
+            return
         end
 
-        -- Experience Bar Border Texture (RetailUI pattern - EXACT)
-        local borderTexture = MainMenuXPBarTexture0
-        borderTexture:SetAllPoints(mainMenuExpBar)
-        borderTexture:SetPoint("TOPLEFT", mainMenuExpBar, "TOPLEFT", -3, 3)
-        borderTexture:SetPoint("BOTTOMRIGHT", mainMenuExpBar, "BOTTOMRIGHT", 3, -6)
-        SetAtlasTexture(borderTexture, 'ExperienceBar-Border')
+        -- Connect Experience Bar to container
+        local mainMenuExpBar = MainMenuExpBar
+        if mainMenuExpBar then
+            mainMenuExpBar:SetParent(addon.ActionBarFrames.repexpbar)
+            mainMenuExpBar:ClearAllPoints()
+            -- Use NEW style size (537x10) not container size
+            mainMenuExpBar:SetSize(537, 10)
+            mainMenuExpBar:SetPoint("CENTER", addon.ActionBarFrames.repexpbar, "CENTER", 0, 0)
+            mainMenuExpBar:SetFrameLevel(1) -- Keep low level for editor overlay
+            mainMenuExpBar:SetScale(0.9) -- Ensure consistent scale
+             mainMenuExpBar:SetFrameStrata("MEDIUM")
+        end
 
-        -- Experience Bar Text
-        local expText = MainMenuBarExpText
-        expText:SetParent(mainMenuExpBar)
-        expText:SetPoint("CENTER", mainMenuExpBar, "CENTER", 0, 2)
-        expText:SetDrawLayer("OVERLAY", 7)
-        expText:Show() -- Ensure text is visible
-
-        -- Reputation Watch Bar (RetailUI pattern - EXACT)
+        -- Connect Reputation Bar to container  
         local repWatchBar = ReputationWatchBar
         if repWatchBar then
-            repWatchBar:SetParent(frameBar)
-            repWatchBar:SetFrameStrata("LOW") -- RetailUI uses default/low strata
+            repWatchBar:SetParent(addon.ActionBarFrames.repexpbar)
             repWatchBar:ClearAllPoints()
-            repWatchBar:SetWidth(frameBar:GetWidth())
-            repWatchBar:SetScale(0.9) --  CRITICAL: Apply same scale as experience bar
-
-            local repStatusBar = ReputationWatchStatusBar
-            if repStatusBar then
-                repStatusBar:SetAllPoints(repWatchBar)
-                repStatusBar:SetWidth(repWatchBar:GetWidth())
+            -- Use NEW style size (537x10) not container size
+            repWatchBar:SetSize(537, 10)
+            repWatchBar:SetScale(0.9) -- Same scale as XP bar
+            repWatchBar:SetFrameLevel(1) -- Keep low level for editor overlay
+            repWatchBar:SetFrameStrata("MEDIUM")
+            -- Position relative to exp bar
+            if mainMenuExpBar and mainMenuExpBar:IsShown() then
+                repWatchBar:SetPoint("CENTER", addon.ActionBarFrames.repexpbar, "CENTER", 0, -22)
+            else
+                repWatchBar:SetPoint("CENTER", addon.ActionBarFrames.repexpbar, "CENTER", 0, 0)
             end
-
-            -- Reputation Background Texture (RetailUI pattern - EXACT)
-            local backgroundTexture = _G[repStatusBar:GetName() .. "Background"]
-            if backgroundTexture then
-                backgroundTexture:SetAllPoints(repStatusBar)
-                SetAtlasTexture(backgroundTexture, 'ExperienceBar-Background')
-            end
-
-            -- Reputation Border Textures (RetailUI pattern - EXACT)
-            borderTexture = ReputationXPBarTexture0
-            if borderTexture then
-                borderTexture:SetAllPoints(repStatusBar)
-                borderTexture:SetPoint("TOPLEFT", repStatusBar, "TOPLEFT", -3, 2)
-                borderTexture:SetPoint("BOTTOMRIGHT", repStatusBar, "BOTTOMRIGHT", 3, -7)
-                SetAtlasTexture(borderTexture, 'ExperienceBar-Border')
-            end
-
-            borderTexture = ReputationWatchBarTexture0
-            if borderTexture then
-                borderTexture:SetAllPoints(repStatusBar)
-                borderTexture:SetPoint("TOPLEFT", repStatusBar, "TOPLEFT", -3, 2)
-                borderTexture:SetPoint("BOTTOMRIGHT", repStatusBar, "BOTTOMRIGHT", 3, -7)
-                SetAtlasTexture(borderTexture, 'ExperienceBar-Border')
-            end
-
-            -- Reputation Watch Bar Text (if exists)
-            local repText = ReputationWatchBarText
-            if repText then
-                repText:SetParent(repWatchBar)
-                repText:SetFrameLevel(repWatchBar:GetFrameLevel() + 10) -- Higher than bar
-                repText:SetPoint("CENTER", repWatchBar, "CENTER", 0, 2)
-                repText:SetDrawLayer("OVERLAY", 7)
-                repText:Show() -- Ensure text is visible
+            
+            -- Fix reputation status bar to use exact size and proper centering
+            if ReputationWatchStatusBar then
+                ReputationWatchStatusBar:SetSize(537, 10)
+                
+                -- CRITICAL FIX: Ensure text is properly configured
+                if ReputationWatchStatusBarText then
+                    -- Force correct parent and layering
+                    ReputationWatchStatusBarText:SetParent(ReputationWatchStatusBar)
+                    ReputationWatchStatusBarText:SetDrawLayer("OVERLAY", 2)
+                    ReputationWatchStatusBarText:SetClearPoint('CENTER', ReputationWatchStatusBar, 'CENTER', 0, 1)
+                    -- Hide by default - only show on hover
+                    ReputationWatchStatusBarText:Hide()
+                end
             end
         end
     end
 
-    -- RetailUI Pattern: Remove Blizzard Frames (EXACT COPY)
+    -- Force reputation text configuration (ensures text is properly configured but hidden by default)
+    local function ForceReputationTextConfiguration()
+        if ReputationWatchStatusBarText and ReputationWatchStatusBar then
+            -- Force correct parent
+            ReputationWatchStatusBarText:SetParent(ReputationWatchStatusBar)
+            -- Force reasonable layering - not excessively high
+            ReputationWatchStatusBarText:SetDrawLayer("OVERLAY", 2)
+            -- Force correct positioning for NEW style
+            ReputationWatchStatusBarText:SetClearPoint('CENTER', ReputationWatchStatusBar, 'CENTER', 0, 1)
+            -- IMPORTANT: Hide by default - only show on hover (Blizzard handles this)
+            ReputationWatchStatusBarText:Hide()
+        end
+    end
+
+    -- Update bar positioning when needed
+    local function UpdateBarPositions()
+        if not addon.ActionBarFrames.repexpbar then
+            return
+        end
+
+        local mainMenuExpBar = MainMenuExpBar
+        local repWatchBar = ReputationWatchBar
+        
+        if mainMenuExpBar then
+            mainMenuExpBar:ClearAllPoints()
+            -- Use NEW style size (537x10) consistently
+            mainMenuExpBar:SetSize(537, 10)
+            mainMenuExpBar:SetPoint("CENTER", addon.ActionBarFrames.repexpbar, "CENTER", 0, 0)
+            mainMenuExpBar:SetFrameLevel(1) -- Reasonable level maintained
+            mainMenuExpBar:SetScale(0.9) -- Ensure consistent scale
+        end
+
+        if repWatchBar then
+            repWatchBar:ClearAllPoints()
+            -- Use NEW style size (537x10) consistently
+            repWatchBar:SetSize(537, 10)
+            repWatchBar:SetScale(0.9) -- Same scale as XP bar
+            repWatchBar:SetFrameLevel(1) -- Reasonable level maintained
+            
+            if mainMenuExpBar and mainMenuExpBar:IsShown() then
+                repWatchBar:SetPoint("CENTER", addon.ActionBarFrames.repexpbar, "CENTER", 0, -22)
+            else
+                repWatchBar:SetPoint("CENTER", addon.ActionBarFrames.repexpbar, "CENTER", 0, 0)
+            end
+            
+            -- Ensure reputation status bar uses exact size and centering
+            if ReputationWatchStatusBar then
+                ReputationWatchStatusBar:SetSize(537, 10)
+                
+                -- CRITICAL FIX: Ensure text is properly configured
+                if ReputationWatchStatusBarText then
+                    -- Force correct parent and layering
+                    ReputationWatchStatusBarText:SetParent(ReputationWatchStatusBar)
+                    ReputationWatchStatusBarText:SetDrawLayer("OVERLAY", 2)
+                    ReputationWatchStatusBarText:SetClearPoint('CENTER', ReputationWatchStatusBar, 'CENTER', 0, 1)
+                    -- Hide by default - only show on hover
+                    ReputationWatchStatusBarText:Hide()
+                end
+            end
+        end
+    end
     local function RemoveBlizzardFrames()
         local blizzFrames = {MainMenuBarPerformanceBar, MainMenuBarTexture0, MainMenuBarTexture1, MainMenuBarTexture2,
                              MainMenuBarTexture3, MainMenuBarMaxLevelBar, ReputationXPBarTexture1,
@@ -637,64 +693,6 @@ local function InitializeMainbars()
         end
     end
 
-    -- RetailUI Pattern: XP Bar Update Hook (EXACT COPY)
-    local function MainMenuExpBar_Update()
-        if not addon.ActionBarFrames.repexpbar then
-            return
-        end
-
-        local mainMenuExpBar = MainMenuExpBar
-        mainMenuExpBar:ClearAllPoints()
-        mainMenuExpBar:SetWidth(addon.ActionBarFrames.repexpbar:GetWidth())
-        mainMenuExpBar:SetHeight(addon.ActionBarFrames.repexpbar:GetHeight())
-        mainMenuExpBar:SetPoint("LEFT", addon.ActionBarFrames.repexpbar, "LEFT", 0, 0)
-
-        local repWatchBar = ReputationWatchBar
-        if repWatchBar:IsShown() then
-            -- RetailUI pattern: XP bar anchors DIRECTLY to RepWatchBar when visible
-            mainMenuExpBar:SetPoint("LEFT", repWatchBar, "LEFT", 0, -22)
-        else
-            -- When no reputation bar, position relative to container
-            mainMenuExpBar:SetPoint("LEFT", addon.ActionBarFrames.repexpbar, "LEFT", 0, 0)
-        end
-    end
-
-    -- RetailUI Pattern: Reputation Bar Update Hook (EXACT COPY)
-    local function ReputationWatchBar_Update()
-        if not addon.ActionBarFrames.repexpbar then
-            return
-        end
-
-        local factionInfo = GetWatchedFactionInfo()
-        if factionInfo then
-            local repWatchBar = ReputationWatchBar
-            if repWatchBar then
-                repWatchBar:SetParent(addon.ActionBarFrames.repexpbar)
-                repWatchBar:SetFrameStrata("LOW")
-                repWatchBar:ClearAllPoints()
-                repWatchBar:SetHeight(addon.ActionBarFrames.repexpbar:GetHeight())
-                repWatchBar:SetScale(0.9)
-                repWatchBar:SetPoint("LEFT", addon.ActionBarFrames.repexpbar, "LEFT", 0, 0)
-
-                local repStatusBar = ReputationWatchStatusBar
-                if repStatusBar then
-                    -- Force ReputationWatchStatusBar to have a lower FrameLevel than its text
-                    repStatusBar:SetFrameLevel(repWatchBar:GetFrameLevel() - 1)
-
-                    -- Find and fix the actual text inside the status bar
-                    for i = 1, repStatusBar:GetNumRegions() do
-                        local region = select(i, repStatusBar:GetRegions())
-                        if region and region:GetObjectType() == "FontString" then
-                            -- This is the real reputation text!
-                            region:SetDrawLayer("OVERLAY", 7)
-                            region:Show()
-                            break
-                        end
-                    end
-                end
-            end
-        end
-    end
 
     function MainMenuBarMixin:initialize()
         self:actionbutton_setup();
@@ -940,38 +938,50 @@ local function InitializeMainbars()
             end
         end, 0.1)
 
-        -- Set up hooks for XP/Rep bars
-        hooksecurefunc('MainMenuExpBar_Update', MainMenuExpBar_Update)
-        hooksecurefunc('ReputationWatchBar_Update', ReputationWatchBar_Update)
+        -- Set up hooks for XP/Rep bars - RESTORED FUNCTIONALITY
+        -- Connect bars to editor system first
+        ConnectBarsToEditor()
+        
+        -- Force reputation text configuration
+        ForceReputationTextConfiguration()
+        
+        -- Hook for maintaining editor connection
+        hooksecurefunc('MainMenuExpBar_Update', UpdateBarPositions)
+        hooksecurefunc('ReputationWatchBar_Update', UpdateBarPositions)
+        
+        -- Add the essential ReputationWatchBar_Update hook for styling only
+        hooksecurefunc('ReputationWatchBar_Update', function()
+            local name = GetWatchedFactionInfo()
+            if name and ReputationWatchBar then
+                -- Update editor positioning only if using editor system
+                if addon.ActionBarFrames.repexpbar then
+                    UpdateBarPositions()
+                end
+                
+                -- Configure reputation status bar for NEW style only
+                if ReputationWatchStatusBar then
+                    ReputationWatchStatusBar:SetHeight(10)
+                    ReputationWatchStatusBar:SetClearPoint('TOPLEFT', ReputationWatchBar, 0, 3)
+                    
+                    -- Set size to match NEW style (537x10)
+                    ReputationWatchStatusBar:SetSize(537, 10)
+                    
+                    if ReputationWatchStatusBarBackground then
+                        ReputationWatchStatusBarBackground:SetAllPoints(ReputationWatchStatusBar)
+                    end
+                    
+                    -- Text positioning for NEW style with FIXED layering
+                    if ReputationWatchStatusBarText then
+                        -- NEW style text positioning (offset +1)
+                        ReputationWatchStatusBarText:SetClearPoint('CENTER', ReputationWatchStatusBar, 'CENTER', 0, 1)
+                        
+                        -- Reasonable layering - not excessively high
+                        ReputationWatchStatusBarText:SetDrawLayer("OVERLAY", 2)
+                    end
+                end
+            end
+        end)
 
-        -- Hook the function that sets watched faction
-        if SetWatchedFactionIndex then
-            hooksecurefunc('SetWatchedFactionIndex', function(factionIndex)
-                addon.core:ScheduleTimer(function()
-                    if ReputationWatchBar_Update then
-                        ReputationWatchBar_Update()
-                    end
-                end, 0.1)
-            end)
-        end
-
-        -- Additional hooks for reputation bar show/hide events
-        if ReputationWatchBar then
-            ReputationWatchBar:HookScript("OnShow", function()
-                addon.core:ScheduleTimer(function()
-                    if MainMenuExpBar_Update then
-                        MainMenuExpBar_Update()
-                    end
-                end, 0.1)
-            end)
-            ReputationWatchBar:HookScript("OnHide", function()
-                addon.core:ScheduleTimer(function()
-                    if MainMenuExpBar_Update then
-                        MainMenuExpBar_Update()
-                    end
-                end, 0.1)
-            end)
-        end
 
         -- Position action bars immediately
         PositionActionBarsToContainers_Initial()
@@ -991,34 +1001,92 @@ local function InitializeMainbars()
     -- Initialize immediately since we're already enabled
     ApplyMainbarsSystem()
 
-    -- Set up event handlers
-local function ApplyModernExpBarVisual()
-    local exhaustionStateID = GetRestState()
-    local mainMenuExpBar = MainMenuExpBar
-    local exhaustionTick = ExhaustionTick
-   
-
-    -- Aplica la textura personalizada
-    mainMenuExpBar:SetStatusBarTexture(addon._dir .. "uiexperiencebar")
-    mainMenuExpBar:SetStatusBarColor(1, 1, 1, 1)
-    
-    
-
-    -- Lógica de TexCoord y color según exhaustion
-    if exhaustionStateID == 1 then
-        exhaustionTick:Show()
-        mainMenuExpBar:GetStatusBarTexture():SetTexCoord(574/2048, 1137/2048, 34/64, 43/64)
-
-    elseif exhaustionStateID == 2 then
-        exhaustionTick:Hide()
-        mainMenuExpBar:GetStatusBarTexture():SetTexCoord(1/2048, 570/2048, 42/64, 51/64)
-
-    else
-        exhaustionTick:Hide()
-        mainMenuExpBar:GetStatusBarTexture():SetTexCoord(0, 1, 0, 1)
-
+    -- Set up event handlers - NEW style only system
+    local function ApplyDragonUIExpRepBarStyling()
+        -- Always use NEW style system only
+        
+        -- Setup both exp and rep bars with NEW styling system
+        for _, bar in pairs({MainMenuExpBar, ReputationWatchStatusBar}) do
+            if bar then
+                bar:GetStatusBarTexture():SetDrawLayer('BORDER')
+                
+                -- Create status texture if it doesn't exist
+                if not bar.status then
+                    bar.status = bar:CreateTexture(nil, 'ARTWORK')
+                end
+                
+                -- Always apply NEW style (537x10 size)
+                bar:SetSize(537, 10)
+                bar.status:SetPoint('CENTER', 0, -2)
+                bar.status:set_atlas('ui-hud-experiencebar-round', true)
+                
+                -- Apply custom textures for reputation bar
+                if bar == ReputationWatchStatusBar then
+                    bar:SetStatusBarTexture(addon._dir .. 'statusbarfill.tga')
+                    if ReputationWatchStatusBarBackground then
+                        ReputationWatchStatusBarBackground:set_atlas('ui-hud-experiencebar-background', true)
+                    end
+                end
+            end
+        end
+        
+        -- Apply background styling for NEW style for MainMenuExpBar
+        if MainMenuExpBar then
+            -- Ensure MainMenuExpBar is properly centered
+            MainMenuExpBar:ClearAllPoints()
+            if addon.ActionBarFrames.repexpbar then
+                MainMenuExpBar:SetPoint('CENTER', addon.ActionBarFrames.repexpbar, 'CENTER', 0, 0)
+            end
+            
+            for _, obj in pairs({MainMenuExpBar:GetRegions()}) do
+                if obj:GetObjectType() == 'Texture' and obj:GetDrawLayer() == 'BACKGROUND' then
+                    obj:set_atlas('ui-hud-experiencebar-background', true)
+                end
+            end
+        end
     end
-end
+
+    local function ApplyModernExpBarVisual()
+        local exhaustionStateID = GetRestState()
+        local mainMenuExpBar = MainMenuExpBar
+        
+        if not mainMenuExpBar then
+            return
+        end
+        
+        -- Always apply NEW style custom texture system
+        mainMenuExpBar:SetStatusBarTexture(addon._dir .. "uiexperiencebar")
+        mainMenuExpBar:SetStatusBarColor(1, 1, 1, 1)
+        
+        -- Configure ExhaustionLevelFillBar
+        if ExhaustionLevelFillBar then
+            ExhaustionLevelFillBar:SetHeight(mainMenuExpBar:GetHeight())
+            ExhaustionLevelFillBar:set_atlas('ui-hud-experiencebar-fill-prediction')
+        end
+        
+        -- Apply exhaustion-based TexCoords
+        if exhaustionStateID == 1 then
+            -- Rested state
+            mainMenuExpBar:GetStatusBarTexture():SetTexCoord(574/2048, 1137/2048, 34/64, 43/64)
+            if ExhaustionLevelFillBar then
+                ExhaustionLevelFillBar:SetVertexColor(0.0, 0, 1, 0.45)
+            end
+        elseif exhaustionStateID == 2 then
+            -- Tired state
+            mainMenuExpBar:GetStatusBarTexture():SetTexCoord(1/2048, 570/2048, 42/64, 51/64)
+            if ExhaustionLevelFillBar then
+                ExhaustionLevelFillBar:SetVertexColor(0.58, 0.0, 0.55, 0.45)
+            end
+        else
+            -- Normal state
+            mainMenuExpBar:GetStatusBarTexture():SetTexCoord(0, 1, 0, 1)
+        end
+        
+        -- Never show ExhaustionTick (as requested)
+        if ExhaustionTick then
+            ExhaustionTick:Hide()
+        end
+    end
     -- Single event handler for addon initialization
     local initFrame = CreateFrame("Frame")
     initFrame:RegisterEvent("ADDON_LOADED")
@@ -1033,11 +1101,22 @@ end
     initFrame:RegisterEvent("PLAYER_LOGIN")
 
     local eventFrame = CreateFrame("Frame")
-eventFrame:RegisterEvent("PLAYER_ENTERING_WORLD")
-eventFrame:RegisterEvent("UPDATE_EXHAUSTION")
-eventFrame:SetScript("OnEvent", function(self, event)
-    ApplyModernExpBarVisual()
-end)
+    eventFrame:RegisterEvent("PLAYER_ENTERING_WORLD")
+    eventFrame:RegisterEvent("UPDATE_EXHAUSTION")
+    eventFrame:SetScript("OnEvent", function(self, event)
+        if event == "PLAYER_ENTERING_WORLD" then
+            -- Apply initial styling setup
+            addon.core:ScheduleTimer(function()
+                ApplyDragonUIExpRepBarStyling()
+                ApplyModernExpBarVisual()
+                ForceReputationTextConfiguration()
+            end, 0.2)
+        elseif event == "UPDATE_EXHAUSTION" then
+            -- Update exhaustion state only
+            ApplyModernExpBarVisual()
+            ForceReputationTextConfiguration()
+        end
+    end)
 
     initFrame:SetScript("OnEvent", function(self, event, addonName)
         if event == "ADDON_LOADED" and addonName == "DragonUI" then
@@ -1047,26 +1126,28 @@ end)
             end
 
         elseif event == "PLAYER_ENTERING_WORLD" then
-            -- Apply XP/Rep bar styling
+            -- Apply XP/Rep bar styling and connect to editor
             addon.core:ScheduleTimer(function()
                 if IsModuleEnabled() then
                     -- Remove interfering Blizzard textures FIRST
                     RemoveBlizzardFrames()
 
-                    -- Apply XP/Rep bars styling after removing frames
-                    if addon.ActionBarFrames and addon.ActionBarFrames.repexpbar then
-                        ReplaceBlizzardRepExpBarFrame(addon.ActionBarFrames.repexpbar)
-                    end
+                    -- Connect bars to editor system
+                    ConnectBarsToEditor()
 
-                    -- Force initial update of reputation and experience bars
-                    if ReputationWatchBar_Update then
-                        ReputationWatchBar_Update()
-                    end
-                    if MainMenuExpBar_Update then
-                        MainMenuExpBar_Update()
-                    end
+                    -- Apply DragonUI styling system (from OLD)
+                    ApplyDragonUIExpRepBarStyling()
 
-                    -- SIMPLE SOLUTION: Hide text after updates
+                    -- Apply modern exhaustion system
+                    ApplyModernExpBarVisual()
+
+                    -- Force reputation text configuration
+                    ForceReputationTextConfiguration()
+
+                    -- Update positions
+                    UpdateBarPositions()
+
+                    -- Hide text by default
                     if MainMenuBarExpText then
                         MainMenuBarExpText:Hide()
                     end
@@ -1125,9 +1206,9 @@ end)
             -- Update reputation bar when watched faction changes
             if IsModuleEnabled() then
                 addon.core:ScheduleTimer(function()
-                    if ReputationWatchBar_Update then
-                        ReputationWatchBar_Update()
-                    end
+                    ApplyDragonUIExpRepBarStyling()
+                    ForceReputationTextConfiguration()
+                    UpdateBarPositions()
                 end, 0.1)
             end
 

@@ -88,8 +88,8 @@ local defaults = {
             },
             repexpbar = {
                 anchor = "BOTTOM",
-                posX = 27,
-                posY = 6
+                posX = 0,
+                posY = 7
             }
         },
         -- Quest Tracker
