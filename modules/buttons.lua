@@ -13,6 +13,10 @@ local hooksecurefunc = hooksecurefunc;
 local GetName = GetName;
 local _G = getfenv(0);
 
+-- ============================================================================
+-- BUTTONS MODULE FOR DRAGONUI
+-- ============================================================================
+
 -- RANGE_INDICATOR = "•";
 
 local actionbars = {
@@ -22,6 +26,35 @@ local actionbars = {
 	'MultiBarRightButton',
 	'MultiBarLeftButton',
 };
+
+-- Module state tracking
+local ButtonsModule = {
+    initialized = false,
+    applied = false,
+    originalValues = {},  -- Store original button states for restoration
+    hooked = false
+}
+
+-- ============================================================================
+-- CONFIGURATION FUNCTIONS
+-- ============================================================================
+
+local function GetModuleConfig()
+    return addon.db and addon.db.profile and addon.db.profile.modules and addon.db.profile.modules.buttons
+end
+
+local function IsModuleEnabled()
+    local cfg = GetModuleConfig()
+    return cfg and cfg.enabled
+end
+
+local function GetButtonsConfig()
+    return addon.db and addon.db.profile and addon.db.profile.buttons
+end
+
+-- ============================================================================
+-- BUTTON ITERATOR
+-- ============================================================================
 
 addon.buttons_iterator = function()
 	local index = 0
@@ -38,8 +71,14 @@ addon.buttons_iterator = function()
 	end
 end
 
+-- ============================================================================
+-- UTILITY FUNCTIONS
+-- ============================================================================
+
 -- helper function to handle action button grid logic
 local function handleActionButton(button, wowAlwaysShow)
+    if not IsModuleEnabled() then return end
+    
     if wowAlwaysShow then
         button:SetAttribute('showgrid', 1)
         ActionButton_ShowGrid(button)
@@ -53,8 +92,10 @@ local function handleActionButton(button, wowAlwaysShow)
 end
 
 function addon.actionbuttons_grid()
+    if not IsModuleEnabled() then return end
+    
     local wowAlwaysShow = GetCVar("alwaysShowActionBars") == "1"
-    local db = addon.db and addon.db.profile and addon.db.profile.buttons
+    local db = GetButtonsConfig()
     local hideMainBg = db and db.hide_main_bar_background
     
     for index = 1, NUM_ACTIONBAR_BUTTONS do
@@ -65,20 +106,22 @@ function addon.actionbuttons_grid()
     end
 end
 
-
-
 local function is_petaction(self, name)
 	local spec = self:GetName():match(name)
 	if (spec) then return true else return false end
 end
 
 local function fix_texture(self, texture)
+    if not IsModuleEnabled() then return end
+    
 	if texture and texture ~= config.assets.normal then
 		self:SetNormalTexture(config.assets.normal)
 	end
 end
 
 local function setup_background(button, anchor, shadow)
+    if not IsModuleEnabled() then return nil end
+    
 	if not button or button.shadow then return; end
 	if shadow and not button.shadow then
 		local shadow = button:CreateTexture(nil, 'ARTWORK', nil, 1)
@@ -96,7 +139,13 @@ local function setup_background(button, anchor, shadow)
 	return background;
 end
 
+-- ============================================================================
+-- BUTTON STYLING FUNCTIONS
+-- ============================================================================
+
 local function actionbuttons_hotkey(button)
+    if not IsModuleEnabled() then return end
+    
 	if not button then return; end
 	local buttonName = button:GetName();
 	if not buttonName then return; end
@@ -107,7 +156,7 @@ local function actionbuttons_hotkey(button)
 	local text = hotkey:GetText();
 	if not text then return; end
 	
-	local db = addon.db.profile.buttons
+	local db = GetButtonsConfig()
 	if not db or not db.hotkey then return end
 	
 	if RANGE_INDICATOR and text == RANGE_INDICATOR then
@@ -137,8 +186,41 @@ local function actionbuttons_hotkey(button)
 	end
 end
 
+local function StoreOriginalButtonState(button)
+    if not button or ButtonsModule.originalValues[button] then return end
+    
+    local name = button:GetName()
+    if not name then return end
+    
+    local normal = _G[name..'NormalTexture'] or button:GetNormalTexture()
+    
+    ButtonsModule.originalValues[button] = {
+        normalTexture = normal and normal:GetTexture(),
+        normalPoints = {},
+        normalVertexColor = normal and {normal:GetVertexColor()},
+        normalDrawLayer = normal and normal:GetDrawLayer(),
+        size = {button:GetSize()},
+        checkedTexture = button:GetCheckedTexture() and button:GetCheckedTexture():GetTexture(),
+        pushedTexture = button:GetPushedTexture() and button:GetPushedTexture():GetTexture(),
+        highlightTexture = button:GetHighlightTexture() and button:GetHighlightTexture():GetTexture(),
+    }
+    
+    -- Store normal texture points
+    if normal then
+        for i = 1, normal:GetNumPoints() do
+            local point, relativeTo, relativePoint, xOfs, yOfs = normal:GetPoint(i)
+            table.insert(ButtonsModule.originalValues[button].normalPoints, {point, relativeTo, relativePoint, xOfs, yOfs})
+        end
+    end
+end
+
 local function main_buttons(button)
+    if not IsModuleEnabled() then return end
+    
 	if not button or button.__styled then return; end
+
+    -- Store original state before styling
+    StoreOriginalButtonState(button)
 
 	local name = button:GetName();
 	local normal = _G[name..'NormalTexture'] or button:GetNormalTexture();
@@ -189,8 +271,13 @@ local function main_buttons(button)
 end
 
 local function additional_buttons(button)
+    if not IsModuleEnabled() then return end
+    
 	if not button then return; end
 	
+    -- Store original state before styling
+    StoreOriginalButtonState(button)
+    
 	button:SetNormalTexture(config.assets.normal)
 	if button.background then return; end
 
@@ -242,7 +329,131 @@ local function additional_buttons(button)
 	button.background = setup_background(button, normal, false)
 end
 
+-- ============================================================================
+-- RESTORATION FUNCTIONS
+-- ============================================================================
+
+local function RestoreButtonToOriginal(button)
+    if not button or not ButtonsModule.originalValues[button] then return end
+    
+    local original = ButtonsModule.originalValues[button]
+    local name = button:GetName()
+    if not name then return end
+    
+    local normal = _G[name..'NormalTexture'] or button:GetNormalTexture()
+    
+    -- Restore normal texture
+    if normal and original.normalTexture then
+        normal:SetTexture(original.normalTexture)
+        
+        -- Restore points
+        normal:ClearAllPoints()
+        for _, point in ipairs(original.normalPoints) do
+            normal:SetPoint(unpack(point))
+        end
+        
+        -- Restore vertex color
+        if original.normalVertexColor then
+            normal:SetVertexColor(unpack(original.normalVertexColor))
+        end
+        
+        -- Restore draw layer
+        if original.normalDrawLayer then
+            normal:SetDrawLayer(original.normalDrawLayer)
+        end
+    end
+    
+    -- Restore size
+    if original.size then
+        button:SetSize(unpack(original.size))
+    end
+    
+    -- Remove custom backgrounds and shadows
+    if button.background then
+        button.background:Hide()
+        button.background = nil
+    end
+    
+    if button.shadow then
+        button.shadow:Hide()
+        button.shadow = nil
+    end
+    
+    -- Reset styled flag
+    button.__styled = nil
+    
+    -- Clear original values
+    ButtonsModule.originalValues[button] = nil
+end
+
+local function RestoreAllButtons()
+    -- Restore main action buttons
+    for button in addon.buttons_iterator() do
+        if button then
+            RestoreButtonToOriginal(button)
+        end
+    end
+    
+    -- Restore vehicle buttons
+    for index=1, VEHICLE_MAX_ACTIONBUTTONS do
+        local button = _G['VehicleMenuBarActionButton'..index]
+        if button then
+            RestoreButtonToOriginal(button)
+        end
+    end
+    
+    -- Restore possess buttons
+    for index=1, NUM_POSSESS_SLOTS do
+        local button = _G['PossessButton'..index]
+        if button then
+            RestoreButtonToOriginal(button)
+        end
+    end
+    
+    -- Restore pet buttons
+    for index=1, NUM_PET_ACTION_SLOTS do
+        local button = _G['PetActionButton'..index]
+        if button then
+            RestoreButtonToOriginal(button)
+        end
+    end
+    
+    -- Restore stance buttons
+    for index=1, NUM_SHAPESHIFT_SLOTS do
+        local button = _G['ShapeshiftButton'..index]
+        if button then
+            RestoreButtonToOriginal(button)
+        end
+    end
+    
+    ButtonsModule.applied = false
+end
+
+-- ============================================================================
+-- APPLY STYLING
+-- ============================================================================
+
+local function ApplyButtonStyling()
+    if ButtonsModule.applied then return end
+    
+    -- Setup main action buttons
+    for button in addon.buttons_iterator() do
+        if button then
+            main_buttons(button)
+            button:SetSize(37, 37)
+        end
+    end
+    
+    ButtonsModule.applied = true
+end
+
+-- ============================================================================
+-- UPDATE HANDLERS
+-- ============================================================================
+
 local function actionbuttons_update(button)
+    if not IsModuleEnabled() then return end
+    
 	if not button then return; end
 	local name = button:GetName();
 	if name:find('MultiCast') then return; end
@@ -250,7 +461,9 @@ local function actionbuttons_update(button)
 end
 
 function addon.RefreshButtons()
-    local db = addon.db and addon.db.profile and addon.db.profile.buttons
+    if not IsModuleEnabled() then return end
+    
+    local db = GetButtonsConfig()
     if not db then return end
 
     for button in addon.buttons_iterator() do
@@ -302,22 +515,14 @@ function addon.RefreshButtons()
     end
 end
 
--- setup main action buttons
-for button in addon.buttons_iterator() do
-	main_buttons(button)
-	button:SetSize(37, 37)
-end
-
-addon.package:RegisterEvents(function()
-    addon.actionbuttons_grid(); 
-    addon.RefreshButtons();
-    collectgarbage();
-end,
-    'PLAYER_LOGIN'
-);
+-- ============================================================================
+-- TEMPLATE FUNCTIONS
+-- ============================================================================
 
 -- setup vehicle action buttons
 function addon.vehiclebuttons_template()
+    if not IsModuleEnabled() then return end
+    
 	if UnitHasVehicleUI('player') then
 		for index=1, VEHICLE_MAX_ACTIONBUTTONS do
 			main_buttons(_G['VehicleMenuBarActionButton'..index])
@@ -327,6 +532,8 @@ end
 
 -- setup possess buttons
 function addon.possessbuttons_template()
+    if not IsModuleEnabled() then return end
+    
 	for index=1, NUM_POSSESS_SLOTS do
 		additional_buttons(_G['PossessButton'..index])
 	end
@@ -334,6 +541,8 @@ end
 
 -- setup pet action buttons
 function addon.petbuttons_template()
+    if not IsModuleEnabled() then return end
+    
 	for index=1, NUM_PET_ACTION_SLOTS do
 		additional_buttons(_G['PetActionButton'..index])
 	end
@@ -341,55 +550,128 @@ end
 
 -- setup stance/shapeshift buttons
 function addon.stancebuttons_template()
+    if not IsModuleEnabled() then return end
+    
 	for index=1, NUM_SHAPESHIFT_SLOTS do
 		additional_buttons(_G['ShapeshiftButton'..index])
 	end
 end
 
+-- ============================================================================
+-- HOOKS MANAGEMENT
+-- ============================================================================
 
+local function SetupHooks()
+    if ButtonsModule.hooked or not IsModuleEnabled() then return end
+    
+    hooksecurefunc('ActionButton_Update', actionbuttons_update)
 
-hooksecurefunc('ActionButton_Update', actionbuttons_update);
+    -- cache border color to avoid repeated config access
+    local cachedBorderColor = nil
 
--- cache border color to avoid repeated config access
-local cachedBorderColor = nil
-
-hooksecurefunc('ActionButton_ShowGrid', function(button)
-    if not button then return end
-    
-    local buttonName = button:GetName()
-    if not buttonName then return end
-    
-    local db = addon.db and addon.db.profile and addon.db.profile.buttons
-    
-    -- cache border color on first access
-    if not cachedBorderColor then
-        cachedBorderColor = config.buttons.border_color
-    end
-    
-    local normalTexture = _G[buttonName..'NormalTexture']
-    if not normalTexture then return end
-    
-    if db and db.hide_main_bar_background then
-        local wowAlwaysShow = GetCVar("alwaysShowActionBars") == "1"
+    hooksecurefunc('ActionButton_ShowGrid', function(button)
+        if not IsModuleEnabled() then return end
         
-        if buttonName:match("^ActionButton%d+$") then
-            if wowAlwaysShow or HasAction(button.action) then
+        if not button then return end
+        
+        local buttonName = button:GetName()
+        if not buttonName then return end
+        
+        local db = GetButtonsConfig()
+        
+        -- cache border color on first access
+        if not cachedBorderColor then
+            cachedBorderColor = config.buttons.border_color
+        end
+        
+        local normalTexture = _G[buttonName..'NormalTexture']
+        if not normalTexture then return end
+        
+        if db and db.hide_main_bar_background then
+            local wowAlwaysShow = GetCVar("alwaysShowActionBars") == "1"
+            
+            if buttonName:match("^ActionButton%d+$") then
+                if wowAlwaysShow or HasAction(button.action) then
+                    normalTexture:SetVertexColor(cachedBorderColor[1], cachedBorderColor[2], cachedBorderColor[3], cachedBorderColor[4])
+                end
+            else
                 normalTexture:SetVertexColor(cachedBorderColor[1], cachedBorderColor[2], cachedBorderColor[3], cachedBorderColor[4])
             end
         else
             normalTexture:SetVertexColor(cachedBorderColor[1], cachedBorderColor[2], cachedBorderColor[3], cachedBorderColor[4])
         end
+    end)
+    
+    ButtonsModule.hooked = true
+end
+
+-- ============================================================================
+-- MODULE CONTROL FUNCTIONS
+-- ============================================================================
+
+function addon.RefreshButtonStyling()
+    if IsModuleEnabled() then
+        -- Apply styling
+        SetupHooks()
+        ApplyButtonStyling()
+        
+        -- Refresh all templates
+        addon.vehiclebuttons_template()
+        addon.possessbuttons_template()
+        addon.petbuttons_template()
+        addon.stancebuttons_template()
+        
+        -- Refresh button states
+        addon.RefreshButtons()
     else
-        normalTexture:SetVertexColor(cachedBorderColor[1], cachedBorderColor[2], cachedBorderColor[3], cachedBorderColor[4])
+        -- Restore original buttons
+        RestoreAllButtons()
+    end
+end
+
+-- ============================================================================
+-- INITIALIZATION
+-- ============================================================================
+
+local function Initialize()
+    if ButtonsModule.initialized then return end
+    
+    -- Only apply styling if module is enabled
+    if IsModuleEnabled() then
+        ApplyButtonStyling()
+        SetupHooks()
+    end
+    
+    ButtonsModule.initialized = true
+end
+
+-- Register initialization events
+addon.package:RegisterEvents(function()
+    if IsModuleEnabled() then
+        addon.actionbuttons_grid(); 
+        addon.RefreshButtons();
+    end
+    collectgarbage();
+end,
+    'PLAYER_LOGIN'
+);
+
+-- Auto-initialize when addon loads
+local initFrame = CreateFrame("Frame")
+initFrame:RegisterEvent("ADDON_LOADED")
+initFrame:SetScript("OnEvent", function(self, event, addonName)
+    if addonName == "DragonUI" then
+        Initialize()
+        self:UnregisterEvent("ADDON_LOADED")
     end
 end)
-
-
 
 -- monitor alwaysShowActionBars CVar changes
 local frame = CreateFrame("Frame")
 local lastState = GetCVar("alwaysShowActionBars")
 frame:SetScript("OnUpdate", function(self, elapsed)
+    if not IsModuleEnabled() then return end
+    
     self.timer = (self.timer or 0) + elapsed
     if self.timer >= 0.3 then
         self.timer = 0

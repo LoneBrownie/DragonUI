@@ -143,10 +143,208 @@ function addon:CreateOptionsTable()
                         order = 20
                     },
                     
+                    noop_enabled = {
+                        type = 'toggle',
+                        name = "Hide Blizzard Elements",
+                        desc = "Hide default Blizzard UI elements to allow DragonUI to replace them. When disabled, all original Blizzard elements will be restored.",
+                        get = function()
+                            return addon.db.profile.modules and addon.db.profile.modules.noop and addon.db.profile.modules.noop.enabled
+                        end,
+                        set = function(info, val)
+                            if not addon.db.profile.modules then
+                                addon.db.profile.modules = {}
+                            end
+                            if not addon.db.profile.modules.noop then
+                                addon.db.profile.modules.noop = {}
+                            end
+                            addon.db.profile.modules.noop.enabled = val
+                            if addon.RefreshNoop then
+                                addon.RefreshNoop()
+                            end
+                        end,
+                        order = 21
+                    },
+                    
+                    cooldowns_enabled = {
+                        type = 'toggle',
+                        name = "Cooldown Timers",
+                        desc = "Show cooldown timers on action buttons. When disabled, cooldown timers will be hidden and the system will be completely deactivated.",
+                        get = function()
+                            return addon.db.profile.modules and addon.db.profile.modules.cooldowns and addon.db.profile.modules.cooldowns.enabled
+                        end,
+                        set = function(info, val)
+                            if not addon.db.profile.modules then
+                                addon.db.profile.modules = {}
+                            end
+                            if not addon.db.profile.modules.cooldowns then
+                                addon.db.profile.modules.cooldowns = {}
+                            end
+                            addon.db.profile.modules.cooldowns.enabled = val
+                            if addon.RefreshCooldownSystem then
+                                addon.RefreshCooldownSystem()
+                            end
+                        end,
+                        order = 22
+                    },
+                    
+                    buttons_enabled = {
+                        type = 'toggle',
+                        name = "Button Styling",
+                        desc = "Apply DragonUI button styling and enhancements. When disabled, buttons will use default Blizzard appearance.",
+                        get = function()
+                            return addon.db.profile.modules and addon.db.profile.modules.buttons and addon.db.profile.modules.buttons.enabled
+                        end,
+                        set = function(info, val)
+                            if not addon.db.profile.modules then
+                                addon.db.profile.modules = {}
+                            end
+                            if not addon.db.profile.modules.buttons then
+                                addon.db.profile.modules.buttons = {}
+                            end
+                            addon.db.profile.modules.buttons.enabled = val
+                            if addon.RefreshButtonStyling then
+                                addon.RefreshButtonStyling()
+                            end
+                        end,
+                        order = 23
+                    },
+                    
+                    vehicle_enabled = {
+                        type = 'toggle',
+                        name = "Vehicle Interface",
+                        desc = "Apply DragonUI vehicle interface enhancements. When disabled, vehicles will use default Blizzard interface.",
+                        get = function()
+                            return addon.db.profile.modules and addon.db.profile.modules.vehicle and addon.db.profile.modules.vehicle.enabled
+                        end,
+                        set = function(info, val)
+                            if not addon.db.profile.modules then
+                                addon.db.profile.modules = {}
+                            end
+                            if not addon.db.profile.modules.vehicle then
+                                addon.db.profile.modules.vehicle = {}
+                            end
+                            addon.db.profile.modules.vehicle.enabled = val
+                            if addon.RefreshVehicleSystem then
+                                addon.RefreshVehicleSystem()
+                            end
+                        end,
+                        order = 24
+                    },
+                    
+                    stance_enabled = {
+                        type = 'toggle',
+                        name = "Stance/Shapeshift Bar",
+                        desc = "Apply DragonUI stance and shapeshift bar positioning and styling. When disabled, stance bars will use default Blizzard positioning.",
+                        get = function()
+                            return addon.db.profile.modules and addon.db.profile.modules.stance and addon.db.profile.modules.stance.enabled
+                        end,
+                        set = function(info, val)
+                            if not addon.db.profile.modules then
+                                addon.db.profile.modules = {}
+                            end
+                            if not addon.db.profile.modules.stance then
+                                addon.db.profile.modules.stance = {}
+                            end
+                            addon.db.profile.modules.stance.enabled = val
+                            if addon.RefreshStanceSystem then
+                                addon.RefreshStanceSystem()
+                            end
+                        end,
+                        order = 25
+                    },
+                    
+                    petbar_enabled = {
+                        type = 'toggle',
+                        name = "Pet Action Bar",
+                        desc = "Apply DragonUI pet action bar positioning and styling. When disabled, pet bar will use default Blizzard positioning.",
+                        get = function()
+                            return addon.db.profile.modules and addon.db.profile.modules.petbar and addon.db.profile.modules.petbar.enabled
+                        end,
+                        set = function(info, val)
+                            if not addon.db.profile.modules then
+                                addon.db.profile.modules = {}
+                            end
+                            if not addon.db.profile.modules.petbar then
+                                addon.db.profile.modules.petbar = {}
+                            end
+                            addon.db.profile.modules.petbar.enabled = val
+                            if addon.RefreshPetbarSystem then
+                                addon.RefreshPetbarSystem()
+                            end
+                        end,
+                        order = 26
+                    },
+                    
+                    multicast_enabled = {
+                        type = 'toggle',
+                        name = "Multicast Bars (Totem/Possess)",
+                        desc = "Apply DragonUI multicast bars positioning and styling. Includes totem bars for Shamans and possess bars for vehicles. When disabled, these bars will use default Blizzard positioning.",
+                        get = function()
+                            return addon.db.profile.modules and addon.db.profile.modules.multicast and addon.db.profile.modules.multicast.enabled
+                        end,
+                        set = function(info, val)
+                            if not addon.db.profile.modules then
+                                addon.db.profile.modules = {}
+                            end
+                            if not addon.db.profile.modules.multicast then
+                                addon.db.profile.modules.multicast = {}
+                            end
+                            addon.db.profile.modules.multicast.enabled = val
+                            if addon.RefreshMulticastSystem then
+                                addon.RefreshMulticastSystem()
+                            end
+                        end,
+                        order = 27
+                    },
+                    
+                    micromenu_enabled = {
+                        type = 'toggle',
+                        name = "Micro Menu & Bags",
+                        desc = "Apply DragonUI micro menu and bags system styling and positioning. Includes character button, spellbook, talents, etc. and bag management. When disabled, these elements will use default Blizzard positioning and styling.",
+                        get = function()
+                            return addon.db.profile.modules and addon.db.profile.modules.micromenu and addon.db.profile.modules.micromenu.enabled
+                        end,
+                        set = function(info, val)
+                            if not addon.db.profile.modules then
+                                addon.db.profile.modules = {}
+                            end
+                            if not addon.db.profile.modules.micromenu then
+                                addon.db.profile.modules.micromenu = {}
+                            end
+                            addon.db.profile.modules.micromenu.enabled = val
+                            if addon.RefreshMicromenuSystem then
+                                addon.RefreshMicromenuSystem()
+                            end
+                        end,
+                        order = 28
+                    },
+                    
+                    mainbars_enabled = {
+                        type = 'toggle',
+                        name = "Main Action Bars & Status Bars",
+                        desc = "Apply DragonUI main action bars, status bars (XP/Rep), scaling, and positioning system. Includes all 5 action bars, pet bar, vehicle bar, experience and reputation bars. When disabled, all bars will use default Blizzard positioning and styling.",
+                        get = function()
+                            return addon.db.profile.modules and addon.db.profile.modules.mainbars and addon.db.profile.modules.mainbars.enabled
+                        end,
+                        set = function(info, val)
+                            if not addon.db.profile.modules then
+                                addon.db.profile.modules = {}
+                            end
+                            if not addon.db.profile.modules.mainbars then
+                                addon.db.profile.modules.mainbars = {}
+                            end
+                            addon.db.profile.modules.mainbars.enabled = val
+                            if addon.RefreshMainbarsSystem then
+                                addon.RefreshMainbarsSystem()
+                            end
+                        end,
+                        order = 29
+                    },
+                    
                     coming_soon = {
                         type = 'description',
                         name = "|cffFFD700More modules will be added here soon...|r\n\nPlanned modules: Unit Frames, Minimap, Chat, Buffs, etc.",
-                        order = 21
+                        order = 30
                     }
                 }
             },
@@ -446,30 +644,12 @@ function addon:CreateOptionsTable()
                                 }
                             },
                             cooldown = {
+                                
                                 type = 'group',
                                 name = "Cooldown Text",
                                 inline = true,
                                 order = 7,
                                 args = {
-                                    show = {
-                                        type = 'toggle',
-                                        name = "Show Cooldown",
-                                        desc = "Display cooldown text",
-                                        get = function()
-                                            return addon.db.profile.buttons.cooldown.show
-                                        end,
-                                        set = function(info, value)
-                                            addon.db.profile.buttons.cooldown.show = value
-                                            if value and addon.ForceRefreshCooldowns then
-                                                -- Use force refresh when enabling cooldowns
-                                                addon.ForceRefreshCooldowns()
-                                            elseif addon.RefreshCooldowns then
-                                                -- Use normal refresh when disabling
-                                                addon.RefreshCooldowns()
-                                            end
-                                        end,
-                                        order = 1
-                                    },
                                     min_duration = {
                                         type = 'range',
                                         name = "Min Duration",

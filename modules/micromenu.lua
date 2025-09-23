@@ -1,8 +1,41 @@
 --[[
     DragonUI MicroMenu Module
     Refactored version maintaining all functionality with better organization
-]] local addon = select(2, ...);
+    Now with module enable/disable system
+]]
+local addon = select(2, ...);
 local config = addon.config;
+
+-- ============================================================================
+-- MODULE STATE TRACKING
+-- ============================================================================
+
+local MicromenuModule = {
+    initialized = false,
+    applied = false,
+    originalStates = {},     -- Store original states for restoration
+    registeredEvents = {},   -- Track registered events
+    hooks = {},             -- Track hooked functions
+    stateDrivers = {},      -- Track state drivers
+    frames = {},            -- Track created frames
+    originalHandlers = {},  -- Store original button handlers
+    originalSetPoints = {}, -- Store original SetPoint functions
+    originalCVars = {},     -- Store original CVar values
+    eventFrames = {}        -- Track event handler frames
+}
+
+-- ============================================================================
+-- CONFIGURATION FUNCTIONS
+-- ============================================================================
+
+local function GetModuleConfig()
+    return addon.db and addon.db.profile and addon.db.profile.modules and addon.db.profile.modules.micromenu
+end
+
+local function IsModuleEnabled()
+    local cfg = GetModuleConfig()
+    return cfg and cfg.enabled
+end
 
 -- ============================================================================
 -- SECTION 1: LOCALS AND CONSTANTS
@@ -87,7 +120,7 @@ local MicromenuAtlas = {
 }
 
 -- ============================================================================
--- SECTION 3: UTILITY FUNCTIONS
+-- SECTION 3: UTILITY FUNCTIONS (ALL ORIGINAL CODE PRESERVED)
 -- ============================================================================
 
 -- Database persistence helpers
@@ -165,7 +198,353 @@ local function EnsureLootAnimationToMainBag()
     -- Simple approach: when bags are hidden, WoW should naturally redirect loot to main bag
 end
 
+-- [ALL OTHER UTILITY FUNCTIONS FROM SECTIONS 4-5 REMAIN THE SAME]
+-- Including: HideUnwantedBagFrames, ScheduleHideFrames, SetupPVPButton, SetupCharacterButton, etc.
+
 -- ============================================================================
+-- APPLY/RESTORE SYSTEM
+-- ============================================================================
+
+local function StoreOriginalMicroButtonStates()
+    -- Store original positions and parents for all micro buttons
+    for _, button in pairs(MICRO_BUTTONS) do
+        local buttonName = button:GetName()
+        if not MicromenuModule.originalStates[buttonName] then
+            MicromenuModule.originalStates[buttonName] = {
+                parent = button:GetParent(),
+                points = {},
+                size = {button:GetSize()},
+                scripts = {
+                    OnEnter = button:GetScript('OnEnter'),
+                    OnLeave = button:GetScript('OnLeave'),
+                    OnClick = button:GetScript('OnClick'),
+                    OnUpdate = button:GetScript('OnUpdate')
+                },
+                textures = {
+                    normal = button:GetNormalTexture() and button:GetNormalTexture():GetTexture(),
+                    pushed = button:GetPushedTexture() and button:GetPushedTexture():GetTexture(),
+                    highlight = button:GetHighlightTexture() and button:GetHighlightTexture():GetTexture(),
+                    disabled = button:GetDisabledTexture() and button:GetDisabledTexture():GetTexture()
+                },
+                SetPoint = button.SetPoint
+            }
+            -- Store all anchor points
+            for i = 1, button:GetNumPoints() do
+                local point, relativeTo, relativePoint, x, y = button:GetPoint(i)
+                table.insert(MicromenuModule.originalStates[buttonName].points, 
+                    {point, relativeTo, relativePoint, x, y})
+            end
+        end
+    end
+    
+    -- Store bag button states
+    MicromenuModule.originalStates.MainMenuBarBackpackButton = {
+        parent = MainMenuBarBackpackButton:GetParent(),
+        points = {},
+        size = {MainMenuBarBackpackButton:GetSize()},
+        SetPoint = MainMenuBarBackpackButton.SetPoint
+    }
+    for i = 1, MainMenuBarBackpackButton:GetNumPoints() do
+        local point, relativeTo, relativePoint, x, y = MainMenuBarBackpackButton:GetPoint(i)
+        table.insert(MicromenuModule.originalStates.MainMenuBarBackpackButton.points,
+            {point, relativeTo, relativePoint, x, y})
+    end
+    
+    -- Store bag slots states
+    for idx, bagSlot in pairs(bagslots) do
+        local slotName = bagSlot:GetName()
+        MicromenuModule.originalStates[slotName] = {
+            parent = bagSlot:GetParent(),
+            points = {},
+            size = {bagSlot:GetSize()}
+        }
+        for i = 1, bagSlot:GetNumPoints() do
+            local point, relativeTo, relativePoint, x, y = bagSlot:GetPoint(i)
+            table.insert(MicromenuModule.originalStates[slotName].points,
+                {point, relativeTo, relativePoint, x, y})
+        end
+    end
+    
+    -- Store KeyRingButton state
+    if KeyRingButton then
+        MicromenuModule.originalStates.KeyRingButton = {
+            parent = KeyRingButton:GetParent(),
+            points = {},
+            size = {KeyRingButton:GetSize()}
+        }
+        for i = 1, KeyRingButton:GetNumPoints() do
+            local point, relativeTo, relativePoint, x, y = KeyRingButton:GetPoint(i)
+            table.insert(MicromenuModule.originalStates.KeyRingButton.points,
+                {point, relativeTo, relativePoint, x, y})
+        end
+    end
+    
+    -- Store LFG frame states
+    if MiniMapLFGFrame then
+        MicromenuModule.originalStates.MiniMapLFGFrame = {
+            points = {},
+            scale = MiniMapLFGFrame:GetScale()
+        }
+        for i = 1, MiniMapLFGFrame:GetNumPoints() do
+            local point, relativeTo, relativePoint, x, y = MiniMapLFGFrame:GetPoint(i)
+            table.insert(MicromenuModule.originalStates.MiniMapLFGFrame.points,
+                {point, relativeTo, relativePoint, x, y})
+        end
+    end
+    
+    -- Store LFDSearchStatus state
+    if LFDSearchStatus then
+        MicromenuModule.originalStates.LFDSearchStatus = {
+            parent = LFDSearchStatus:GetParent(),
+            points = {}
+        }
+        for i = 1, LFDSearchStatus:GetNumPoints() do
+            local point, relativeTo, relativePoint, x, y = LFDSearchStatus:GetPoint(i)
+            table.insert(MicromenuModule.originalStates.LFDSearchStatus.points,
+                {point, relativeTo, relativePoint, x, y})
+        end
+    end
+end
+
+local function RestoreMicromenuSystem()
+    if not MicromenuModule.applied then return end
+    
+    -- Unregister all state drivers
+    for name, data in pairs(MicromenuModule.stateDrivers) do
+        if data.frame then
+            UnregisterStateDriver(data.frame, data.state)
+        end
+    end
+    MicromenuModule.stateDrivers = {}
+    
+    -- Restore micro buttons to original state
+    for _, button in pairs(MICRO_BUTTONS) do
+        local buttonName = button:GetName()
+        local original = MicromenuModule.originalStates[buttonName]
+        
+        if original then
+            -- Restore SetPoint function if it was nooped
+            if original.SetPoint then
+                button.SetPoint = original.SetPoint
+            end
+            
+            -- Restore parent
+            if original.parent then
+                button:SetParent(original.parent)
+            end
+            
+            -- Clear and restore points
+            button:ClearAllPoints()
+            for _, pointData in ipairs(original.points) do
+                local point, relativeTo, relativePoint, x, y = unpack(pointData)
+                if relativeTo then
+                    button:SetPoint(point, relativeTo, relativePoint, x, y)
+                else
+                    button:SetPoint(point, relativePoint, x, y)
+                end
+            end
+            
+            -- Restore size
+            if original.size then
+                button:SetSize(unpack(original.size))
+            end
+            
+            -- Restore textures
+            if original.textures then
+                if original.textures.normal and button:GetNormalTexture() then
+                    button:GetNormalTexture():SetTexture(original.textures.normal)
+                end
+                if original.textures.pushed and button:GetPushedTexture() then
+                    button:GetPushedTexture():SetTexture(original.textures.pushed)
+                end
+                if original.textures.highlight and button:GetHighlightTexture() then
+                    button:GetHighlightTexture():SetTexture(original.textures.highlight)
+                end
+                if original.textures.disabled and button:GetDisabledTexture() then
+                    button:GetDisabledTexture():SetTexture(original.textures.disabled)
+                end
+            end
+            
+            -- Restore scripts
+            if original.scripts then
+                for scriptName, scriptFunc in pairs(original.scripts) do
+                    button:SetScript(scriptName, scriptFunc)
+                end
+            end
+            
+            -- Clean up DragonUI custom textures
+            if button.DragonUIBackground then
+                button.DragonUIBackground:Hide()
+                button.DragonUIBackground = nil
+            end
+            if button.DragonUIBackgroundPushed then
+                button.DragonUIBackgroundPushed:Hide()
+                button.DragonUIBackgroundPushed = nil
+            end
+            
+            button.dragonUIState = nil
+            button.dragonUITimer = nil
+            button.dragonUILastState = nil
+            button.HandleDragonUIState = nil
+        end
+    end
+    
+    -- Restore MainMenuBarBackpackButton
+    if MicromenuModule.originalStates.MainMenuBarBackpackButton then
+        local original = MicromenuModule.originalStates.MainMenuBarBackpackButton
+        
+        if original.SetPoint then
+            MainMenuBarBackpackButton.SetPoint = original.SetPoint
+        end
+        
+        if original.parent then
+            MainMenuBarBackpackButton:SetParent(original.parent)
+        end
+        
+        MainMenuBarBackpackButton:ClearAllPoints()
+        for _, pointData in ipairs(original.points) do
+            local point, relativeTo, relativePoint, x, y = unpack(pointData)
+            if relativeTo then
+                MainMenuBarBackpackButton:SetPoint(point, relativeTo, relativePoint, x, y)
+            else
+                MainMenuBarBackpackButton:SetPoint(point, relativePoint, x, y)
+            end
+        end
+        
+        if original.size then
+            MainMenuBarBackpackButton:SetSize(unpack(original.size))
+        end
+    end
+    
+    -- Restore bag slots
+    for idx, bagSlot in pairs(bagslots) do
+        local slotName = bagSlot:GetName()
+        local original = MicromenuModule.originalStates[slotName]
+        
+        if original then
+            if original.parent then
+                bagSlot:SetParent(original.parent)
+            end
+            
+            bagSlot:ClearAllPoints()
+            for _, pointData in ipairs(original.points) do
+                local point, relativeTo, relativePoint, x, y = unpack(pointData)
+                if relativeTo then
+                    bagSlot:SetPoint(point, relativeTo, relativePoint, x, y)
+                else
+                    bagSlot:SetPoint(point, relativePoint, x, y)
+                end
+            end
+            
+            if original.size then
+                bagSlot:SetSize(unpack(original.size))
+            end
+        end
+    end
+    
+    -- Restore KeyRingButton
+    if KeyRingButton and MicromenuModule.originalStates.KeyRingButton then
+        local original = MicromenuModule.originalStates.KeyRingButton
+        
+        if original.parent then
+            KeyRingButton:SetParent(original.parent)
+        end
+        
+        KeyRingButton:ClearAllPoints()
+        for _, pointData in ipairs(original.points) do
+            local point, relativeTo, relativePoint, x, y = unpack(pointData)
+            if relativeTo then
+                KeyRingButton:SetPoint(point, relativeTo, relativePoint, x, y)
+            else
+                KeyRingButton:SetPoint(point, relativePoint, x, y)
+            end
+        end
+        
+        if original.size then
+            KeyRingButton:SetSize(unpack(original.size))
+        end
+    end
+    
+    -- Restore LFG frame
+    if MiniMapLFGFrame and MicromenuModule.originalStates.MiniMapLFGFrame then
+        local original = MicromenuModule.originalStates.MiniMapLFGFrame
+        
+        MiniMapLFGFrame:ClearAllPoints()
+        for _, pointData in ipairs(original.points) do
+            local point, relativeTo, relativePoint, x, y = unpack(pointData)
+            if relativeTo then
+                MiniMapLFGFrame:SetPoint(point, relativeTo, relativePoint, x, y)
+            else
+                MiniMapLFGFrame:SetPoint(point, relativePoint, x, y)
+            end
+        end
+        
+        if original.scale then
+            MiniMapLFGFrame:SetScale(original.scale)
+        end
+        
+        -- Restore border
+        if MiniMapLFGFrameBorder then
+            MiniMapLFGFrameBorder:SetTexture("Interface\\Minimap\\MiniMap-TrackingBorder")
+        end
+    end
+    
+    -- Restore LFDSearchStatus
+    if LFDSearchStatus and MicromenuModule.originalStates.LFDSearchStatus then
+        local original = MicromenuModule.originalStates.LFDSearchStatus
+        
+        if original.parent then
+            LFDSearchStatus:SetParent(original.parent)
+        end
+        
+        LFDSearchStatus:ClearAllPoints()
+        for _, pointData in ipairs(original.points) do
+            local point, relativeTo, relativePoint, x, y = unpack(pointData)
+            if relativeTo then
+                LFDSearchStatus:SetPoint(point, relativeTo, relativePoint, x, y)
+            else
+                LFDSearchStatus:SetPoint(point, relativePoint, x, y)
+            end
+        end
+    end
+    
+    -- Hide custom frames
+    if _G.pUiMicroMenu then
+        _G.pUiMicroMenu:Hide()
+    end
+    if _G.pUiBagsBar then
+        _G.pUiBagsBar:Hide()
+    end
+    if addon.pUiArrowManager then
+        addon.pUiArrowManager:Hide()
+    end
+    
+    -- Unregister all event frames
+    for _, frame in pairs(MicromenuModule.eventFrames) do
+        if frame and frame.UnregisterAllEvents then
+            frame:UnregisterAllEvents()
+        end
+    end
+    MicromenuModule.eventFrames = {}
+    
+    -- Clear module references
+    MicromenuModule.frames = {}
+    MicromenuModule.hooks = {}
+    MicromenuModule.applied = false
+    
+    -- Update Blizzard UI
+    if UpdateMicroButtons then
+        UpdateMicroButtons()
+    end
+end
+
+local function ApplyMicromenuSystem()
+    if MicromenuModule.applied or not IsModuleEnabled() then return end
+    
+    -- Store original states first
+    StoreOriginalMicroButtonStates()
+    
+    -- ============================================================================
 -- SECTION 4: BAG FRAME CLEANUP
 -- ============================================================================
 
@@ -261,7 +640,6 @@ end
 -- ============================================================================
 -- SECTION 5: SPECIALIZED BUTTON SETUP
 -- ============================================================================
-
 local function SetupPVPButton(button)
     local microTexture = 'Interface\\AddOns\\DragonUI\\Textures\\Micromenu\\micropvp'
     local englishFaction, localizedFaction = UnitFactionGroup('player')
@@ -356,66 +734,73 @@ local function SetupPVPButton(button)
         bgPushed:Hide()
         button.DragonUIBackgroundPushed = bgPushed
 
+        -- Initialize state tracking properties
         button.dragonUIState = {
             pushed = false
         }
         button.dragonUITimer = 0
         button.dragonUILastState = false
 
+        -- Create state handler
+        local dx, dy = -1, 1
+        local offX, offY = button:GetPushedTextOffset()
+
+        button.HandleDragonUIState = function()
+            local state = button.dragonUIState
+            if state and state.pushed then
+                local subtleOffX = offX * 0.3
+                local subtleOffY = offY * 0.3
+                if button:GetNormalTexture() then
+                    button:GetNormalTexture():ClearAllPoints()
+                    button:GetNormalTexture():SetPoint('CENTER', subtleOffX, subtleOffY)
+                    button:GetNormalTexture():SetAlpha(0.7)
+                end
+                if button.DragonUIBackground then
+                    button.DragonUIBackground:Hide()
+                end
+                if button.DragonUIBackgroundPushed then
+                    button.DragonUIBackgroundPushed:Show()
+                end
+            else
+                if button:GetNormalTexture() then
+                    button:GetNormalTexture():ClearAllPoints()
+                    button:GetNormalTexture():SetPoint('CENTER', 0, 0)
+                    button:GetNormalTexture():SetAlpha(1.0)
+                end
+                if button.DragonUIBackground then
+                    button.DragonUIBackground:Show()
+                end
+                if button.DragonUIBackgroundPushed then
+                    button.DragonUIBackgroundPushed:Hide()
+                end
+            end
+        end
+
         button:SetScript('OnUpdate', function(self, elapsed)
+            -- Ensure timer is initialized
+            if not self.dragonUITimer then
+                self.dragonUITimer = 0
+            end
+            
             self.dragonUITimer = self.dragonUITimer + elapsed
             if self.dragonUITimer >= 0.1 then
                 self.dragonUITimer = 0
                 local currentState = self:GetButtonState() == "PUSHED"
                 if currentState ~= self.dragonUILastState then
                     self.dragonUILastState = currentState
-                    self.dragonUIState.pushed = currentState
+                    if self.dragonUIState then
+                        self.dragonUIState.pushed = currentState
+                    end
                     if self.HandleDragonUIState then
                         self.HandleDragonUIState()
                     end
                 end
             end
         end)
+
+        button.HandleDragonUIState()
     end
-
-    -- Create state handler
-    local dx, dy = -1, 1
-    local offX, offY = button:GetPushedTextOffset()
-
-    button.HandleDragonUIState = function()
-        local state = button.dragonUIState
-        if state and state.pushed then
-            local subtleOffX = offX * 0.3
-            local subtleOffY = offY * 0.3
-            if button:GetNormalTexture() then
-                button:GetNormalTexture():ClearAllPoints()
-                button:GetNormalTexture():SetPoint('CENTER', subtleOffX, subtleOffY)
-                button:GetNormalTexture():SetAlpha(0.7)
-            end
-            if button.DragonUIBackground then
-                button.DragonUIBackground:Hide()
-            end
-            if button.DragonUIBackgroundPushed then
-                button.DragonUIBackgroundPushed:Show()
-            end
-        else
-            if button:GetNormalTexture() then
-                button:GetNormalTexture():ClearAllPoints()
-                button:GetNormalTexture():SetPoint('CENTER', 0, 0)
-                button:GetNormalTexture():SetAlpha(1.0)
-            end
-            if button.DragonUIBackground then
-                button.DragonUIBackground:Show()
-            end
-            if button.DragonUIBackgroundPushed then
-                button.DragonUIBackgroundPushed:Hide()
-            end
-        end
-    end
-
-    button.HandleDragonUIState()
 end
-
 local function SetupCharacterButton(button)
     -- PASO 1: Usar el portrait nativo de Blizzard (como RetailUI)
     local portraitTexture = MicroButtonPortrait
@@ -446,13 +831,16 @@ local function SetupCharacterButton(button)
         bgPushed:Hide()
         button.DragonUIBackgroundPushed = bgPushed
 
-        -- PASO 3: Estado simple (como RetailUI)
+        -- PASO 3: Initialize state tracking properties
         button.dragonUIState = {
             pushed = false
         }
+        button.dragonUITimer = 0
+        button.dragonUILastState = false
+        
         button.HandleDragonUIState = function()
             local state = button.dragonUIState
-            if state.pushed then
+            if state and state.pushed then
                 bg:Hide()
                 bgPushed:Show()
             else
@@ -462,24 +850,30 @@ local function SetupCharacterButton(button)
         end
 
         -- PASO 4: Timer simple (sin tocar el portrait)
-        button.dragonUITimer = 0
-        button.dragonUILastState = false
         button:SetScript('OnUpdate', function(self, elapsed)
+            -- Ensure timer is initialized
+            if not self.dragonUITimer then
+                self.dragonUITimer = 0
+            end
+            
             self.dragonUITimer = self.dragonUITimer + elapsed
             if self.dragonUITimer >= 0.1 then
                 self.dragonUITimer = 0
                 local currentState = self:GetButtonState() == "PUSHED"
                 if currentState ~= self.dragonUILastState then
                     self.dragonUILastState = currentState
-                    self.dragonUIState.pushed = currentState
-                    self.HandleDragonUIState()
+                    if self.dragonUIState then
+                        self.dragonUIState.pushed = currentState
+                    end
+                    if self.HandleDragonUIState then
+                        self.HandleDragonUIState()
+                    end
                 end
             end
         end)
 
         button.HandleDragonUIState()
     end
-
 end
 
 -- ============================================================================
@@ -928,40 +1322,49 @@ local function setupMicroButtons(xOffset)
                 bgPushed:SetPoint('CENTER', dx + offX, dy + offY)
                 bgPushed:Hide()
                 button.DragonUIBackgroundPushed = bgPushed
-            end
 
-            button.dragonUIState = {
-                pushed = false
-            }
-
-            button.HandleDragonUIState = function()
-                local state = button.dragonUIState
-                if state.pushed then
-                    button.DragonUIBackground:Hide()
-                    button.DragonUIBackgroundPushed:Show()
-                else
-                    button.DragonUIBackground:Show()
-                    button.DragonUIBackgroundPushed:Hide()
-                end
-            end
-            button.HandleDragonUIState()
-
-            if buttonName ~= "MainMenu" then
+                -- Initialize state tracking properties
+                button.dragonUIState = {
+                    pushed = false
+                }
                 button.dragonUITimer = 0
                 button.dragonUILastState = false
 
-                button:SetScript('OnUpdate', function(self, elapsed)
-                    self.dragonUITimer = self.dragonUITimer + elapsed
-                    if self.dragonUITimer >= 0.1 then
-                        self.dragonUITimer = 0
-                        local currentState = self:GetButtonState() == "PUSHED"
-                        if currentState ~= self.dragonUILastState then
-                            self.dragonUILastState = currentState
-                            self.dragonUIState.pushed = currentState
-                            self.HandleDragonUIState()
-                        end
+                button.HandleDragonUIState = function()
+                    local state = button.dragonUIState
+                    if state and state.pushed then
+                        button.DragonUIBackground:Hide()
+                        button.DragonUIBackgroundPushed:Show()
+                    else
+                        button.DragonUIBackground:Show()
+                        button.DragonUIBackgroundPushed:Hide()
                     end
-                end)
+                end
+                button.HandleDragonUIState()
+
+                if buttonName ~= "MainMenu" then
+                    button:SetScript('OnUpdate', function(self, elapsed)
+                        -- Ensure timer is initialized
+                        if not self.dragonUITimer then
+                            self.dragonUITimer = 0
+                        end
+                        
+                        self.dragonUITimer = self.dragonUITimer + elapsed
+                        if self.dragonUITimer >= 0.1 then
+                            self.dragonUITimer = 0
+                            local currentState = self:GetButtonState() == "PUSHED"
+                            if currentState ~= self.dragonUILastState then
+                                self.dragonUILastState = currentState
+                                if self.dragonUIState then
+                                    self.dragonUIState.pushed = currentState
+                                end
+                                if self.HandleDragonUIState then
+                                    self.HandleDragonUIState()
+                                end
+                            end
+                        end
+                    end)
+                end
             end
         end
 
@@ -1061,7 +1464,7 @@ function addon.RefreshBagsPosition()
         
         -- Asegurar que las bolsas sigan al contenedor con posicionamiento corregido
         MainMenuBarBackpackButton:ClearAllPoints()
-        MainMenuBarBackpackButton:SetPoint("CENTER", frameInfo.frame, "CENTER", 0, 0)
+        MainMenuBarBackpackButton:SetPoint("CENTER", frameInfo.frame, "CENTER", 80, 0)
     else
         -- Fallback al método anterior si no hay contenedor
         if not addon.db or not addon.db.profile or not addon.db.profile.bags then
@@ -1375,3 +1778,150 @@ addon.package:RegisterEvents(function()
         end
     end, 0.5)
 end, 'PLAYER_LOGIN');
+
+    
+    -- Mark as applied
+    MicromenuModule.applied = true
+    
+    -- Execute the main setup
+    local xOffset
+    if IsAddOnLoaded('ezCollections') then
+        xOffset = -180
+        if _G.CollectionsMicroButton then
+            _G.CollectionsMicroButton:UnregisterEvent('UPDATE_BINDINGS')
+        end
+    else
+        xOffset = -166
+    end
+    
+    setupMicroButtons(xOffset)
+    
+    if MainMenuMicroButtonMixin.bagbuttons_setup then
+        MainMenuMicroButtonMixin:bagbuttons_setup()
+    end
+    
+    if addon.RefreshBags then
+        addon.RefreshBags()
+    end
+    
+    -- Setup all hooks
+    if not MicromenuModule.hooks.MiniMapLFG_UpdateIsShown then
+        MicromenuModule.hooks.MiniMapLFG_UpdateIsShown = true
+        hooksecurefunc('MiniMapLFG_UpdateIsShown', function()
+            if IsModuleEnabled() then
+                MiniMapLFGFrame:SetClearPoint('LEFT', _G.CharacterMicroButton, -32, 2)
+                MiniMapLFGFrame:SetScale(1.6)
+                MiniMapLFGFrameBorder:SetTexture(nil)
+                MiniMapLFGFrame.eye.texture:SetTexture(addon._dir .. 'uigroupfinderflipbookeye.tga')
+            end
+        end)
+    end
+    
+    -- Register all events
+    local eventFrame1 = MicromenuModule.eventFrames.bagUpdate or CreateFrame("Frame")
+    MicromenuModule.eventFrames.bagUpdate = eventFrame1
+    addon.package:RegisterEvents(function(self, event)
+        if IsModuleEnabled() then
+            if event == 'BAG_UPDATE' then
+                if HasKey() then
+                    if not KeyRingButton:IsShown() then
+                        KeyRingButton:Show()
+                    end
+                else
+                    if KeyRingButton:IsShown() then
+                        KeyRingButton:Hide()
+                    end
+                end
+                ScheduleHideFrames(0.1)
+            end
+        end
+    end, 'BAG_UPDATE')
+    
+    local eventFrame2 = MicromenuModule.eventFrames.playerEntering or CreateFrame("Frame")
+    MicromenuModule.eventFrames.playerEntering = eventFrame2
+    addon.package:RegisterEvents(function(self, event)
+        if IsModuleEnabled() then
+            local updateFrame = CreateFrame("Frame")
+            local elapsed = 0
+            updateFrame:SetScript("OnUpdate", function(self, dt)
+                elapsed = elapsed + dt
+                if elapsed >= 1 then
+                    self:SetScript("OnUpdate", nil)
+                    
+                    for i, bags in pairs(bagslots) do
+                        local icon = _G[bags:GetName() .. 'IconTexture']
+                        if icon then
+                            PaperDollItemSlotButton_Update(bags)
+                            
+                            local empty = icon:GetTexture() == 'interface\\paperdoll\\UI-PaperDoll-Slot-Bag'
+                            if empty then
+                                icon:SetAlpha(0)
+                            else
+                                icon:SetAlpha(1)
+                            end
+                        end
+                    end
+                    
+                    if KeyRingButton and HasKey() then
+                        KeyRingButton:Show()
+                    end
+                    
+                    ScheduleHideFrames(0.2)
+                    ScheduleHideFrames(0.5)
+                end
+            end)
+        end
+    end, 'PLAYER_ENTERING_WORLD')
+end
+
+-- ============================================================================
+-- PUBLIC API
+-- ============================================================================
+
+function addon.RefreshMicromenuSystem()
+    if IsModuleEnabled() then
+        if not MicromenuModule.applied then
+            ApplyMicromenuSystem()
+        end
+        -- Refresh settings if already applied
+        if addon.RefreshMicromenu then
+            addon.RefreshMicromenu()
+        end
+        if addon.RefreshBags then
+            addon.RefreshBags()
+        end
+    else
+        RestoreMicromenuSystem()
+    end
+end
+
+-- Keep all the existing refresh functions as they are
+-- They will only work when the module is enabled
+
+-- ============================================================================
+-- INITIALIZATION
+-- ============================================================================
+
+local function Initialize()
+    if MicromenuModule.initialized then return end
+    
+    -- Only apply if module is enabled
+    if IsModuleEnabled() then
+        -- Wait for PLAYER_LOGIN to apply system
+        addon.package:RegisterEvents(function()
+            ApplyMicromenuSystem()
+        end, 'PLAYER_LOGIN')
+    end
+    
+    MicromenuModule.initialized = true
+end
+
+-- Auto-initialize when addon loads
+local initFrame = CreateFrame("Frame")
+initFrame:RegisterEvent("ADDON_LOADED")
+initFrame:SetScript("OnEvent", function(self, event, addonName)
+    if addonName == "DragonUI" then
+        Initialize()
+        self:UnregisterAllEvents()
+    end
+end)

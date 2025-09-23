@@ -95,7 +95,7 @@ local defaults = {
         -- Quest Tracker
         questtracker = {
             anchor = "TOPRIGHT",
-            x = -140,
+            x = -140, 
             y = -255,
             show_header = false
         },
@@ -185,7 +185,6 @@ local defaults = {
                 font = {"Fonts\\ARIALN.TTF", 12, "OUTLINE"}
             },
             cooldown = {
-                show = true,
                 color = {1, 1, 1, 1},
                 min_duration = 3,
                 font = {"Fonts\\ARIALN.TTF", 16, "OUTLINE"},
@@ -388,6 +387,37 @@ local defaults = {
                 anchor = 'BOTTOMRIGHT',
                 anchorParent = 'BOTTOMRIGHT',
                 anchorFrame = 'FocusFrame'
+            }
+        },
+
+        -- MODULES SETTINGS
+        modules = {
+            noop = {
+                enabled = true  -- Hide default Blizzard UI elements to allow DragonUI replacements
+            },
+            cooldowns = {
+                enabled = true  -- Show cooldown timers on action buttons
+            },
+            buttons = {
+                enabled = true  -- Apply DragonUI button styling and enhancements
+            },
+            vehicle = {
+                enabled = true  -- Apply DragonUI vehicle interface enhancements
+            },
+            stance = {
+                enabled = true  -- Apply DragonUI stance/shapeshift bar positioning and styling
+            },
+            petbar = {
+                enabled = true  -- Apply DragonUI pet bar positioning and styling
+            },
+            multicast = {
+                enabled = true  -- Apply DragonUI multicast (totem/possess) bar positioning and styling
+            },
+            micromenu = {
+                enabled = true  -- Apply DragonUI micro menu and bags system styling and positioning
+            },
+            mainbars = {
+                enabled = true  -- Apply DragonUI main action bars, status bars (XP/Rep), scaling, and positioning system
             }
         }
     }

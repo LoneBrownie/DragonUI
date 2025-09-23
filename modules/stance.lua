@@ -8,6 +8,38 @@ local select = select;
 local pairs = pairs;
 local _G = getfenv(0);
 
+-- ============================================================================
+-- STANCE MODULE FOR DRAGONUI
+-- ============================================================================
+
+-- Module state tracking
+local StanceModule = {
+    initialized = false,
+    applied = false,
+    originalStates = {},     -- Store original states for restoration
+    registeredEvents = {},   -- Track registered events
+    hooks = {},             -- Track hooked functions
+    stateDrivers = {},      -- Track state drivers
+    frames = {}             -- Track created frames
+}
+
+-- ============================================================================
+-- CONFIGURATION FUNCTIONS
+-- ============================================================================
+
+local function GetModuleConfig()
+    return addon.db and addon.db.profile and addon.db.profile.modules and addon.db.profile.modules.stance
+end
+
+local function IsModuleEnabled()
+    local cfg = GetModuleConfig()
+    return cfg and cfg.enabled
+end
+
+-- ============================================================================
+-- CONSTANTS AND VARIABLES
+-- ============================================================================
+
 -- const
 local InCombatLockdown = InCombatLockdown;
 local GetNumShapeshiftForms = GetNumShapeshiftForms;
@@ -31,17 +63,12 @@ local stance = {
 	['WARRIOR'] = 'show'
 };
 
--- @param: config number - these will be read dynamically
--- Base Y position (52) is now hardcoded for optimal pretty_actionbar compatibility
--- Individual Y offsets are available per bar for fine-tuning
--- local offsetX = config.additional.stance.x_position;
--- local leftbarOffset = config.additional.leftbar_offset;
--- local rightbarOffset = config.additional.rightbar_offset;
+-- Module frames (created only when enabled)
+local anchor, stancebar
 
-local anchor = CreateFrame('Frame', 'pUiStanceHolder', pUiMainBar)
--- Set initial position - will be updated by stancebar_update when config is ready
-anchor:SetPoint('TOPLEFT', UIParent, 'BOTTOM', 0, 105) -- Fallback position slightly above pet bar
-anchor:SetSize(37, 37)
+-- Initialize MultiBar references
+local MultiBarBottomLeft = _G["MultiBarBottomLeft"]
+local MultiBarBottomRight = _G["MultiBarBottomRight"]
 
 -- Initialization tracking (like RetailUI's petBarInitialized)
 local stanceBarInitialized = false;
@@ -52,38 +79,10 @@ local maxInitializationAttempts = 5;
 local updateQueue = {};
 local isUpdating = false;
 
-local function ProcessUpdateQueue()
-	if isUpdating or InCombatLockdown() or UnitAffectingCombat('player') then
-		return;
-	end
-	
-	if #updateQueue > 0 then
-		isUpdating = true;
-		-- Clear queue first
-		updateQueue = {};
-		
-		-- Safe update execution with additional protection
-		if anchor and anchor.stancebar_update and not InCombatLockdown() then
-			anchor:stancebar_update();
-		end
-		
-		isUpdating = false;
-	end
-end
-
--- Queue an update request
-local function QueueUpdate(reason)
-	table.insert(updateQueue, reason or "unknown");
-	-- Process queue after a brief delay to batch updates
-	local frame = CreateFrame("Frame");
-	frame:SetScript("OnUpdate", function(self)
-		self:SetScript("OnUpdate", nil);
-		ProcessUpdateQueue();
-	end);
-end
-
 -- method update position using relative anchoring
-function anchor:stancebar_update()
+local function stancebar_update()
+    if not IsModuleEnabled() or not anchor then return end
+    
 	if not InCombatLockdown() and not UnitAffectingCombat('player') then
 		-- Validate config exists before proceeding
 		if not config or not config.additional or not config.additional.stance then
@@ -107,7 +106,7 @@ function anchor:stancebar_update()
 		local offsetY = config.additional.stance.y_offset or 0;  -- Additional Y offset for fine-tuning
 		
 		-- Validate frame still exists and is properly set up
-		if not self or not self.SetPoint then
+		if not anchor or not anchor.SetPoint then
 			return;
 		end
 		
@@ -115,15 +114,20 @@ function anchor:stancebar_update()
 		local petBarHolder = _G["pUiPetBarHolder"];
 		if petBarHolder and petBarHolder:IsShown() then
 			-- Anchor above Pet Bar
-			self:ClearAllPoints();
-			self:SetPoint('BOTTOM', petBarHolder, 'TOP', offsetX, 5 + offsetY);
+			anchor:ClearAllPoints();
+			anchor:SetPoint('BOTTOM', petBarHolder, 'TOP', offsetX, 5 + offsetY);
 		else
 			-- No Pet Bar, check if pretty_actionbar addon is loaded
 			if IsAddOnLoaded('pretty_actionbar') and _G.pUiMainBar then
 				-- Use pretty_actionbar's exact logic (same as pet bar)
 				local mainBar = _G.pUiMainBar;
-				local leftbar = MultiBarBottomLeft:IsShown();
-				local rightbar = MultiBarBottomRight:IsShown();
+				
+				-- Get fresh references to ensure they exist
+				local leftBarFrame = _G["MultiBarBottomLeft"] or MultiBarBottomLeft;
+				local rightBarFrame = _G["MultiBarBottomRight"] or MultiBarBottomRight;
+				
+				local leftbar = leftBarFrame and leftBarFrame:IsShown();
+				local rightbar = rightBarFrame and rightBarFrame:IsShown();
 				
 				-- Values from configuration (compatible with pretty_actionbar)
 				local nobar = 52;          -- Hardcoded optimal position for pretty_actionbar compatibility
@@ -132,36 +136,39 @@ function anchor:stancebar_update()
 				local leftOffset = nobar + leftbarOffset;   -- 142
 				local rightOffset = nobar + rightbarOffset; -- 92
 				
-				self:ClearAllPoints();
+				anchor:ClearAllPoints();
 				
 				if leftbar and rightbar then
 					-- Both bars shown, use leftOffset (positions above bottom right which is highest)
-					self:SetPoint('TOPLEFT', mainBar, 'TOPLEFT', offsetX, leftOffset + offsetY);
+					anchor:SetPoint('TOPLEFT', mainBar, 'TOPLEFT', offsetX, leftOffset + offsetY);
 				elseif leftbar then
 					-- Only left bar shown, use rightOffset (lower position)
-					self:SetPoint('TOPLEFT', mainBar, 'TOPLEFT', offsetX, rightOffset + offsetY);
+					anchor:SetPoint('TOPLEFT', mainBar, 'TOPLEFT', offsetX, rightOffset + offsetY);
 				elseif rightbar then
 					-- Only right bar shown, use leftOffset (higher position)
-					self:SetPoint('TOPLEFT', mainBar, 'TOPLEFT', offsetX, leftOffset + offsetY);
+					anchor:SetPoint('TOPLEFT', mainBar, 'TOPLEFT', offsetX, leftOffset + offsetY);
 				else
 					-- No extra bars, use default position
-					self:SetPoint('TOPLEFT', mainBar, 'TOPLEFT', offsetX, nobar + offsetY);
+					anchor:SetPoint('TOPLEFT', mainBar, 'TOPLEFT', offsetX, nobar + offsetY);
 				end
 			else
 				-- Fallback to standard Blizzard frames (relative anchoring)
-				local leftbar = MultiBarBottomLeft:IsShown();
-				local rightbar = MultiBarBottomRight:IsShown();
+				local leftBarFrame = _G["MultiBarBottomLeft"] or MultiBarBottomLeft;
+				local rightBarFrame = _G["MultiBarBottomRight"] or MultiBarBottomRight;
+				
+				local leftbar = leftBarFrame and leftBarFrame:IsShown();
+				local rightbar = rightBarFrame and rightBarFrame:IsShown();
 				local anchorFrame, anchorPoint, relativePoint, yOffset;
 				
 				if leftbar or rightbar then
 					-- If extra bars are shown, anchor above the highest one
 					if leftbar and rightbar then
 						-- Both bars shown, bottom right is higher, so anchor to it
-						anchorFrame = MultiBarBottomRight;
+						anchorFrame = rightBarFrame;
 					elseif leftbar then
-						anchorFrame = MultiBarBottomLeft;
+						anchorFrame = leftBarFrame;
 					else
-						anchorFrame = MultiBarBottomRight;
+						anchorFrame = rightBarFrame;
 					end
 					anchorPoint = 'TOP';
 					relativePoint = 'BOTTOM';
@@ -174,88 +181,109 @@ function anchor:stancebar_update()
 					yOffset = 5;
 				end
 				
-				self:ClearAllPoints();
-				self:SetPoint(relativePoint, anchorFrame, anchorPoint, offsetX, yOffset + offsetY);
+				anchor:ClearAllPoints();
+				anchor:SetPoint(relativePoint, anchorFrame, anchorPoint, offsetX, yOffset + offsetY);
 			end
 		end
 	end
 end
 
-event:RegisterEvents(function()
-	QueueUpdate("initial_load");
-end,
-	'PLAYER_LOGIN','ADDON_LOADED'
-);
+-- ============================================================================
+-- UTILITY FUNCTIONS
+-- ============================================================================
 
--- Add more events like RetailUI for better stance bar tracking
-event:RegisterEvents(function()
-	if not stanceBarInitialized then
-		QueueUpdate("shapeshift_update");
-		stanceBarInitialized = true;
-	else
-		QueueUpdate("shapeshift_change");
+local function ProcessUpdateQueue()
+    if not IsModuleEnabled() then return end
+    
+	if isUpdating or InCombatLockdown() or UnitAffectingCombat('player') then
+		return;
 	end
-end,
-	'UPDATE_SHAPESHIFT_FORMS', 'UPDATE_SHAPESHIFT_FORM', 'PLAYER_ENTERING_WORLD'
-);
-
--- Force stance bar initialization with single controlled initialization
-local function ForceStanceBarInitialization()
-	if not InCombatLockdown() and not UnitAffectingCombat('player') then
-		initializationAttempts = initializationAttempts + 1;
+	
+	if #updateQueue > 0 then
+		isUpdating = true;
+		-- Clear queue first
+		updateQueue = {};
 		
-		if initializationAttempts > maxInitializationAttempts then
-			return; -- Prevent infinite loops
+		-- Safe update execution with additional protection
+		if anchor and anchor.stancebar_update and not InCombatLockdown() then
+			stancebar_update();
 		end
 		
-		if config and config.additional then
-			-- Force button positioning
-			if stancebutton_position then
-				stancebutton_position()
-			end
-			-- Force anchor update
-			if anchor and anchor.stancebar_update then
-				anchor:stancebar_update()
-			end
-			-- Show the stance bar frame
-			if stancebar then
-				stancebar:Show()
-			end
-		end
+		isUpdating = false;
 	end
 end
 
--- Multiple initialization triggers
-addon.core.RegisterMessage(addon, "DRAGONUI_READY", ForceStanceBarInitialization);
+-- Queue an update request
+local function QueueUpdate(reason)
+    if not IsModuleEnabled() then return end
+    
+	table.insert(updateQueue, reason or "unknown");
+	-- Process queue after a brief delay to batch updates
+	local frame = CreateFrame("Frame");
+	frame:SetScript("OnUpdate", function(self)
+		self:SetScript("OnUpdate", nil);
+		ProcessUpdateQueue();
+	end);
+end
 
-local MultiBarBottomLeft = _G["MultiBarBottomLeft"]
-local MultiBarBottomRight = _G["MultiBarBottomRight"]
+-- ============================================================================
+-- POSITIONING FUNCTIONS
+-- ============================================================================
 
-for _,bar in pairs({_G["MultiBarBottomLeft"], _G["MultiBarBottomRight"]}) do
-	if bar then
-		bar:HookScript('OnShow',function()
-			if not InCombatLockdown() and not UnitAffectingCombat('player') then
-				QueueUpdate("bar_show");
-			end
-		end);
-		bar:HookScript('OnHide',function()
-			if not InCombatLockdown() and not UnitAffectingCombat('player') then
-				QueueUpdate("bar_hide");
-			end
-		end);
-	end
-end;
 
-local stancebar = CreateFrame('Frame', 'pUiStanceBar', anchor, 'SecureHandlerStateTemplate')
-stancebar:SetAllPoints(anchor)
+-- ============================================================================
+-- FRAME CREATION FUNCTIONS
+-- ============================================================================
+
+local function CreateStanceFrames()
+    if StanceModule.frames.anchor or not IsModuleEnabled() then return end
+    
+    anchor = CreateFrame('Frame', 'pUiStanceHolder', pUiMainBar)
+    -- Set initial position - will be updated by stancebar_update when config is ready
+    anchor:SetPoint('TOPLEFT', UIParent, 'BOTTOM', 0, 105) -- Fallback position slightly above pet bar
+    anchor:SetSize(37, 37)
+    
+    -- Assign the update method to the anchor frame
+    anchor.stancebar_update = stancebar_update
+    
+    StanceModule.frames.anchor = anchor
+    
+    stancebar = CreateFrame('Frame', 'pUiStanceBar', anchor, 'SecureHandlerStateTemplate')
+    stancebar:SetAllPoints(anchor)
+    StanceModule.frames.stancebar = stancebar
+    
+    -- Expose globally for compatibility
+    _G.pUiStanceBar = stancebar
+    
+    -- Apply initial positioning
+    if config and config.additional and config.additional.stance then
+        stancebar_update()
+    end
+end
+
+-- ============================================================================
+-- POSITIONING FUNCTIONS
+-- ============================================================================
+
+--
+
+
+
+-- ============================================================================
+-- STANCE BUTTON FUNCTIONS
+-- ============================================================================
 
 local function stancebutton_update()
+    if not IsModuleEnabled() or not anchor then return end
+    
 	if not InCombatLockdown() then
 		_G.ShapeshiftButton1:SetPoint('BOTTOMLEFT', anchor, 'BOTTOMLEFT', 0, 0)
 	end
 end
 
 local function stancebutton_position()
+    if not IsModuleEnabled() or not stancebar or not anchor then return end
+    
 	-- Read config values dynamically
 	local btnsize = config.additional.size;
 	local space = config.additional.spacing;
@@ -278,15 +306,25 @@ local function stancebutton_position()
 			button:Hide()
 		end
 	end
+	
+	-- Track state driver for cleanup
+	StanceModule.stateDrivers.visibility = {frame = stancebar, state = 'visibility', condition = stance[class] or 'hide'}
 	RegisterStateDriver(stancebar, 'visibility', stance[class] or 'hide')
-	hooksecurefunc('ShapeshiftBar_Update', function()
-		if not InCombatLockdown() and not UnitAffectingCombat('player') then
-			stancebutton_update()
-		end
-	end)
+	
+	-- Track hook for cleanup
+	if not StanceModule.hooks.ShapeshiftBar_Update then
+	    StanceModule.hooks.ShapeshiftBar_Update = true
+	    hooksecurefunc('ShapeshiftBar_Update', function()
+		    if IsModuleEnabled() and not InCombatLockdown() and not UnitAffectingCombat('player') then
+			    stancebutton_update()
+		    end
+	    end)
+	end
 end
 
 local function stancebutton_updatestate()
+    if not IsModuleEnabled() then return end
+    
 	local numForms = GetNumShapeshiftForms()
 	local texture, name, isActive, isCastable;
 	local button, icon, cooldown;
@@ -321,6 +359,8 @@ local function stancebutton_updatestate()
 end
 
 local function stancebutton_setup()
+    if not IsModuleEnabled() then return end
+    
 	if InCombatLockdown() then return end
 	for index=1, NUM_SHAPESHIFT_SLOTS do
 		local button = _G['ShapeshiftButton'..index]
@@ -334,7 +374,13 @@ local function stancebutton_setup()
 	stancebutton_updatestate();
 end
 
+-- ============================================================================
+-- EVENT HANDLING
+-- ============================================================================
+
 local function OnEvent(self,event,...)
+    if not IsModuleEnabled() then return end
+    
 	if GetNumShapeshiftForms() < 1 then return; end
 	if event == 'PLAYER_LOGIN' then
 		stancebutton_position();
@@ -342,58 +388,224 @@ local function OnEvent(self,event,...)
 		stancebutton_setup();
 	elseif event == 'PLAYER_ENTERING_WORLD' then
 		self:UnregisterEvent('PLAYER_ENTERING_WORLD');
-		addon.stancebuttons_template();
+		if addon.stancebuttons_template then
+		    addon.stancebuttons_template();
+		end
 	else
 		stancebutton_updatestate();
 	end
 end
 
-stancebar:RegisterEvent('PLAYER_LOGIN');
-stancebar:RegisterEvent('PLAYER_ENTERING_WORLD');
-stancebar:RegisterEvent('UPDATE_SHAPESHIFT_FORMS');
-stancebar:RegisterEvent('UPDATE_SHAPESHIFT_USABLE');
-stancebar:RegisterEvent('UPDATE_SHAPESHIFT_COOLDOWN');
-stancebar:RegisterEvent('UPDATE_SHAPESHIFT_FORM');
-stancebar:RegisterEvent('ACTIONBAR_PAGE_CHANGED');
-stancebar:SetScript('OnEvent', OnEvent);
+-- ============================================================================
+-- INITIALIZATION FUNCTIONS
+-- ============================================================================
 
--- Hook ShapeshiftBar_Update like RetailUI for better synchronization
-if ShapeshiftBar_Update then
-	hooksecurefunc('ShapeshiftBar_Update', function()
-		if not InCombatLockdown() and not UnitAffectingCombat('player') then
-			QueueUpdate("shapeshift_bar_update");
+-- Force stance bar initialization with single controlled initialization
+local function ForceStanceBarInitialization()
+    if not IsModuleEnabled() then return end
+    
+	if not InCombatLockdown() and not UnitAffectingCombat('player') then
+		initializationAttempts = initializationAttempts + 1;
+		
+		if initializationAttempts > maxInitializationAttempts then
+			return; -- Prevent infinite loops
 		end
-	end);
+		
+		if config and config.additional then
+			-- Force button positioning
+			if stancebutton_position then
+				stancebutton_position()
+			end
+			-- Force anchor update
+			if anchor and anchor.stancebar_update then
+				stancebar_update()
+			end
+			-- Show the stance bar frame
+			if stancebar then
+				stancebar:Show()
+			end
+		end
+	end
 end
 
--- Hook other Blizzard functions that might affect stance bar positioning
-if ActionBar_UpdateState then
-	hooksecurefunc('ActionBar_UpdateState', function()
-		if not InCombatLockdown() and not UnitAffectingCombat('player') then
-			QueueUpdate("actionbar_state_update");
-		end
-	end);
+-- ============================================================================
+-- APPLY/RESTORE FUNCTIONS
+-- ============================================================================
+
+local function ApplyStanceSystem()
+    if StanceModule.applied or not IsModuleEnabled() then return end
+    
+    -- Create frames
+    CreateStanceFrames()
+    
+    if not anchor or not stancebar then return end
+    
+    -- Register events
+    local events = {
+        'PLAYER_LOGIN',
+        'PLAYER_ENTERING_WORLD',
+        'UPDATE_SHAPESHIFT_FORMS',
+        'UPDATE_SHAPESHIFT_USABLE',
+        'UPDATE_SHAPESHIFT_COOLDOWN',
+        'UPDATE_SHAPESHIFT_FORM',
+        'ACTIONBAR_PAGE_CHANGED'
+    }
+    
+    for _, eventName in ipairs(events) do
+        stancebar:RegisterEvent(eventName)
+        StanceModule.registeredEvents[eventName] = stancebar
+    end
+    stancebar:SetScript('OnEvent', OnEvent);
+    
+    -- Register update events through addon event system
+    if event then
+        event:RegisterEvents(function()
+            QueueUpdate("initial_load");
+        end, 'PLAYER_LOGIN','ADDON_LOADED');
+        
+        event:RegisterEvents(function()
+            if not stanceBarInitialized then
+                QueueUpdate("shapeshift_update");
+                stanceBarInitialized = true;
+            else
+                QueueUpdate("shapeshift_change");
+            end
+        end, 'UPDATE_SHAPESHIFT_FORMS', 'UPDATE_SHAPESHIFT_FORM', 'PLAYER_ENTERING_WORLD');
+        
+        event:RegisterEvents(function()
+            -- Force initialization after a short delay when player enters world
+            local initFrame = CreateFrame("Frame")
+            local elapsed = 0
+            initFrame:SetScript("OnUpdate", function(self, dt)
+                elapsed = elapsed + dt
+                if elapsed >= 1.0 then -- Wait 1 second after entering world
+                    self:SetScript("OnUpdate", nil)
+                    -- Force initialization only once
+                    ForceStanceBarInitialization()
+                end
+            end)
+        end, 'PLAYER_ENTERING_WORLD');
+    end
+    
+    -- Hook MultiBar show/hide events
+    local leftBarFrame = _G["MultiBarBottomLeft"];
+    local rightBarFrame = _G["MultiBarBottomRight"];
+    
+    for _,bar in pairs({leftBarFrame, rightBarFrame}) do
+	    if bar then
+		    bar:HookScript('OnShow',function()
+			    if IsModuleEnabled() and not InCombatLockdown() and not UnitAffectingCombat('player') then
+				    QueueUpdate("bar_show");
+			    end
+		    end);
+		    bar:HookScript('OnHide',function()
+			    if IsModuleEnabled() and not InCombatLockdown() and not UnitAffectingCombat('player') then
+				    QueueUpdate("bar_hide");
+			    end
+		    end);
+	    end
+    end;
+    
+    -- Hook Blizzard functions
+    if ShapeshiftBar_Update and not StanceModule.hooks.ShapeshiftBar_Update_main then
+        StanceModule.hooks.ShapeshiftBar_Update_main = true
+        hooksecurefunc('ShapeshiftBar_Update', function()
+            if IsModuleEnabled() and not InCombatLockdown() and not UnitAffectingCombat('player') then
+                QueueUpdate("shapeshift_bar_update");
+            end
+        end);
+    end
+    
+    if ActionBar_UpdateState and not StanceModule.hooks.ActionBar_UpdateState then
+        StanceModule.hooks.ActionBar_UpdateState = true
+        hooksecurefunc('ActionBar_UpdateState', function()
+            if IsModuleEnabled() and not InCombatLockdown() and not UnitAffectingCombat('player') then
+                QueueUpdate("actionbar_state_update");
+            end
+        end);
+    end
+    
+    -- Register with addon core if available
+    if addon.core and addon.core.RegisterMessage then
+        addon.core.RegisterMessage(addon, "DRAGONUI_READY", ForceStanceBarInitialization);
+    end
+    
+    StanceModule.applied = true
 end
 
--- Single controlled initialization when player enters world
-event:RegisterEvents(function()
-	-- Force initialization after a short delay when player enters world
-	local initFrame = CreateFrame("Frame")
-	local elapsed = 0
-	initFrame:SetScript("OnUpdate", function(self, dt)
-		elapsed = elapsed + dt
-		if elapsed >= 1.0 then -- Wait 1 second after entering world
-			self:SetScript("OnUpdate", nil)
-			-- Force initialization only once
-			ForceStanceBarInitialization()
-		end
-	end)
-end, 'PLAYER_ENTERING_WORLD');
+local function RestoreStanceSystem()
+    if not StanceModule.applied then return end
+    
+    -- Unregister all events
+    for eventName, frame in pairs(StanceModule.registeredEvents) do
+        if frame and frame.UnregisterEvent then
+            frame:UnregisterEvent(eventName)
+        end
+    end
+    StanceModule.registeredEvents = {}
+    
+    -- Unregister all state drivers
+    for name, data in pairs(StanceModule.stateDrivers) do
+        if data.frame then
+            UnregisterStateDriver(data.frame, data.state)
+        end
+    end
+    StanceModule.stateDrivers = {}
+    
+    -- Hide custom frames
+    if anchor then anchor:Hide() end
+    if stancebar then stancebar:Hide() end
+    
+    -- Reset stance button parents to default
+    for index=1, NUM_SHAPESHIFT_SLOTS do
+        local button = _G['ShapeshiftButton'..index]
+        if button then
+            button:SetParent(ShapeshiftBarFrame or UIParent)
+            button:ClearAllPoints()
+            -- Don't reset positions here - let Blizzard handle it
+        end
+    end
+    
+    -- Clear global reference
+    _G.pUiStanceBar = nil
+    
+    -- Reset variables
+    stanceBarInitialized = false
+    initializationAttempts = 0
+    updateQueue = {}
+    isUpdating = false
+    
+    StanceModule.applied = false
+end
 
--- Refresh function for stance bar configuration changes
+-- ============================================================================
+-- PUBLIC API
+-- ============================================================================
+
+-- Enhanced refresh function with module control
+function addon.RefreshStanceSystem()
+    if IsModuleEnabled() then
+        ApplyStanceSystem()
+        -- Call original refresh for settings
+        if addon.RefreshStance then
+            addon.RefreshStance()
+        end
+    else
+        RestoreStanceSystem()
+    end
+end
+
+-- Original refresh function for configuration changes
 function addon.RefreshStance()
-	if not _G.pUiStanceBar or InCombatLockdown() or UnitAffectingCombat('player') then 
+    if not IsModuleEnabled() then return end
+    
+	if InCombatLockdown() or UnitAffectingCombat('player') then 
 		return 
+	end
+	
+	-- Ensure frames exist
+	if not anchor or not stancebar then
+	    return
 	end
 	
 	-- Update button size and spacing
@@ -401,12 +613,14 @@ function addon.RefreshStance()
 	local space = config.additional.spacing;
 	
 	-- Reposition stance buttons
-	for i = 1, 10 do -- Use fixed number instead of NUM_SHAPESHIFT_SLOTS for 3.3.5a compatibility
+	for i = 1, NUM_SHAPESHIFT_SLOTS do
 		local button = _G["ShapeshiftButton"..i];
 		if button then
 			button:SetSize(btnsize, btnsize);
+			-- Clear all points first
+			button:ClearAllPoints();
 			if i == 1 then
-				button:SetPoint('BOTTOMLEFT', 0, 0);
+				button:SetPoint('BOTTOMLEFT', anchor, 'BOTTOMLEFT', 0, 0);
 			else
 				local prevButton = _G["ShapeshiftButton"..(i-1)];
 				if prevButton then
@@ -416,14 +630,17 @@ function addon.RefreshStance()
 		end
 	end
 	
-	-- Update position using relative anchoring (no more absolute Y coordinates)
-	if anchor then
-		anchor:stancebar_update();
-	end
+	-- Update position using the positioning function
+	stancebar_update();
 end
 
 -- Debug function for troubleshooting stance bar issues
 function addon.DebugStanceBar()
+    if not IsModuleEnabled() then
+        print("Stance module is DISABLED")
+        return {enabled = false}
+    end
+    
 	local info = {
 		stanceBarInitialized = stanceBarInitialized,
 		initializationAttempts = initializationAttempts,
@@ -436,8 +653,8 @@ function addon.DebugStanceBar()
 		stanceBarExists = _G.pUiStanceBar and true or false,
 		numShapeshiftForms = GetNumShapeshiftForms(),
 		petBarVisible = _G.pUiPetBarHolder and _G.pUiPetBarHolder:IsShown() or false,
-		leftBarVisible = MultiBarBottomLeft:IsShown(),
-		rightBarVisible = MultiBarBottomRight:IsShown()
+		leftBarVisible = (_G["MultiBarBottomLeft"] or MultiBarBottomLeft) and (_G["MultiBarBottomLeft"] or MultiBarBottomLeft):IsShown() or false,
+		rightBarVisible = (_G["MultiBarBottomRight"] or MultiBarBottomRight) and (_G["MultiBarBottomRight"] or MultiBarBottomRight):IsShown() or false
 	};
 	
 	print("=== DragonUI Stance Bar Debug Info ===");
@@ -452,3 +669,33 @@ function addon.DebugStanceBar()
 	
 	return info;
 end
+
+-- ============================================================================
+-- INITIALIZATION
+-- ============================================================================
+
+local function Initialize()
+    if StanceModule.initialized then return end
+    
+    -- Only apply if module is enabled
+    if IsModuleEnabled() then
+        ApplyStanceSystem()
+    end
+    
+    StanceModule.initialized = true
+end
+
+-- Auto-initialize when addon loads
+local initFrame = CreateFrame("Frame")
+initFrame:RegisterEvent("ADDON_LOADED")
+initFrame:RegisterEvent("PLAYER_LOGIN")
+initFrame:SetScript("OnEvent", function(self, event, addonName)
+    if event == "ADDON_LOADED" and addonName == "DragonUI" then
+        -- Just mark as loaded, don't initialize yet
+        self.addonLoaded = true
+    elseif event == "PLAYER_LOGIN" and self.addonLoaded then
+        -- Initialize after both addon is loaded and player is logged in
+        Initialize()
+        self:UnregisterAllEvents()
+    end
+end)

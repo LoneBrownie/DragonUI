@@ -7,6 +7,34 @@ local hooksecurefunc = hooksecurefunc;
 local UIParent = UIParent;
 local NUM_POSSESS_SLOTS = NUM_POSSESS_SLOTS or 10;
 
+-- ============================================================================
+-- MULTICAST MODULE FOR DRAGONUI
+-- ============================================================================
+
+-- Module state tracking
+local MulticastModule = {
+    initialized = false,
+    applied = false,
+    originalStates = {},     -- Store original states for restoration
+    registeredEvents = {},   -- Track registered events
+    hooks = {},             -- Track hooked functions
+    stateDrivers = {},      -- Track state drivers
+    frames = {}             -- Track created frames
+}
+
+-- ============================================================================
+-- CONFIGURATION FUNCTIONS
+-- ============================================================================
+
+local function GetModuleConfig()
+    return addon.db and addon.db.profile and addon.db.profile.modules and addon.db.profile.modules.multicast
+end
+
+local function IsModuleEnabled()
+    local cfg = GetModuleConfig()
+    return cfg and cfg.enabled
+end
+
 -- =============================================================================
 -- OPTIMIZED TIMER HELPER (with timer pool for better memory management)
 -- =============================================================================
@@ -46,10 +74,15 @@ local anchor = CreateFrame('Frame', 'DragonUI_MulticastAnchor', UIParent)
 anchor:SetPoint('BOTTOM', UIParent, 'BOTTOM', 0, 52)
 anchor:SetSize(37, 37)
 
+-- Track created frames
+MulticastModule.frames.anchor = anchor
+
 -- =============================================================================
 -- SMART POSITIONING FUNCTION
 -- =============================================================================
 function anchor:update_position()
+    if not IsModuleEnabled() then return end
+    
     if InCombatLockdown() or UnitAffectingCombat('player') then return end
 
     local offsetX, offsetY = GetTotemConfig()
@@ -117,6 +150,9 @@ end
 local possessbar = CreateFrame('Frame', 'DragonUI_PossessBar', UIParent, 'SecureHandlerStateTemplate')
 possessbar:SetAllPoints(anchor)
 
+-- Track created frames
+MulticastModule.frames.possessbar = possessbar
+
 -- Properly parent and position the PossessBarFrame
 PossessBarFrame:SetParent(possessbar)
 PossessBarFrame:ClearAllPoints()
@@ -126,6 +162,8 @@ PossessBarFrame:SetPoint('BOTTOMLEFT', possessbar, 'BOTTOMLEFT', -68, 0)
 -- POSSESS BUTTON POSITIONING FUNCTION
 -- =============================================================================
 local function PositionPossessButtons()
+    if not IsModuleEnabled() then return end
+    
     if InCombatLockdown() then return end
     
     -- Get config values safely
@@ -161,12 +199,18 @@ local function PositionPossessButtons()
     
     -- Set visibility driver for vehicle UI
     RegisterStateDriver(possessbar, 'visibility', '[vehicleui][@vehicle,exists] hide; show')
+    
+    -- Track state driver for cleanup
+    MulticastModule.stateDrivers.possessbar_visibility = {frame = possessbar, state = 'visibility', condition = '[vehicleui][@vehicle,exists] hide; show'}
 end
 
 -- =============================================================================
 -- SHAMAN MULTICAST (TOTEM) BAR SETUP
 -- =============================================================================
 if MultiCastActionBarFrame and class == 'SHAMAN' then
+    -- Track MultiCastActionBarFrame
+    MulticastModule.frames.multiCastActionBarFrame = MultiCastActionBarFrame
+    
     -- Remove default scripts that might interfere
     MultiCastActionBarFrame:SetScript('OnUpdate', nil)
     MultiCastActionBarFrame:SetScript('OnShow', nil)
@@ -209,12 +253,152 @@ local function HookActionBarEvents()
         end
     end
 end
+-- =============================================================================
+-- INITIALIZATION FUNCTION
+-- =============================================================================
+local function InitializeMulticast()
+    if not IsModuleEnabled() then return end
+    
+    -- Position possess buttons
+    PositionPossessButtons()
+    
+    -- Hook action bar events
+    HookActionBarEvents()
+    
+    -- Update anchor position
+    anchor:update_position()
+end
 
+
+-- ============================================================================
+-- APPLY/RESTORE FUNCTIONS
+-- ============================================================================
+local function RestoreMulticastSystem()
+    if not MulticastModule.applied then return end
+    
+    -- Unregister all state drivers
+    for name, data in pairs(MulticastModule.stateDrivers) do
+        if data.frame then
+            UnregisterStateDriver(data.frame, data.state)
+        end
+    end
+    MulticastModule.stateDrivers = {}
+    
+    -- Hide custom frames
+    if anchor then anchor:Hide() end
+    if possessbar then possessbar:Hide() end
+    
+    -- Restore PossessBarFrame to original state
+    if PossessBarFrame and MulticastModule.originalStates.possessBarFrame then
+        local original = MulticastModule.originalStates.possessBarFrame
+        PossessBarFrame:SetParent(original.parent or UIParent)
+        PossessBarFrame:ClearAllPoints()
+        
+        -- Restore original anchor points
+        for _, pointData in ipairs(original.points) do
+            local point, relativeTo, relativePoint, x, y = unpack(pointData)
+            if relativeTo then
+                PossessBarFrame:SetPoint(point, relativeTo, relativePoint, x, y)
+            else
+                PossessBarFrame:SetPoint(point, relativePoint, x, y)
+            end
+        end
+    end
+    
+    -- Restore MultiCastActionBarFrame to original state (Shaman only)
+    if MultiCastActionBarFrame and class == 'SHAMAN' and MulticastModule.originalStates.multiCastActionBarFrame then
+        local original = MulticastModule.originalStates.multiCastActionBarFrame
+        MultiCastActionBarFrame:SetParent(original.parent or UIParent)
+        MultiCastActionBarFrame:ClearAllPoints()
+        
+        -- Restore original anchor points
+        for _, pointData in ipairs(original.points) do
+            local point, relativeTo, relativePoint, x, y = unpack(pointData)
+            if relativeTo then
+                MultiCastActionBarFrame:SetPoint(point, relativeTo, relativePoint, x, y)
+            else
+                MultiCastActionBarFrame:SetPoint(point, relativePoint, x, y)
+            end
+        end
+        
+        -- Restore original scripts and behavior
+        MultiCastActionBarFrame.SetParent = nil
+        MultiCastActionBarFrame.SetPoint = nil
+        
+        if MultiCastRecallSpellButton then
+            MultiCastRecallSpellButton.SetPoint = nil
+        end
+    end
+    
+    -- Reset possess button parents to default
+    for index = 1, NUM_POSSESS_SLOTS do
+        local button = _G['PossessButton'..index]
+        if button then
+            button:SetParent(PossessBarFrame or UIParent)
+            button:ClearAllPoints()
+            -- Don't reset positions here - let Blizzard handle it
+        end
+    end
+    
+    MulticastModule.applied = false
+end
+local function ApplyMulticastSystem()
+    if MulticastModule.applied or not IsModuleEnabled() then return end
+    
+    -- Store original states for restoration
+    if PossessBarFrame then
+        MulticastModule.originalStates.possessBarFrame = {
+            parent = PossessBarFrame:GetParent(),
+            points = {}
+        }
+        -- Store all anchor points
+        for i = 1, PossessBarFrame:GetNumPoints() do
+            local point, relativeTo, relativePoint, x, y = PossessBarFrame:GetPoint(i)
+            table.insert(MulticastModule.originalStates.possessBarFrame.points, {point, relativeTo, relativePoint, x, y})
+        end
+    end
+    
+    if MultiCastActionBarFrame and class == 'SHAMAN' then
+        MulticastModule.originalStates.multiCastActionBarFrame = {
+            parent = MultiCastActionBarFrame:GetParent(),
+            points = {}
+        }
+        -- Store all anchor points
+        for i = 1, MultiCastActionBarFrame:GetNumPoints() do
+            local point, relativeTo, relativePoint, x, y = MultiCastActionBarFrame:GetPoint(i)
+            table.insert(MulticastModule.originalStates.multiCastActionBarFrame.points, {point, relativeTo, relativePoint, x, y})
+        end
+    end
+    
+    -- Hook action bar events for dynamic positioning
+    HookActionBarEvents()
+    
+    -- Initialize the system
+    InitializeMulticast()
+    
+    MulticastModule.applied = true
+end
 -- =============================================================================
 -- UNIFIED REFRESH FUNCTION 
 -- =============================================================================
+
+-- Enhanced refresh function with module control
+function addon.RefreshMulticastSystem()
+    if IsModuleEnabled() then
+        ApplyMulticastSystem()
+        -- Call original refresh for settings
+        if addon.RefreshMulticast then
+            addon.RefreshMulticast()
+        end
+    else
+        RestoreMulticastSystem()
+    end
+end
+
 -- Fast refresh: Only updates size and spacing WITHOUT repositioning
 function addon.RefreshMulticast(fullRefresh)
+    if not IsModuleEnabled() then return end
+    
     if InCombatLockdown() or UnitAffectingCombat("player") then 
         -- Schedule refresh after combat
         local frame = CreateFrame("Frame")
@@ -273,25 +457,16 @@ end
 
 -- Full rebuild: Only for major changes (profile changes, etc.)
 function addon.RefreshMulticastFull()
+    if not IsModuleEnabled() then return end
+    
     if InCombatLockdown() or UnitAffectingCombat("player") then return end
     
     -- Reinitialize everything from scratch
     InitializeMulticast()
 end
 
--- =============================================================================
--- INITIALIZATION FUNCTION
--- =============================================================================
-local function InitializeMulticast()
-    -- Position possess buttons
-    PositionPossessButtons()
-    
-    -- Hook action bar events
-    HookActionBarEvents()
-    
-    -- Update anchor position
-    anchor:update_position()
-end
+
+
 
 -- =============================================================================
 -- PROFILE CHANGE HANDLER
@@ -326,12 +501,14 @@ local function RegisterEvents()
     
     eventFrame:SetScript("OnEvent", function(self, event, addonName)
         if event == "ADDON_LOADED" and addonName == "DragonUI" then
-            -- Initialize multicast system
-            if addon.core and addon.core.RegisterMessage then
-                addon.core.RegisterMessage(addon, "DRAGONUI_READY", InitializeMulticast)
-            else
-                -- Fallback initialization
-                DelayedCall(1, InitializeMulticast)
+            -- Initialize multicast system only if module is enabled
+            if IsModuleEnabled() then
+                if addon.core and addon.core.RegisterMessage then
+                    addon.core.RegisterMessage(addon, "DRAGONUI_READY", function() ApplyMulticastSystem() end)
+                else
+                    -- Fallback initialization
+                    DelayedCall(1, function() ApplyMulticastSystem() end)
+                end
             end
             
             -- Register profile callbacks after a short delay
