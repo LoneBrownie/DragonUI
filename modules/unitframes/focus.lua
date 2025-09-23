@@ -92,7 +92,9 @@ local TEXTURES = {
     BORDER = "Interface\\AddOns\\DragonUI\\Textures\\UI-HUD-UnitFrame-Target-PortraitOn-BORDER",
     BAR_PREFIX = "Interface\\AddOns\\DragonUI\\Textures\\Unitframe\\UI-HUD-UnitFrame-Target-PortraitOn-Bar-",
     NAME_BACKGROUND = "Interface\\AddOns\\DragonUI\\Textures\\TargetFrame\\NameBackground",
-    BOSS = "Interface\\AddOns\\DragonUI\\Textures\\uiunitframeboss2x"
+    BOSS = "Interface\\AddOns\\DragonUI\\Textures\\uiunitframeboss2x",
+    THREAT = "Interface\\AddOns\\DragonUI\\Textures\\Unitframe2x\\ui-hud-unitframe-target-portraiton-incombat-2x",
+    THREAT_NUMERIC = "Interface\\AddOns\\DragonUI\\Textures\\uiunitframe"
 }
 
 -- Boss classifications (same as target)
@@ -111,19 +113,101 @@ local POWER_MAP = {
 local frameElements = {
     background = nil,
     border = nil,
-    elite = nil
+    elite = nil,
+    threatNumeric = nil 
 }
 
 -- Update throttling
 local updateCache = {
     lastHealthUpdate = 0,
-    lastPowerUpdate = 0
+    lastPowerUpdate = 0,
+    lastThreatUpdate = 0
 }
+-- ============================================================================
+-- THREAT SYSTEM (NUEVO - COPIADO DE TARGET)
+-- ============================================================================
 
+local function UpdateThreat()
+    if not UnitExists("focus") then
+        if frameElements.threatNumeric then
+            frameElements.threatNumeric:Hide()
+        end
+        return
+    end
+
+    local status = UnitThreatSituation("player", "focus")
+    local level = status and math.min(status, 3) or 0
+
+    if level > 0 then
+        -- Solo numerical threat
+        local _, _, _, pct = UnitDetailedThreatSituation("player", "focus")
+
+        if frameElements.threatNumeric and pct and pct > 0 then
+            local displayPct = math.floor(math.min(100, math.max(0, pct)))
+            frameElements.threatNumeric.text:SetText(displayPct .. "%")
+            -- Color basado en level de threat
+            if level == 1 then
+                frameElements.threatNumeric.text:SetTextColor(1.0, 1.0, 0.47) -- Amarillo
+            elseif level == 2 then
+                frameElements.threatNumeric.text:SetTextColor(1.0, 0.6, 0.0) -- Naranja
+            else
+                frameElements.threatNumeric.text:SetTextColor(1.0, 0.0, 0.0) -- Rojo
+            end
+            frameElements.threatNumeric:Show()
+        else
+            if frameElements.threatNumeric then
+                frameElements.threatNumeric:Hide()
+            end
+        end
+    else
+        -- Ocultar numeric
+        if frameElements.threatNumeric then
+            frameElements.threatNumeric:Hide()
+        end
+    end
+end
 
 -- ============================================================================
 -- BAR MANAGEMENT
 -- ============================================================================
+
+-- Función para actualizar la barra de poder inmediatamente
+local function UpdatePowerBar()
+    if not UnitExists("focus") or not FocusFrameManaBar then return end
+    
+    local texture = FocusFrameManaBar:GetStatusBarTexture()
+    if not texture then return end
+    
+    -- Update texture based on power type
+    local powerType = UnitPowerType("focus")
+    local powerName = POWER_MAP[powerType] or "Mana"
+    local texturePath = TEXTURES.BAR_PREFIX .. powerName
+    
+    -- Forzar cambio de textura inmediatamente
+    texture:SetTexture(texturePath)
+    texture:SetDrawLayer("ARTWORK", 1)
+    
+    -- Update coords
+    local min, max = FocusFrameManaBar:GetMinMaxValues()
+    local current = FocusFrameManaBar:GetValue()
+    if max > 0 and current then
+        texture:SetTexCoord(0, current/max, 0, 1)
+    end
+    
+    -- Forzar color blanco inmediatamente (múltiples métodos para asegurar que se aplique)
+    texture:SetVertexColor(1, 1, 1)
+    FocusFrameManaBar:SetStatusBarColor(1, 1, 1) -- Método alternativo
+    
+    -- Programar un recheck para asegurar que el color persista
+    C_Timer.After(0.01, function()
+        if UnitExists("focus") and FocusFrameManaBar then
+            local tex = FocusFrameManaBar:GetStatusBarTexture()
+            if tex then
+                tex:SetVertexColor(1, 1, 1)
+            end
+        end
+    end)
+end
 
 local function SetupBarHooks()
     -- Health bar hooks
@@ -134,43 +218,51 @@ local function SetupBarHooks()
         end
         
         hooksecurefunc(FocusFrameHealthBar, "SetValue", function(self)
-            if not UnitExists("focus") then return end
-            
-            local now = GetTime()
-            if now - updateCache.lastHealthUpdate < 0.05 then return end
-            updateCache.lastHealthUpdate = now
-            
-            local texture = self:GetStatusBarTexture()
-            if not texture then return end
-            
-            -- Update texture
-            local texturePath = TEXTURES.BAR_PREFIX .. "Health"
-            if texture:GetTexture() ~= texturePath then
-                texture:SetTexture(texturePath)
-                texture:SetDrawLayer("ARTWORK", 1)
-            end
-            
-            -- Update coords
-            local min, max = self:GetMinMaxValues()
-            local current = self:GetValue()
-            if max > 0 and current then
-                texture:SetTexCoord(0, current/max, 0, 1)
-            end
-            
-            -- Update color
-            local config = GetConfig()
-            if config.classcolor and UnitIsPlayer("focus") then
-                local _, class = UnitClass("focus")
-                local color = RAID_CLASS_COLORS[class]
-                if color then
-                    texture:SetVertexColor(color.r, color.g, color.b)
-                else
-                    texture:SetVertexColor(1, 1, 1)
-                end
-            else
-                texture:SetVertexColor(1, 1, 1)
-            end
-        end)
+    if not UnitExists("focus") then return end
+    
+    local now = GetTime()
+    if now - updateCache.lastHealthUpdate < 0.05 then return end
+    updateCache.lastHealthUpdate = now
+    
+    local texture = self:GetStatusBarTexture()
+    if not texture then return end
+    
+    local config = GetConfig()
+    local texturePath
+    
+    -- NUEVO: Decidir qué textura usar basado en classcolor
+    if config.classcolor and UnitIsPlayer("focus") then
+        texturePath = TEXTURES.BAR_PREFIX .. "Health-Status"  -- Versión Status para colores de clase
+    else
+        texturePath = TEXTURES.BAR_PREFIX .. "Health"         -- Versión normal
+    end
+    
+    -- Update texture
+    if texture:GetTexture() ~= texturePath then
+        texture:SetTexture(texturePath)
+        texture:SetDrawLayer("ARTWORK", 1)
+    end
+    
+    -- Update coords
+    local min, max = self:GetMinMaxValues()
+    local current = self:GetValue()
+    if max > 0 and current then
+        texture:SetTexCoord(0, current/max, 0, 1)
+    end
+    
+    -- Update color
+    if config.classcolor and UnitIsPlayer("focus") then
+        local _, class = UnitClass("focus")
+        local color = RAID_CLASS_COLORS[class]
+        if color then
+            texture:SetVertexColor(color.r, color.g, color.b)
+        else
+            texture:SetVertexColor(1, 1, 1)
+        end
+    else
+        texture:SetVertexColor(1, 1, 1)
+    end
+end)
         
         FocusFrameHealthBar.DragonUI_Setup = true
     end
@@ -186,31 +278,28 @@ local function SetupBarHooks()
             if not UnitExists("focus") then return end
             
             local now = GetTime()
-            if now - updateCache.lastPowerUpdate < 0.05 then return end
+            if now - updateCache.lastPowerUpdate < 0.1 then return end
             updateCache.lastPowerUpdate = now
             
+            UpdatePowerBar()
+        end)
+        
+        -- Hook adicional para SetMinMaxValues para asegurar color blanco
+        hooksecurefunc(FocusFrameManaBar, "SetMinMaxValues", function(self)
+            if not UnitExists("focus") then return end
             local texture = self:GetStatusBarTexture()
-            if not texture then return end
-            
-            -- Update texture based on power type
-            local powerType = UnitPowerType("focus")
-            local powerName = POWER_MAP[powerType] or "Mana"
-            local texturePath = TEXTURES.BAR_PREFIX .. powerName
-            
-            if texture:GetTexture() ~= texturePath then
-                texture:SetTexture(texturePath)
-                texture:SetDrawLayer("ARTWORK", 1)
+            if texture then
+                texture:SetVertexColor(1, 1, 1) -- Forzar blanco siempre
             end
-            
-            -- Update coords
-            local min, max = self:GetMinMaxValues()
-            local current = self:GetValue()
-            if max > 0 and current then
-                texture:SetTexCoord(0, current/max, 0, 1)
+        end)
+        
+        -- Hook adicional para SetStatusBarColor para prevenir cambios de color
+        hooksecurefunc(FocusFrameManaBar, "SetStatusBarColor", function(self)
+            if not UnitExists("focus") then return end
+            local texture = self:GetStatusBarTexture()
+            if texture then
+                texture:SetVertexColor(1, 1, 1) -- Forzar blanco siempre
             end
-            
-            -- Force white color
-            texture:SetVertexColor(1, 1, 1)
         end)
         
         FocusFrameManaBar.DragonUI_Setup = true
@@ -314,7 +403,11 @@ local function InitializeFrame()
     local toHide = {
         FocusFrameTextureFrameTexture,
         FocusFrameBackground,
-        FocusFrameFlash
+        FocusFrameFlash,
+        -- NUEVO: Ocultar elementos de threat de Blizzard como en target
+        _G.FocusFrameNumericalThreat,        
+        FocusFrame.threatNumericIndicator,   
+        FocusFrame.threatIndicator           
     }
     
     for _, element in ipairs(toHide) do
@@ -343,6 +436,28 @@ local function InitializeFrame()
         frameElements.elite = FocusFrame:CreateTexture("DragonUI_FocusElite", "OVERLAY", nil, 7)
         frameElements.elite:SetTexture(TEXTURES.BOSS)
         frameElements.elite:Hide()
+    end
+
+    -- NUEVO: Create threat numeric indicator
+    if not frameElements.threatNumeric then
+        local numeric = CreateFrame("Frame", "DragonUIFocusNumericalThreat", FocusFrame)
+        numeric:SetFrameStrata("HIGH")
+        numeric:SetFrameLevel(FocusFrame:GetFrameLevel() + 10)
+        numeric:SetSize(71, 13)
+        numeric:SetPoint("BOTTOM", FocusFrame, "TOP", -45, -20)  -- Posición ajustada para focus
+        numeric:Hide()
+
+        local bg = numeric:CreateTexture(nil, "ARTWORK")
+        bg:SetTexture(TEXTURES.THREAT_NUMERIC)
+        bg:SetTexCoord(0.927734375, 0.9970703125, 0.3125, 0.337890625)
+        bg:SetAllPoints()
+
+        numeric.text = numeric:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+        numeric.text:SetPoint("CENTER",0, 1)
+        numeric.text:SetFont("Fonts\\FRIZQT__.TTF", 10)
+        numeric.text:SetShadowOffset(1, -1)
+
+        frameElements.threatNumeric = numeric
     end
     
     -- Configure name background
@@ -615,6 +730,7 @@ local function OnEvent(self, event, ...)
     elseif event == "PLAYER_FOCUS_CHANGED" then
         UpdateNameBackground()
         UpdateClassification()
+        UpdateThreat()
         if Module.textSystem then
             Module.textSystem.update()
         end
@@ -630,11 +746,34 @@ local function OnEvent(self, event, ...)
         if unit == "focus" then
             UpdateNameBackground()
         end
+
+    -- NUEVO: Eventos de threat para focus
+    elseif event == "UNIT_THREAT_SITUATION_UPDATE" or event == "UNIT_THREAT_LIST_UPDATE" then
+        UpdateThreat()
     
-    elseif event == "UNIT_HEALTH" or event == "UNIT_MAXHEALTH" or event == "UNIT_POWER_UPDATE" or event == "UNIT_MAXPOWER" then
+    elseif event == "UNIT_HEALTH" or event == "UNIT_MAXHEALTH" then
         local unit = ...
         if unit == "focus" and UnitExists("focus") and Module.textSystem then
             Module.textSystem.update()
+        end
+    elseif event == "UNIT_POWER_UPDATE" or event == "UNIT_MAXPOWER" then
+        local unit = ...
+        if unit == "focus" and UnitExists("focus") then
+            -- Actualizar inmediatamente la barra de poder
+            UpdatePowerBar()
+            if Module.textSystem then
+                Module.textSystem.update()
+            end
+        end
+    elseif event == "UNIT_DISPLAYPOWER" then
+        local unit = ...
+        if unit == "focus" and UnitExists("focus") then
+            -- Actualización inmediata cuando cambia el tipo de poder (cambio de forma)
+            updateCache.lastPowerUpdate = 0 -- Reset timer para forzar actualización
+            UpdatePowerBar()
+            if Module.textSystem then
+                Module.textSystem.update()
+            end
         end
     end
 end
@@ -647,11 +786,15 @@ if not Module.eventsFrame then
     Module.eventsFrame:RegisterEvent("PLAYER_FOCUS_CHANGED")
     Module.eventsFrame:RegisterEvent("UNIT_CLASSIFICATION_CHANGED")
     Module.eventsFrame:RegisterEvent("UNIT_FACTION")
+    -- NUEVO: Registrar eventos de threat
+    Module.eventsFrame:RegisterEvent("UNIT_THREAT_SITUATION_UPDATE")
+    Module.eventsFrame:RegisterEvent("UNIT_THREAT_LIST_UPDATE")
     -- Critical events for the text system
     Module.eventsFrame:RegisterEvent("UNIT_HEALTH")
     Module.eventsFrame:RegisterEvent("UNIT_MAXHEALTH") 
     Module.eventsFrame:RegisterEvent("UNIT_POWER_UPDATE")
     Module.eventsFrame:RegisterEvent("UNIT_MAXPOWER")
+    Module.eventsFrame:RegisterEvent("UNIT_DISPLAYPOWER")
     Module.eventsFrame:SetScript("OnEvent", OnEvent)
 end
 
@@ -676,6 +819,8 @@ local function RefreshFrame()
     if UnitExists("focus") then
         UpdateNameBackground()
         UpdateClassification()
+        UpdateThreat()  -- NUEVO: Actualizar threat
+        UpdatePowerBar() -- Actualizar barra de poder
         if Module.textSystem then
             Module.textSystem.update()
         end

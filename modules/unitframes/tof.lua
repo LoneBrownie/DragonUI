@@ -93,8 +93,17 @@ local function SetupBarHooks()
                 return
             end
 
-            -- Update texture path
-            local texturePath = TEXTURES.BAR_PREFIX .. "Health"
+            local config = GetConfig()
+            local texturePath
+
+            -- NUEVO: Decidir qué textura usar basado en classcolor
+            if config.classcolor and UnitIsPlayer("focustarget") then
+                texturePath = TEXTURES.BAR_PREFIX .. "Health-Status" -- Versión Status para colores de clase
+            else
+                texturePath = TEXTURES.BAR_PREFIX .. "Health" -- Versión normal
+            end
+
+            -- Update texture
             if texture:GetTexture() ~= texturePath then
                 texture:SetTexture(texturePath)
                 texture:SetDrawLayer("ARTWORK", 1)
@@ -108,7 +117,6 @@ local function SetupBarHooks()
             end
 
             -- Update color
-            local config = GetConfig()
             if config.classcolor and UnitIsPlayer("focustarget") then
                 local _, class = UnitClass("focustarget")
                 local color = RAID_CLASS_COLORS[class]
@@ -237,7 +245,7 @@ local function InitializeFrame()
 
     -- Verificar que FoT existe
     if not FocusFrameToT then
-        
+
         return
     end
 
@@ -246,7 +254,8 @@ local function InitializeFrame()
 
     -- Position and scale (ANCLADO AL FOCUS FRAME)
     FocusFrameToT:ClearAllPoints()
-    FocusFrameToT:SetPoint(config.anchor or "BOTTOMRIGHT", FocusFrame, config.anchorParent or "BOTTOMRIGHT", config.x or -8, config.y or -30)
+    FocusFrameToT:SetPoint(config.anchor or "BOTTOMRIGHT", FocusFrame, config.anchorParent or "BOTTOMRIGHT",
+        config.x or -8, config.y or -30)
     FocusFrameToT:SetScale(config.scale or 1.0)
 
     -- Hide Blizzard elements
@@ -293,7 +302,8 @@ local function InitializeFrame()
     FocusFrameToTHealthBar:SetFrameStrata("LOW")
     FocusFrameToTHealthBar:GetStatusBarTexture():SetDrawLayer("ARTWORK", 1)
     FocusFrameToTHealthBar:GetStatusBarTexture():SetTexture(TEXTURES.BAR_PREFIX .. "Health")
-    FocusFrameToTHealthBar.SetStatusBarColor = function() end -- noop
+    FocusFrameToTHealthBar.SetStatusBarColor = function()
+    end -- noop
     FocusFrameToTHealthBar:GetStatusBarTexture():SetVertexColor(1, 1, 1, 1)
     FocusFrameToTHealthBar:SetSize(70.5, 10)
     FocusFrameToTHealthBar:SetPoint('LEFT', FocusFrameToTPortrait, 'RIGHT', 1 + 1, 0)
@@ -306,7 +316,8 @@ local function InitializeFrame()
     FocusFrameToTManaBar:SetFrameStrata("LOW")
     FocusFrameToTManaBar:GetStatusBarTexture():SetDrawLayer("ARTWORK", 1)
     FocusFrameToTManaBar:GetStatusBarTexture():SetTexture(TEXTURES.BAR_PREFIX .. "Mana")
-    FocusFrameToTManaBar.SetStatusBarColor = function() end -- noop
+    FocusFrameToTManaBar.SetStatusBarColor = function()
+    end -- noop
     FocusFrameToTManaBar:GetStatusBarTexture():SetVertexColor(1, 1, 1, 1)
     FocusFrameToTManaBar:SetSize(74, 7.5)
     FocusFrameToTManaBar:SetPoint('LEFT', FocusFrameToTPortrait, 'RIGHT', 1 - 2 - 1.5 + 1, 2 - 10 - 1)
@@ -338,7 +349,7 @@ local function InitializeFrame()
 
     -- Setup bar hooks
     SetupBarHooks()
-    
+
     Module.configured = true
 end
 
@@ -430,7 +441,8 @@ local function ResetFrame()
     -- Aplicar inmediatamente
     local config = GetConfig()
     FocusFrameToT:ClearAllPoints()
-    FocusFrameToT:SetPoint(config.anchor or "BOTTOMRIGHT", FocusFrame, config.anchorParent or "BOTTOMRIGHT", config.x, config.y)
+    FocusFrameToT:SetPoint(config.anchor or "BOTTOMRIGHT", FocusFrame, config.anchorParent or "BOTTOMRIGHT", config.x,
+        config.y)
     FocusFrameToT:SetScale(config.scale)
 end
 

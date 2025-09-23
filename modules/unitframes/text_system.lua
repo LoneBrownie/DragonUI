@@ -124,6 +124,12 @@ function TextSystem.CreateDualTextElements(parentFrame, barFrame, prefix, layer,
         else
             rightText:SetPoint("RIGHT", barFrame, "RIGHT", -6, 0) --  POSICIÓN NORMAL
         end
+
+        if prefix == "FocusFrameMana" then
+            rightText:SetPoint("RIGHT", barFrame, "RIGHT", -13, 0) --  MÁS A LA IZQUIERDA
+        else
+            rightText:SetPoint("RIGHT", barFrame, "RIGHT", -6, 0) --  POSICIÓN NORMAL
+        end
         
         rightText:SetJustifyH("RIGHT")
         parentFrame[prefix .. "TextRight"] = rightText

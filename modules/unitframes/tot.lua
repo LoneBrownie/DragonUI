@@ -77,49 +77,57 @@ local function SetupBarHooks()
         end
 
         hooksecurefunc(TargetFrameToTHealthBar, "SetValue", function(self)
-            if not UnitExists("targettarget") then
-                return
-            end
+    if not UnitExists("targettarget") then
+        return
+    end
 
-            local now = GetTime()
-            if now - updateCache.lastHealthUpdate < 0.05 then
-                return
-            end
-            updateCache.lastHealthUpdate = now
+    local now = GetTime()
+    if now - updateCache.lastHealthUpdate < 0.05 then
+        return
+    end
+    updateCache.lastHealthUpdate = now
 
-            local texture = self:GetStatusBarTexture()
-            if not texture then
-                return
-            end
+    local texture = self:GetStatusBarTexture()
+    if not texture then
+        return
+    end
 
-            -- Update texture path
-            local texturePath = TEXTURES.BAR_PREFIX .. "Health"
-            if texture:GetTexture() ~= texturePath then
-                texture:SetTexture(texturePath)
-                texture:SetDrawLayer("ARTWORK", 1)
-            end
+    local config = GetConfig()
+    local texturePath
+    
+    -- NUEVO: Decidir qué textura usar basado en classcolor
+    if config.classcolor and UnitIsPlayer("targettarget") then
+        texturePath = TEXTURES.BAR_PREFIX .. "Health-Status"  -- Versión Status para colores de clase
+    else
+        texturePath = TEXTURES.BAR_PREFIX .. "Health"         -- Versión normal
+    end
 
-            -- Update coords
-            local min, max = self:GetMinMaxValues()
-            local current = self:GetValue()
-            if max > 0 and current then
-                texture:SetTexCoord(0, current / max, 0, 1)
-            end
+    -- Update texture
+    if texture:GetTexture() ~= texturePath then
+        texture:SetTexture(texturePath)
+        texture:SetDrawLayer("ARTWORK", 1)
+    end
 
-            -- Update color
-            local config = GetConfig()
-            if config.classcolor and UnitIsPlayer("targettarget") then
-                local _, class = UnitClass("targettarget")
-                local color = RAID_CLASS_COLORS[class]
-                if color then
-                    texture:SetVertexColor(color.r, color.g, color.b)
-                else
-                    texture:SetVertexColor(1, 1, 1)
-                end
-            else
-                texture:SetVertexColor(1, 1, 1)
-            end
-        end)
+    -- Update coords
+    local min, max = self:GetMinMaxValues()
+    local current = self:GetValue()
+    if max > 0 and current then
+        texture:SetTexCoord(0, current / max, 0, 1)
+    end
+
+    -- Update color
+    if config.classcolor and UnitIsPlayer("targettarget") then
+        local _, class = UnitClass("targettarget")
+        local color = RAID_CLASS_COLORS[class]
+        if color then
+            texture:SetVertexColor(color.r, color.g, color.b)
+        else
+            texture:SetVertexColor(1, 1, 1)
+        end
+    else
+        texture:SetVertexColor(1, 1, 1)
+    end
+end)
 
         TargetFrameToTHealthBar.DragonUI_Setup = true
     end
