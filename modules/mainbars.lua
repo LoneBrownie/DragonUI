@@ -907,7 +907,7 @@ local function InitializeMainbars()
         end
     end
 
-    -- [TODO EL CÓDIGO QUE TENÍAS ANTES PERO DENTRO DE ESTA FUNCIÓN]
+  
 
     -- Apply the mainbars system
     local function ApplyMainbarsSystem()
