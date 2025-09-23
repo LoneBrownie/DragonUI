@@ -153,7 +153,7 @@ local function InitializeMainbars()
             MainMenuBarLeftEndCap:Show()
             MainMenuBarRightEndCap:Show()
         elseif db_style.gryphons == 'new' then
-            MainMenuBarLeftEndCap:SetClearPoint('BOTTOMLEFT', -95, -23)
+            MainMenuBarLeftEndCap:SetClearPoint('BOTTOMLEFT', -94, -23)
             MainMenuBarRightEndCap:SetClearPoint('BOTTOMRIGHT', 95, -23)
             if faction == 'Alliance' then
                 MainMenuBarLeftEndCap:set_atlas('ui-hud-actionbar-gryphon-thick-left', true)
@@ -548,56 +548,47 @@ local function InitializeMainbars()
 
     -- Connect XP/Rep bars to the editor system
     local function ConnectBarsToEditor()
-        if not addon.ActionBarFrames.repexpbar then
-            return
-        end
+    if not addon.ActionBarFrames.repexpbar then
+        return
+    end
 
-        -- Connect Experience Bar to container
-        local mainMenuExpBar = MainMenuExpBar
-        if mainMenuExpBar then
-            mainMenuExpBar:SetParent(addon.ActionBarFrames.repexpbar)
-            mainMenuExpBar:ClearAllPoints()
-            -- Use NEW style size (537x10) not container size
-            mainMenuExpBar:SetSize(537, 10)
-            mainMenuExpBar:SetPoint("CENTER", addon.ActionBarFrames.repexpbar, "CENTER", 0, 0)
-            mainMenuExpBar:SetFrameLevel(1) -- Keep low level for editor overlay
-            mainMenuExpBar:SetScale(0.9) -- Ensure consistent scale
-             mainMenuExpBar:SetFrameStrata("MEDIUM")
-        end
+    local mainMenuExpBar = MainMenuExpBar
+    if mainMenuExpBar then
+        mainMenuExpBar:SetParent(addon.ActionBarFrames.repexpbar)
+        mainMenuExpBar:ClearAllPoints()
+        mainMenuExpBar:SetSize(537, 10)
+        mainMenuExpBar:SetFrameLevel(1)
+        mainMenuExpBar:SetScale(0.9)
+        mainMenuExpBar:SetFrameStrata("MEDIUM")
+        
+        -- COMPORTAMIENTO CORRECTO: Posición inicial
+        mainMenuExpBar:SetPoint("CENTER", addon.ActionBarFrames.repexpbar, "CENTER", 0, 0)
+    end
 
-        -- Connect Reputation Bar to container  
-        local repWatchBar = ReputationWatchBar
-        if repWatchBar then
-            repWatchBar:SetParent(addon.ActionBarFrames.repexpbar)
-            repWatchBar:ClearAllPoints()
-            -- Use NEW style size (537x10) not container size
-            repWatchBar:SetSize(537, 10)
-            repWatchBar:SetScale(0.9) -- Same scale as XP bar
-            repWatchBar:SetFrameLevel(1) -- Keep low level for editor overlay
-            repWatchBar:SetFrameStrata("MEDIUM")
-            -- Position relative to exp bar
-            if mainMenuExpBar and mainMenuExpBar:IsShown() then
-                repWatchBar:SetPoint("CENTER", addon.ActionBarFrames.repexpbar, "CENTER", 0, -22)
-            else
-                repWatchBar:SetPoint("CENTER", addon.ActionBarFrames.repexpbar, "CENTER", 0, 0)
-            end
+    local repWatchBar = ReputationWatchBar
+    if repWatchBar then
+        repWatchBar:SetParent(addon.ActionBarFrames.repexpbar)
+        repWatchBar:ClearAllPoints()
+        repWatchBar:SetSize(537, 10)
+        repWatchBar:SetScale(0.9)
+        repWatchBar:SetFrameLevel(1)
+        repWatchBar:SetFrameStrata("MEDIUM")
+        
+        -- COMPORTAMIENTO CORRECTO: Rep va arriba, luego UpdateBarPositions ajusta XP
+        repWatchBar:SetPoint("CENTER", addon.ActionBarFrames.repexpbar, "CENTER", 0, 0)
+        
+        if ReputationWatchStatusBar then
+            ReputationWatchStatusBar:SetSize(537, 10)
             
-            -- Fix reputation status bar to use exact size and proper centering
-            if ReputationWatchStatusBar then
-                ReputationWatchStatusBar:SetSize(537, 10)
-                
-                -- CRITICAL FIX: Ensure text is properly configured
-                if ReputationWatchStatusBarText then
-                    -- Force correct parent and layering
-                    ReputationWatchStatusBarText:SetParent(ReputationWatchStatusBar)
-                    ReputationWatchStatusBarText:SetDrawLayer("OVERLAY", 2)
-                    ReputationWatchStatusBarText:SetClearPoint('CENTER', ReputationWatchStatusBar, 'CENTER', 0, 1)
-                    -- Hide by default - only show on hover
-                    ReputationWatchStatusBarText:Hide()
-                end
+            if ReputationWatchStatusBarText then
+                ReputationWatchStatusBarText:SetParent(ReputationWatchStatusBar)
+                ReputationWatchStatusBarText:SetDrawLayer("OVERLAY", 2)
+                ReputationWatchStatusBarText:SetClearPoint('CENTER', ReputationWatchStatusBar, 'CENTER', 0, 1)
+                ReputationWatchStatusBarText:Hide()
             end
         end
     end
+end
 
     -- Force reputation text configuration (ensures text is properly configured but hidden by default)
     local function ForceReputationTextConfiguration()
@@ -615,51 +606,51 @@ local function InitializeMainbars()
 
     -- Update bar positioning when needed
     local function UpdateBarPositions()
-        if not addon.ActionBarFrames.repexpbar then
-            return
-        end
+    if not addon.ActionBarFrames.repexpbar then
+        return
+    end
 
-        local mainMenuExpBar = MainMenuExpBar
-        local repWatchBar = ReputationWatchBar
+    local mainMenuExpBar = MainMenuExpBar
+    local repWatchBar = ReputationWatchBar
+    
+    if repWatchBar and repWatchBar:IsShown() then
+        -- Cuando Rep está visible: Rep toma la posición original de XP (centro)
+        repWatchBar:ClearAllPoints()
+        repWatchBar:SetSize(537, 10)
+        repWatchBar:SetScale(0.9)
+        repWatchBar:SetFrameLevel(1)
+        repWatchBar:SetPoint("CENTER", addon.ActionBarFrames.repexpbar, "CENTER", 0, -3)
         
+        -- XP se mueve hacia abajo
         if mainMenuExpBar then
             mainMenuExpBar:ClearAllPoints()
-            -- Use NEW style size (537x10) consistently
             mainMenuExpBar:SetSize(537, 10)
-            mainMenuExpBar:SetPoint("CENTER", addon.ActionBarFrames.repexpbar, "CENTER", 0, 0)
-            mainMenuExpBar:SetFrameLevel(1) -- Reasonable level maintained
-            mainMenuExpBar:SetScale(0.9) -- Ensure consistent scale
+            mainMenuExpBar:SetFrameLevel(1)
+            mainMenuExpBar:SetScale(0.9)
+            mainMenuExpBar:SetPoint("CENTER", addon.ActionBarFrames.repexpbar, "CENTER", 0, -22)
         end
-
-        if repWatchBar then
-            repWatchBar:ClearAllPoints()
-            -- Use NEW style size (537x10) consistently
-            repWatchBar:SetSize(537, 10)
-            repWatchBar:SetScale(0.9) -- Same scale as XP bar
-            repWatchBar:SetFrameLevel(1) -- Reasonable level maintained
+        
+        if ReputationWatchStatusBar then
+            ReputationWatchStatusBar:SetSize(537, 10)
             
-            if mainMenuExpBar and mainMenuExpBar:IsShown() then
-                repWatchBar:SetPoint("CENTER", addon.ActionBarFrames.repexpbar, "CENTER", 0, -22)
-            else
-                repWatchBar:SetPoint("CENTER", addon.ActionBarFrames.repexpbar, "CENTER", 0, 0)
+            if ReputationWatchStatusBarText then
+                ReputationWatchStatusBarText:SetParent(ReputationWatchStatusBar)
+                ReputationWatchStatusBarText:SetDrawLayer("OVERLAY", 2)
+                ReputationWatchStatusBarText:SetClearPoint('CENTER', ReputationWatchStatusBar, 'CENTER', 0, 1)
+                ReputationWatchStatusBarText:Hide()
             end
-            
-            -- Ensure reputation status bar uses exact size and centering
-            if ReputationWatchStatusBar then
-                ReputationWatchStatusBar:SetSize(537, 10)
-                
-                -- CRITICAL FIX: Ensure text is properly configured
-                if ReputationWatchStatusBarText then
-                    -- Force correct parent and layering
-                    ReputationWatchStatusBarText:SetParent(ReputationWatchStatusBar)
-                    ReputationWatchStatusBarText:SetDrawLayer("OVERLAY", 2)
-                    ReputationWatchStatusBarText:SetClearPoint('CENTER', ReputationWatchStatusBar, 'CENTER', 0, 1)
-                    -- Hide by default - only show on hover
-                    ReputationWatchStatusBarText:Hide()
-                end
-            end
+        end
+    else
+        -- Cuando Rep NO está visible: XP vuelve al centro
+        if mainMenuExpBar then
+            mainMenuExpBar:ClearAllPoints()
+            mainMenuExpBar:SetSize(537, 10)
+            mainMenuExpBar:SetFrameLevel(1)
+            mainMenuExpBar:SetScale(0.9)
+            mainMenuExpBar:SetPoint("CENTER", addon.ActionBarFrames.repexpbar, "CENTER", 0, 0)
         end
     end
+end
     local function RemoveBlizzardFrames()
         local blizzFrames = {MainMenuBarPerformanceBar, MainMenuBarTexture0, MainMenuBarTexture1, MainMenuBarTexture2,
                              MainMenuBarTexture3, MainMenuBarMaxLevelBar, ReputationXPBarTexture1,
