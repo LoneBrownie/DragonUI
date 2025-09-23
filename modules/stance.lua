@@ -113,7 +113,7 @@ local function CreateStanceFrames()
     
     -- Create simple anchor frame
     anchor = CreateFrame('Frame', 'pUiStanceHolder', UIParent)
-    anchor:SetSize(400, 40)  -- Wide enough for stance buttons
+    anchor:SetSize(37, 37)  -- Visual style matching reference
     StanceModule.frames.anchor = anchor
     
     -- Create stance bar frame
@@ -153,21 +153,25 @@ end
 local function stancebutton_position()
     if not IsModuleEnabled() or not stancebar or not anchor then return end
     
-    -- READ VALUES FROM DATABASE
+    -- READ VALUES FROM DATABASE - Scale approach
     local stanceConfig = addon.db.profile.additional.stance
-    local btnsize = stanceConfig.button_size or 28
-    local space = stanceConfig.button_spacing or 3
+    local additionalConfig = addon.db.profile.additional
+    local btnsize = stanceConfig.button_size or additionalConfig.size or 29  -- Base size 29
+    local space = stanceConfig.button_spacing or additionalConfig.spacing or 3
+    local scale = btnsize / 29  -- Calculate scale factor from base size 29
     
     -- CLEAN SETUP - Avoid duplications
 	for index=1, NUM_SHAPESHIFT_SLOTS do
 		local button = _G['ShapeshiftButton'..index]
 		if button then
-		    -- Only modify if not already configured for DragonUI
+		    -- Only modify parent if not already configured
 		    if button:GetParent() ~= stancebar then
 			    button:ClearAllPoints()
 			    button:SetParent(stancebar)
-			    button:SetSize(btnsize, btnsize)
 		    end
+		    -- Use scale instead of SetSize for better border scaling
+		    button:SetSize(29, 29)  -- Keep base size
+		    button:SetScale(scale)  -- Apply scale factor
 		    
 		    -- Always update positioning
 		    if index == 1 then
@@ -401,8 +405,31 @@ function addon.RefreshStance()
 	    return
 	end
 	
-	-- Simple refresh - just reposition
-	stancebutton_position()
+	-- Update button scale and spacing with visual style
+	local stanceConfig = addon.db.profile.additional.stance
+	local additionalConfig = addon.db.profile.additional
+	local btnsize = stanceConfig.button_size or additionalConfig.size or 29  -- Base size 29
+	local space = stanceConfig.button_spacing or additionalConfig.spacing or 3
+	local scale = btnsize / 29  -- Calculate scale factor
+	
+	-- Reposition stance buttons with scale refresh
+	for i = 1, NUM_SHAPESHIFT_SLOTS do
+		local button = _G["ShapeshiftButton"..i]
+		if button then
+			button:SetSize(29, 29)  -- Keep base size
+			button:SetScale(scale)  -- Apply scale
+			if i == 1 then
+				button:SetPoint('BOTTOMLEFT', anchor, 'BOTTOMLEFT', 0, 0)
+			else
+				local prevButton = _G["ShapeshiftButton"..(i-1)]
+				if prevButton then
+					button:SetPoint('LEFT', prevButton, 'RIGHT', space, 0)
+				end
+			end
+		end
+	end
+	
+	-- Update position
 	stancebar_update()
 end
 

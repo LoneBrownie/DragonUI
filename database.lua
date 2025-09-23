@@ -198,9 +198,9 @@ local defaults = {
             size = 27,
             spacing = 6,
             stance = {
-                x_position = -34,
+                x_position = -215,
                 y_offset = -50, -- Additional Y offset for fine-tuning position
-                button_size = 28, -- Size of stance buttons
+                button_size = 32, -- Size of stance buttons
                 button_spacing = 3 -- Spacing between stance buttons
             },
             pet = {
