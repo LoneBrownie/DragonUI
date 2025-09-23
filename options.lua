@@ -58,7 +58,7 @@ function addon:CreateOptionsTable()
                 name = ' ', -- Un espacio en blanco actúa como separador
                 order = 0.5
             },
-            
+
             -- NUEVA SECCIÓN: MODULES
             modules = {
                 type = 'group',
@@ -71,13 +71,13 @@ function addon:CreateOptionsTable()
                         name = "|cffFFD700Module Control|r\n\nEnable or disable specific DragonUI modules. When disabled, the original Blizzard UI will be shown instead.",
                         order = 1
                     },
-                    
+
                     castbars_header = {
                         type = 'header',
                         name = "Cast Bars",
                         order = 10
                     },
-                    
+
                     player_castbar_enabled = {
                         type = 'toggle',
                         name = "Player Castbar",
@@ -93,7 +93,7 @@ function addon:CreateOptionsTable()
                         end,
                         order = 11
                     },
-                    
+
                     target_castbar_enabled = {
                         type = 'toggle',
                         name = "Target Castbar",
@@ -119,7 +119,7 @@ function addon:CreateOptionsTable()
                         end,
                         order = 12
                     },
-                    
+
                     focus_castbar_enabled = {
                         type = 'toggle',
                         name = "Focus Castbar",
@@ -135,42 +135,82 @@ function addon:CreateOptionsTable()
                         end,
                         order = 13
                     },
-                    
-                    -- Placeholder para futuros módulos
-                    coming_soon_header = {
+
+                    -- Main modules section
+                    other_modules_header = {
                         type = 'header',
                         name = "Other Modules",
                         order = 20
                     },
-                    
-                    noop_enabled = {
+
+                    -- UNIFIED ACTION BARS SYSTEM
+                    actionbars_system_enabled = {
                         type = 'toggle',
-                        name = "Hide Blizzard Elements",
-                        desc = "Hide default Blizzard UI elements to allow DragonUI to replace them. When disabled, all original Blizzard elements will be restored.",
+                        name = "Action Bars System",
+                        desc = "Enable the complete DragonUI action bars system. This controls: Main action bars, vehicle interface, stance/shapeshift bars, pet action bars, multicast bars (totems/possess), button styling, and hide Blizzard elements. When disabled, all action bar related features will use default Blizzard interface.",
                         get = function()
-                            return addon.db.profile.modules and addon.db.profile.modules.noop and addon.db.profile.modules.noop.enabled
+                            -- Check if the unified system is enabled by checking if all components are enabled
+                            local modules = addon.db.profile.modules
+                            if not modules then
+                                return false
+                            end
+
+                            return (modules.mainbars and modules.mainbars.enabled) and
+                                       (modules.vehicle and modules.vehicle.enabled) and
+                                       (modules.stance and modules.stance.enabled) and
+                                       (modules.petbar and modules.petbar.enabled) and
+                                       (modules.multicast and modules.multicast.enabled) and
+                                       (modules.buttons and modules.buttons.enabled) and
+                                       (modules.noop and modules.noop.enabled)
                         end,
                         set = function(info, val)
                             if not addon.db.profile.modules then
                                 addon.db.profile.modules = {}
                             end
-                            if not addon.db.profile.modules.noop then
-                                addon.db.profile.modules.noop = {}
+                            -- Initialize all module tables if they don't exist and set their enabled state
+                            local moduleNames = {"mainbars", "vehicle", "stance", "petbar", "multicast", "buttons",
+                                                 "noop"}
+                            for _, moduleName in ipairs(moduleNames) do
+                                if not addon.db.profile.modules[moduleName] then
+                                    addon.db.profile.modules[moduleName] = {}
+                                end
+                                addon.db.profile.modules[moduleName].enabled = val
                             end
-                            addon.db.profile.modules.noop.enabled = val
-                            if addon.RefreshNoop then
-                                addon.RefreshNoop()
-                            end
+                            StaticPopup_Show("DRAGONUI_RELOAD_UI")
                         end,
                         order = 21
                     },
-                    
+
+                    -- MICRO MENU & BAGS
+                    micromenu_enabled = {
+                        type = 'toggle',
+                        name = "Micro Menu & Bags",
+                        desc = "Apply DragonUI micro menu and bags system styling and positioning. Includes character button, spellbook, talents, etc. and bag management. When disabled, these elements will use default Blizzard positioning and styling.",
+                        get = function()
+                            return addon.db.profile.modules and addon.db.profile.modules.micromenu and
+                                       addon.db.profile.modules.micromenu.enabled
+                        end,
+                        set = function(info, val)
+                            if not addon.db.profile.modules then
+                                addon.db.profile.modules = {}
+                            end
+                            if not addon.db.profile.modules.micromenu then
+                                addon.db.profile.modules.micromenu = {}
+                            end
+                            addon.db.profile.modules.micromenu.enabled = val
+                            StaticPopup_Show("DRAGONUI_RELOAD_UI")
+                        end,
+                        order = 22
+                    },
+
+                    -- COOLDOWN TIMERS
                     cooldowns_enabled = {
                         type = 'toggle',
                         name = "Cooldown Timers",
                         desc = "Show cooldown timers on action buttons. When disabled, cooldown timers will be hidden and the system will be completely deactivated.",
                         get = function()
-                            return addon.db.profile.modules and addon.db.profile.modules.cooldowns and addon.db.profile.modules.cooldowns.enabled
+                            return addon.db.profile.modules and addon.db.profile.modules.cooldowns and
+                                       addon.db.profile.modules.cooldowns.enabled
                         end,
                         set = function(info, val)
                             if not addon.db.profile.modules then
@@ -184,167 +224,29 @@ function addon:CreateOptionsTable()
                                 addon.RefreshCooldownSystem()
                             end
                         end,
-                        order = 22
-                    },
-                    
-                    buttons_enabled = {
-                        type = 'toggle',
-                        name = "Button Styling",
-                        desc = "Apply DragonUI button styling and enhancements. When disabled, buttons will use default Blizzard appearance.",
-                        get = function()
-                            return addon.db.profile.modules and addon.db.profile.modules.buttons and addon.db.profile.modules.buttons.enabled
-                        end,
-                        set = function(info, val)
-                            if not addon.db.profile.modules then
-                                addon.db.profile.modules = {}
-                            end
-                            if not addon.db.profile.modules.buttons then
-                                addon.db.profile.modules.buttons = {}
-                            end
-                            addon.db.profile.modules.buttons.enabled = val
-                            if addon.RefreshButtonStyling then
-                                addon.RefreshButtonStyling()
-                            end
-                        end,
                         order = 23
                     },
-                    
-                    vehicle_enabled = {
+
+                    -- MINIMAP SYSTEM
+                    minimap_enabled = {
                         type = 'toggle',
-                        name = "Vehicle Interface",
-                        desc = "Apply DragonUI vehicle interface enhancements. When disabled, vehicles will use default Blizzard interface.",
+                        name = "Minimap System",
+                        desc = "Enable DragonUI minimap enhancements including custom styling, positioning, tracking icons, and calendar. When disabled, uses default Blizzard minimap appearance and positioning.",
                         get = function()
-                            return addon.db.profile.modules and addon.db.profile.modules.vehicle and addon.db.profile.modules.vehicle.enabled
+                            return addon.db.profile.modules and addon.db.profile.modules.minimap and
+                                       addon.db.profile.modules.minimap.enabled
                         end,
                         set = function(info, val)
                             if not addon.db.profile.modules then
                                 addon.db.profile.modules = {}
                             end
-                            if not addon.db.profile.modules.vehicle then
-                                addon.db.profile.modules.vehicle = {}
+                            if not addon.db.profile.modules.minimap then
+                                addon.db.profile.modules.minimap = {}
                             end
-                            addon.db.profile.modules.vehicle.enabled = val
-                            if addon.RefreshVehicleSystem then
-                                addon.RefreshVehicleSystem()
-                            end
+                            addon.db.profile.modules.minimap.enabled = val
+                            StaticPopup_Show("DRAGONUI_RELOAD_UI")
                         end,
                         order = 24
-                    },
-                    
-                    stance_enabled = {
-                        type = 'toggle',
-                        name = "Stance/Shapeshift Bar",
-                        desc = "Apply DragonUI stance and shapeshift bar positioning and styling. When disabled, stance bars will use default Blizzard positioning.",
-                        get = function()
-                            return addon.db.profile.modules and addon.db.profile.modules.stance and addon.db.profile.modules.stance.enabled
-                        end,
-                        set = function(info, val)
-                            if not addon.db.profile.modules then
-                                addon.db.profile.modules = {}
-                            end
-                            if not addon.db.profile.modules.stance then
-                                addon.db.profile.modules.stance = {}
-                            end
-                            addon.db.profile.modules.stance.enabled = val
-                            if addon.RefreshStanceSystem then
-                                addon.RefreshStanceSystem()
-                            end
-                        end,
-                        order = 25
-                    },
-                    
-                    petbar_enabled = {
-                        type = 'toggle',
-                        name = "Pet Action Bar",
-                        desc = "Apply DragonUI pet action bar positioning and styling. When disabled, pet bar will use default Blizzard positioning.",
-                        get = function()
-                            return addon.db.profile.modules and addon.db.profile.modules.petbar and addon.db.profile.modules.petbar.enabled
-                        end,
-                        set = function(info, val)
-                            if not addon.db.profile.modules then
-                                addon.db.profile.modules = {}
-                            end
-                            if not addon.db.profile.modules.petbar then
-                                addon.db.profile.modules.petbar = {}
-                            end
-                            addon.db.profile.modules.petbar.enabled = val
-                            if addon.RefreshPetbarSystem then
-                                addon.RefreshPetbarSystem()
-                            end
-                        end,
-                        order = 26
-                    },
-                    
-                    multicast_enabled = {
-                        type = 'toggle',
-                        name = "Multicast Bars (Totem/Possess)",
-                        desc = "Apply DragonUI multicast bars positioning and styling. Includes totem bars for Shamans and possess bars for vehicles. When disabled, these bars will use default Blizzard positioning.",
-                        get = function()
-                            return addon.db.profile.modules and addon.db.profile.modules.multicast and addon.db.profile.modules.multicast.enabled
-                        end,
-                        set = function(info, val)
-                            if not addon.db.profile.modules then
-                                addon.db.profile.modules = {}
-                            end
-                            if not addon.db.profile.modules.multicast then
-                                addon.db.profile.modules.multicast = {}
-                            end
-                            addon.db.profile.modules.multicast.enabled = val
-                            if addon.RefreshMulticastSystem then
-                                addon.RefreshMulticastSystem()
-                            end
-                        end,
-                        order = 27
-                    },
-                    
-                    micromenu_enabled = {
-                        type = 'toggle',
-                        name = "Micro Menu & Bags",
-                        desc = "Apply DragonUI micro menu and bags system styling and positioning. Includes character button, spellbook, talents, etc. and bag management. When disabled, these elements will use default Blizzard positioning and styling.",
-                        get = function()
-                            return addon.db.profile.modules and addon.db.profile.modules.micromenu and addon.db.profile.modules.micromenu.enabled
-                        end,
-                        set = function(info, val)
-                            if not addon.db.profile.modules then
-                                addon.db.profile.modules = {}
-                            end
-                            if not addon.db.profile.modules.micromenu then
-                                addon.db.profile.modules.micromenu = {}
-                            end
-                            addon.db.profile.modules.micromenu.enabled = val
-                            if addon.RefreshMicromenuSystem then
-                                addon.RefreshMicromenuSystem()
-                            end
-                        end,
-                        order = 28
-                    },
-                    
-                    mainbars_enabled = {
-                        type = 'toggle',
-                        name = "Main Action Bars & Status Bars",
-                        desc = "Apply DragonUI main action bars, status bars (XP/Rep), scaling, and positioning system. Includes all 5 action bars, pet bar, vehicle bar, experience and reputation bars. When disabled, all bars will use default Blizzard positioning and styling.",
-                        get = function()
-                            return addon.db.profile.modules and addon.db.profile.modules.mainbars and addon.db.profile.modules.mainbars.enabled
-                        end,
-                        set = function(info, val)
-                            if not addon.db.profile.modules then
-                                addon.db.profile.modules = {}
-                            end
-                            if not addon.db.profile.modules.mainbars then
-                                addon.db.profile.modules.mainbars = {}
-                            end
-                            addon.db.profile.modules.mainbars.enabled = val
-                            if addon.RefreshMainbarsSystem then
-                                addon.RefreshMainbarsSystem()
-                            end
-                        end,
-                        order = 29
-                    },
-                    
-                    coming_soon = {
-                        type = 'description',
-                        name = "|cffFFD700More modules will be added here soon...|r\n\nPlanned modules: Unit Frames, Minimap, Chat, Buffs, etc.",
-                        order = 30
                     }
                 }
             },
@@ -465,11 +367,11 @@ function addon:CreateOptionsTable()
                                         if not addon.db.profile.widgets.petbar then
                                             addon.db.profile.widgets.petbar = {}
                                         end
-                                        
+
                                         addon.db.profile.widgets.petbar.anchor = defaults.petbar.anchor
                                         addon.db.profile.widgets.petbar.posX = defaults.petbar.posX
                                         addon.db.profile.widgets.petbar.posY = defaults.petbar.posY
-                                        
+
                                         -- Refresh petbar immediately using its own refresh function
                                         if addon.RefreshPetbar then
                                             addon.RefreshPetbar()
@@ -644,7 +546,7 @@ function addon:CreateOptionsTable()
                                 }
                             },
                             cooldown = {
-                                
+
                                 type = 'group',
                                 name = "Cooldown Text",
                                 inline = true,
@@ -816,52 +718,7 @@ function addon:CreateOptionsTable()
                         end,
                         order = 4
                     },
-                    x_position = {
-                        type = 'range',
-                        name = "X Position",
-                        desc = function()
-                            local mode = addon.db.profile.micromenu.grayscale_icons and "grayscale" or "normal"
-                            return "X offset for " .. mode .. " icons (negative moves menu to left side)"
-                        end,
-                        min = -500,
-                        max = 500,
-                        step = 1,
-                        get = function()
-                            local mode = addon.db.profile.micromenu.grayscale_icons and "grayscale" or "normal"
-                            return addon.db.profile.micromenu[mode].x_position
-                        end,
-                        set = function(info, value)
-                            local mode = addon.db.profile.micromenu.grayscale_icons and "grayscale" or "normal"
-                            addon.db.profile.micromenu[mode].x_position = value
-                            if addon.RefreshMicromenu then
-                                addon.RefreshMicromenu()
-                            end
-                        end,
-                        order = 5
-                    },
-                    y_position = {
-                        type = 'range',
-                        name = "Y Position",
-                        desc = function()
-                            local mode = addon.db.profile.micromenu.grayscale_icons and "grayscale" or "normal"
-                            return "Y offset for " .. mode .. " icons"
-                        end,
-                        min = -200,
-                        max = 200,
-                        step = 1,
-                        get = function()
-                            local mode = addon.db.profile.micromenu.grayscale_icons and "grayscale" or "normal"
-                            return addon.db.profile.micromenu[mode].y_position
-                        end,
-                        set = function(info, value)
-                            local mode = addon.db.profile.micromenu.grayscale_icons and "grayscale" or "normal"
-                            addon.db.profile.micromenu[mode].y_position = value
-                            if addon.RefreshMicromenu then
-                                addon.RefreshMicromenu()
-                            end
-                        end,
-                        order = 6
-                    },
+
                     icon_spacing = {
                         type = 'range',
                         name = "Icon Spacing",
@@ -909,42 +766,7 @@ function addon:CreateOptionsTable()
                         end,
                         order = 9
                     },
-                    reset_position = {
-                        type = 'execute',
-                        name = "Reset Position",
-                        desc = function()
-                            local mode = addon.db.profile.micromenu.grayscale_icons and "grayscale" or "normal"
-                            return "Resets the position and scale to default for " .. mode .. " icons."
-                        end,
-                        func = function()
-                            local mode = addon.db.profile.micromenu.grayscale_icons and "grayscale" or "normal"
-                            -- Set defaults based on mode
-                            local defaults = {
-                                grayscale = {
-                                    scale_menu = 1.5,
-                                    x_position = 5,
-                                    y_position = -54,
-                                    icon_spacing = 15
-                                },
-                                normal = {
-                                    scale_menu = 0.9,
-                                    x_position = -111,
-                                    y_position = -53,
-                                    icon_spacing = 26
-                                }
-                            }
-                            addon.db.profile.micromenu[mode].scale_menu = defaults[mode].scale_menu
-                            addon.db.profile.micromenu[mode].x_position = defaults[mode].x_position
-                            addon.db.profile.micromenu[mode].y_position = defaults[mode].y_position
-                            addon.db.profile.micromenu[mode].icon_spacing = defaults[mode].icon_spacing
-                            -- Use complete refresh for reset
-                            if addon.RefreshMicromenu then
-                                addon.RefreshMicromenu()
-                            end
-                        end,
-                        order = 10
-                    }
-                }
+                                    }
             },
 
             bags = {
@@ -974,64 +796,8 @@ function addon:CreateOptionsTable()
                             end
                         end,
                         order = 2
-                    },
-                    x_position = {
-                        type = 'range',
-                        name = "X Position",
-                        desc = "Horizontal position adjustment for the bag bar",
-                        min = -200,
-                        max = 200,
-                        step = 1,
-                        get = function()
-                            return addon.db.profile.bags.x_position
-                        end,
-                        set = function(info, value)
-                            addon.db.profile.bags.x_position = value
-                            if addon.RefreshBagsPosition then
-                                addon.RefreshBagsPosition()
-                            end
-                        end,
-                        order = 3
-                    },
-                    y_position = {
-                        type = 'range',
-                        name = "Y Position",
-                        desc = "Vertical position adjustment for the bag bar",
-                        min = -200,
-                        max = 200,
-                        step = 1,
-                        get = function()
-                            return addon.db.profile.bags.y_position
-                        end,
-                        set = function(info, value)
-                            addon.db.profile.bags.y_position = value
-                            if addon.RefreshBagsPosition then
-                                addon.RefreshBagsPosition()
-                            end
-                        end,
-                        order = 4
-                    },
-                    reset_position = {
-                        type = 'execute',
-                        name = "Reset Position",
-                        desc = "Resets the bag position and scale to default values.",
-                        func = function()
-                            -- Get defaults from database.lua
-                            local defaults = {
-                                scale = 0.9,
-                                x_position = 1,
-                                y_position = 41
-                            }
-                            addon.db.profile.bags.scale = defaults.scale
-                            addon.db.profile.bags.x_position = defaults.x_position
-                            addon.db.profile.bags.y_position = defaults.y_position
-                            -- Use specific bags refresh function
-                            if addon.RefreshBagsPosition then
-                                addon.RefreshBagsPosition()
-                            end
-                        end,
-                        order = 5
                     }
+
                 }
             },
 
@@ -2656,144 +2422,6 @@ function addon:CreateOptionsTable()
                 }
             },
 
-            chat = {
-                type = 'group',
-                name = "Chat",
-                order = 12,
-                args = {
-                    enabled = {
-                        type = 'toggle',
-                        name = "Enable Custom Chat",
-                        desc = "Enable/disable custom chat positioning and sizing. When disabled, restores original WoW chat.",
-                        get = function()
-                            return addon.db.profile.chat.enabled
-                        end,
-                        set = function(info, value)
-                            addon.db.profile.chat.enabled = value
-                            if addon.RefreshChat then
-                                addon.RefreshChat()
-                            end
-                        end,
-                        order = 1
-                    },
-                    header1 = {
-                        type = 'header',
-                        name = "Position Settings",
-                        order = 10
-                    },
-                    x_position = {
-                        type = 'range',
-                        name = "X Position",
-                        desc = "X position relative to bottom left corner",
-                        min = 0,
-                        max = 1000,
-                        step = 1,
-                        get = function()
-                            return addon.db.profile.chat.x_position
-                        end,
-                        set = function(info, value)
-                            addon.db.profile.chat.x_position = value
-                            if addon.RefreshChat then
-                                addon.RefreshChat()
-                            end
-                        end,
-                        order = 11,
-                        disabled = function()
-                            return not addon.db.profile.chat.enabled
-                        end
-                    },
-                    y_position = {
-                        type = 'range',
-                        name = "Y Position",
-                        desc = "Y position relative to bottom left corner",
-                        min = 0,
-                        max = 1000,
-                        step = 1,
-                        get = function()
-                            return addon.db.profile.chat.y_position
-                        end,
-                        set = function(info, value)
-                            addon.db.profile.chat.y_position = value
-                            if addon.RefreshChat then
-                                addon.RefreshChat()
-                            end
-                        end,
-                        order = 12,
-                        disabled = function()
-                            return not addon.db.profile.chat.enabled
-                        end
-                    },
-                    header2 = {
-                        type = 'header',
-                        name = "Size Settings",
-                        order = 20
-                    },
-                    size_x = {
-                        type = 'range',
-                        name = "Width",
-                        desc = "Chat frame width",
-                        min = 200,
-                        max = 800,
-                        step = 1,
-                        get = function()
-                            return addon.db.profile.chat.size_x
-                        end,
-                        set = function(info, value)
-                            addon.db.profile.chat.size_x = value
-                            if addon.RefreshChat then
-                                addon.RefreshChat()
-                            end
-                        end,
-                        order = 21,
-                        disabled = function()
-                            return not addon.db.profile.chat.enabled
-                        end
-                    },
-                    size_y = {
-                        type = 'range',
-                        name = "Height",
-                        desc = "Chat frame height",
-                        min = 100,
-                        max = 500,
-                        step = 1,
-                        get = function()
-                            return addon.db.profile.chat.size_y
-                        end,
-                        set = function(info, value)
-                            addon.db.profile.chat.size_y = value
-                            if addon.RefreshChat then
-                                addon.RefreshChat()
-                            end
-                        end,
-                        order = 22,
-                        disabled = function()
-                            return not addon.db.profile.chat.enabled
-                        end
-                    },
-                    scale = {
-                        type = 'range',
-                        name = "Scale",
-                        desc = "Chat frame scale",
-                        min = 0.5,
-                        max = 2.0,
-                        step = 0.1,
-                        get = function()
-                            return addon.db.profile.chat.scale
-                        end,
-                        set = function(info, value)
-                            addon.db.profile.chat.scale = value
-                            if addon.RefreshChat then
-                                addon.RefreshChat()
-                            end
-                        end,
-                        order = 23,
-                        disabled = function()
-                            return not addon.db.profile.chat.enabled
-                        end
-                    }
-                }
-            },
-
             unitframe = {
                 type = 'group',
                 name = "Unit Frames",
@@ -2976,7 +2604,6 @@ function addon:CreateOptionsTable()
                                     if addon.PlayerFrame then
                                         addon.PlayerFrame.Refresh()
                                     end
-                                    print("|cFF00FF00[DragonUI]|r Player frame position reset to default")
                                 end,
                                 order = 11
                             }

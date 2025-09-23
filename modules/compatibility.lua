@@ -277,7 +277,7 @@ local function InitializeCommands()
     SLASH_DRAGONUI_COMPAT1 = "/duicomp"
     
     SlashCmdList["DRAGONUI_COMPAT"] = function(msg)
-        print("|cFF00FF00Active Addons:|r")
+        
         for i = 1, GetNumAddOns() do
             local name = select(1, GetAddOnInfo(i))
             local title = GetAddOnMetadata(i, "Title") or "Unknown"

@@ -95,7 +95,7 @@ local defaults = {
         -- Quest Tracker
         questtracker = {
             anchor = "TOPRIGHT",
-            x = -140, 
+            x = -140,
             y = -255,
             show_header = false
         },
@@ -160,7 +160,7 @@ local defaults = {
         style = {
             gryphons = 'new',
             xpbar = 'new',
-            exhaustion_tick = true  -- Show exhaustion tick (false to hide like RetailUI)
+            exhaustion_tick = true -- Show exhaustion tick (false to hide like RetailUI)
         },
 
         buttons = {
@@ -393,31 +393,34 @@ local defaults = {
         -- MODULES SETTINGS
         modules = {
             noop = {
-                enabled = true  -- Hide default Blizzard UI elements to allow DragonUI replacements
+                enabled = true -- Hide default Blizzard UI elements to allow DragonUI replacements
             },
             cooldowns = {
-                enabled = true  -- Show cooldown timers on action buttons
+                enabled = true -- Show cooldown timers on action buttons
             },
             buttons = {
-                enabled = true  -- Apply DragonUI button styling and enhancements
+                enabled = true -- Apply DragonUI button styling and enhancements
             },
             vehicle = {
-                enabled = true  -- Apply DragonUI vehicle interface enhancements
+                enabled = true -- Apply DragonUI vehicle interface enhancements
             },
             stance = {
-                enabled = true  -- Apply DragonUI stance/shapeshift bar positioning and styling
+                enabled = true -- Apply DragonUI stance/shapeshift bar positioning and styling
             },
             petbar = {
-                enabled = true  -- Apply DragonUI pet bar positioning and styling
+                enabled = true -- Apply DragonUI pet bar positioning and styling
             },
             multicast = {
-                enabled = true  -- Apply DragonUI multicast (totem/possess) bar positioning and styling
+                enabled = true -- Apply DragonUI multicast (totem/possess) bar positioning and styling
             },
             micromenu = {
-                enabled = true  -- Apply DragonUI micro menu and bags system styling and positioning
+                enabled = true -- Apply DragonUI micro menu and bags system styling and positioning
             },
             mainbars = {
-                enabled = true  -- Apply DragonUI main action bars, status bars (XP/Rep), scaling, and positioning system
+                enabled = true -- Apply DragonUI main action bars, status bars (XP/Rep), scaling, and positioning system
+            },
+            minimap = {
+                enabled = true -- Apply DragonUI minimap enhancements including custom styling, positioning, tracking icons, and calendar
             }
         }
     }

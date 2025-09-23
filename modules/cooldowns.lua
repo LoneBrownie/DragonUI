@@ -164,8 +164,7 @@ function addon.InitializeCooldowns()
     if methods and methods.SetCooldown then
         hooksecurefunc(methods, 'SetCooldown', addon.cooldownMixin.set_cooldown)
         isHooked = true
-        -- OPCIONAL: Mensaje de debug
-        -- print("|cFF00FF00[DragonUI]|r Cooldown hook applied")
+
     else
 
     end

@@ -53,7 +53,7 @@ local PetbarEditor = {
         --  EN EDITOR MODE: Siempre mostrar para permitir edición
         --  El sistema centralizado ya maneja la visibilidad con hasTarget
         HideUIFrame(petbarFrame, {})
-        print("|cFF00FF00[DragonUI]|r Petbar editor mode activated")
+        
     end,
     
     HidePetbarTest = function(refresh)
@@ -64,7 +64,7 @@ local PetbarEditor = {
         if refresh and addon.RefreshPetbar then
             addon.RefreshPetbar()
         end
-        print("|cFF00FF00[DragonUI]|r Petbar editor mode deactivated, position saved")
+        
     end
 }
 
@@ -174,7 +174,7 @@ local function petbutton_position()
 	
 	--  USAR NUEVO FRAME DE WIDGETS
 	if not pUiPetBar or not petbarFrame then
-		print("DragonUI: Pet bar frame not available")
+		
 		return
 	end
 	
@@ -202,7 +202,7 @@ local function petbutton_position()
 			button:SetAlpha(1);
 			petbar:SetAttribute('addchild', button);
 		else
-			print("DragonUI: PetActionButton"..index.." not found")
+			
 		end
 	end
 	
@@ -256,7 +256,7 @@ local function OnEvent(self,event,...)
 		-- RetailUI-style petbar initialization on first PET_BAR_UPDATE
 		if not petBarInitialized then
 			if config and config.debug then
-				print("DragonUI: Initializing petbar on PET_BAR_UPDATE")
+				
 			end
 			petbutton_position();
 			petBarInitialized = true
@@ -474,21 +474,21 @@ end
 
 -- Reset petbar initialization (for debugging or force re-init)
 function addon.ResetPetbar()
-	print("DragonUI: Resetting petbar initialization")
+	
 	petBarInitialized = false
 	if not InCombatLockdown() and pUiPetBar then
 		petbutton_position()
 		petBarInitialized = true
-		print("DragonUI: Petbar reinitialized successfully")
+		
 	else
-		print("DragonUI: Cannot reset petbar - in combat or frame missing")
+		
 	end
 end
 
 -- Debug function to check petbar status
 function addon.GetPetbarStatus()
     if not IsModuleEnabled() then
-        print("Petbar module is DISABLED")
+        
         return {enabled = false}
     end
     
@@ -515,9 +515,9 @@ local function RegisterPetbarEditor()
             showTest = PetbarEditor.ShowPetbarTest, 
             hideTest = PetbarEditor.HidePetbarTest  
         })
-        print("|cFF00FF00[DragonUI]|r Petbar registered with centralized editor system")
+        
     else
-        print("|cFFFF0000[DragonUI]|r Failed to register Petbar - system not ready")
+        
     end
 end
 

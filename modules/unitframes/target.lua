@@ -34,14 +34,14 @@ local function ApplyWidgetPosition()
         TargetFrame:ClearAllPoints()
         TargetFrame:SetPoint("CENTER", Module.targetFrame, "CENTER", 20, -7)
         
-        print("|cFF00FF00[DragonUI]|r Target frame positioned via widgets:", widgetConfig.posX, widgetConfig.posY)
+        
     else
         -- Fallback a posición por defecto
         Module.targetFrame:ClearAllPoints()
         Module.targetFrame:SetPoint("TOPLEFT", UIParent, "TOPLEFT", 250, -4)
         TargetFrame:ClearAllPoints()
         TargetFrame:SetPoint("CENTER", Module.targetFrame, "CENTER", 0, 0)
-        print("|cFF00FF00[DragonUI]|r Target frame positioned with defaults")
+        
     end
 end
 
@@ -152,7 +152,7 @@ local function SafeCall(func, ...)
     end
     local success, result = pcall(func, ...)
     if not success then
-        print("|cFFFF0000[DragonUI]|r Error:", result)
+        
     end
     return success, result
 end
@@ -369,8 +369,8 @@ local function UpdateClassification()
             --  THROTTLE: Solo mostrar mensaje una vez por target + cooldown
             local now = GetTime()
             if updateCache.lastFamousTarget ~= name or (now - updateCache.lastFamousMessage) > 5 then
-                print("|cFFFFD23FYou found the DragonUI developer|r")
-                print("|cFFFF6B9DThanks for using my addon|r |cFFFFE66D- Patufet|r")
+                
+                
                 updateCache.lastFamousMessage = now
                 updateCache.lastFamousTarget = name
             end
@@ -441,7 +441,7 @@ local function InitializeFrame()
             module = Module
         })
         
-        print("|cFF00FF00[DragonUI]|r Target frame registered in centralized system")
+        
     end
 
     -- Hide Blizzard elements ONCE
@@ -607,7 +607,7 @@ local function InitializeFrame()
         end
 
         Module.classificationHooked = true
-        print("|cFF00FF00[DragonUI]|r Classification protection hooks installed")
+        
     end
 
     --  MÉTODOS ShowTest Y HideTest EXACTAMENTE COMO RETAILUI
@@ -782,7 +782,7 @@ local function InitializeFrame()
             end
         end
         
-        print("|cFF00FF00[DragonUI]|r Target frame test methods added (RetailUI style)")
+        
     end
 end
 
@@ -805,7 +805,7 @@ local function OnEvent(self, event, ...)
         if addon.TextSystem and not Module.textSystem then
             Module.textSystem = addon.TextSystem.SetupFrameTextSystem("target", "target", TargetFrame, TargetFrameHealthBar,
                 TargetFrameManaBar, "TargetFrame")
-            print("|cFF00FF00[DragonUI]|r Target text system configured after world enter")
+            
         end
         
         if UnitExists("target") then
@@ -948,7 +948,7 @@ local function ResetFrame()
     TargetFrame:SetScale(config.scale or 1)
     ApplyWidgetPosition()
     
-    print("|cFF00FF00[DragonUI]|r Target frame reset to defaults with widgets")
+    
 end
 
 -- Export API
@@ -990,7 +990,7 @@ end
 
 function Module:UpdateWidgets()
     if not addon.db or not addon.db.profile.widgets or not addon.db.profile.widgets.target then
-        print("[DragonUI] Target widgets config not found, loading defaults")
+        
         self:LoadDefaultSettings()
         return
     end
@@ -998,11 +998,9 @@ function Module:UpdateWidgets()
     ApplyWidgetPosition()
     
     local widgetOptions = addon.db.profile.widgets.target
-    print(string.format("[DragonUI] Target positioned at: %s (%d, %d)", 
-          widgetOptions.anchor, widgetOptions.posX, widgetOptions.posY))
 end
 
-print("|cFF00FF00[DragonUI]|r Target module loaded and optimized v2.0 - CENTRALIZED SYSTEM")
+
 
 --  HOOK AUTOMÁTICO PARA CLASS COLOR (compatible con Ace3)
 local function SetupTargetClassColorHooks()
@@ -1022,7 +1020,7 @@ local function SetupTargetClassColorHooks()
         end)
         
         _G.DragonUI_TargetHealthHookSetup = true
-        print("|cFF00FF00[DragonUI]|r Target class color hook installed")
+        
     end
 end
 

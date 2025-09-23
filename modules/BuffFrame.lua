@@ -164,7 +164,7 @@ function BuffFrameModule:Enable()
         end)
     end
     
-    print("|cff00FF00[DragonUI]|r BuffFrame module enabled")
+    
 end
 
 --  FUNCIÓN PARA DESHABILITAR EL MÓDULO (SIMPLIFICADA)
@@ -185,7 +185,7 @@ function BuffFrameModule:Disable()
         dragonUIBuffFrame = nil
     end
     
-    print("|cff00FF00[DragonUI]|r BuffFrame module disabled")
+    
 end
 
 --  INICIALIZACIÓN AUTOMÁTICA

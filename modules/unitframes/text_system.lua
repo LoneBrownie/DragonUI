@@ -226,7 +226,7 @@ function TextSystem.HookStatusBar(statusBar, parentFrame, prefix, frameType, uni
         end
         statusBar.DragonUIHooked = true
         
-        print("|cFF00FF00[DragonUI TextSystem]|r Hooked StatusBar for", prefix)
+        
     end
 end
 
@@ -286,7 +286,7 @@ end
 function TextSystem.SetupFrameTextSystem(frameType, unit, parentFrame, healthBar, manaBar, prefix)
     --  VALIDACIONES DE SEGURIDAD
     if not parentFrame then
-        print("|cFFFF0000[DragonUI TextSystem]|r ERROR: parentFrame is nil for frameType:", frameType)
+        
         return {
             update = function() end,
             clear = function() end
@@ -294,16 +294,16 @@ function TextSystem.SetupFrameTextSystem(frameType, unit, parentFrame, healthBar
     end
     
     if not healthBar then
-        print("|cFFFF0000[DragonUI TextSystem]|r WARNING: healthBar is nil for frameType:", frameType)
+        
     end
     
     if not manaBar then
-        print("|cFFFF0000[DragonUI TextSystem]|r WARNING: manaBar is nil for frameType:", frameType)
+        
     end
     
     prefix = prefix or frameType:gsub("^%l", string.upper) .. "Frame"
     
-    print("|cFF00FF00[DragonUI TextSystem]|r Setting up text system for:", frameType, "with prefix:", prefix)
+    
     
     --  FUNCIÓN DE ACTUALIZACIÓN COMÚN
     local function updateCallback()
@@ -325,7 +325,7 @@ function TextSystem.SetupFrameTextSystem(frameType, unit, parentFrame, healthBar
     --  CONFIGURAR EVENTOS DE HOVER (MANTENER)
     TextSystem.SetupHoverEvents(parentFrame, healthBar, manaBar, updateCallback)
     
-    print("|cFF00FF00[DragonUI TextSystem]|r Text system configured successfully for:", frameType)
+    
     
     return {
         update = updateCallback,
@@ -362,4 +362,3 @@ function TextSystem.SetupHoverEvents(parentFrame, healthBar, manaBar, updateCall
     end
 end
 
-print("|cFF00FF00[DragonUI]|r TextSystem HYBRID loaded")

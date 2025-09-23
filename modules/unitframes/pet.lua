@@ -101,7 +101,7 @@ local function ApplyFramePositioning()
     if PetFrameModule.anchor then
         PetFrame:ClearAllPoints()
         PetFrame:SetPoint("CENTER", PetFrameModule.anchor, "CENTER", 0, 0)
-        print("|cFF00FF00[DragonUI]|r Pet frame positioned relative to anchor")
+        
     elseif config.override then
         --  FALLBACK: Sistema legacy de configuración manual
         PetFrame:ClearAllPoints()
@@ -115,9 +115,9 @@ local function ApplyFramePositioning()
         )
         PetFrame:SetMovable(true)
         PetFrame:EnableMouse(true)
-        print("|cFF00FF00[DragonUI]|r Pet frame positioned via legacy override")
+        
     else
-        print("|cFF00FF00[DragonUI]|r Pet frame using default Blizzard positioning")
+        
     end
 end
 
@@ -167,7 +167,7 @@ local function PetFrame_OnUpdate(self, elapsed)
     end)
     
     if not success then
-        print("|cFFFF0000[DragonUI PetFrame]|r Error in OnUpdate:", err)
+        
     end
 end
 
@@ -229,7 +229,7 @@ local function ReplaceBlizzardPetFrame()
     if not moduleState.hooks.onUpdate then
         petFrame:SetScript("OnUpdate", PetFrame_OnUpdate)
         moduleState.hooks.onUpdate = true
-        print("|cFF00FF00[DragonUI PetFrame]|r Combat pulse animation enabled")
+        
     end
     
     ApplyFramePositioning()
@@ -339,7 +339,7 @@ local function ReplaceBlizzardPetFrame()
     -- INTEGRATE TEXT SYSTEM
     -- ===============================================================
     if addon.TextSystem then
-        print("|cFF00FF00[DragonUI PetFrame]|r Integrating with TextSystem...")
+        
         
         -- Setup the advanced text system for pet frame
         moduleState.textSystem = addon.TextSystem.SetupFrameTextSystem(
@@ -351,9 +351,9 @@ local function ReplaceBlizzardPetFrame()
             "PetFrame"             -- prefix
         )
         
-        print("|cFF00FF00[DragonUI PetFrame]|r TextSystem integration complete!")
+        
     else
-        print("|cFFFF0000[DragonUI PetFrame]|r TextSystem not available, using fallback...")
+        
     end
 end
 
@@ -405,7 +405,7 @@ end
 function addon.RefreshPetFrame()
     if UnitExists("pet") then
         OnPetFrameUpdate()
-        print("|cFF00FF00[DragonUI]|r Pet frame refreshed")
+        
     end
 end
 
@@ -423,10 +423,6 @@ eventFrame:SetScript("OnEvent", function(self, event, arg1)
         PetFrameModule:PLAYER_ENTERING_WORLD()
     end
 end)
-
--- ===============================================================
--- MODULE INITIALIZATION COMPLETE
--- ===============================================================
 
 -- ===============================================================
 -- CENTRALIZED SYSTEM INTEGRATION
@@ -456,13 +452,13 @@ end
 --  FUNCIÓN PARA APLICAR POSICIÓN DESDE WIDGETS (COMO party.lua)
 local function ApplyWidgetPosition()
     if not PetFrameModule.anchor then
-        print("|cFFFF0000[DragonUI]|r Pet anchor frame not created")
+        
         return
     end
 
     --  ASEGURAR QUE EXISTE LA CONFIGURACIÓN
     if not addon.db or not addon.db.profile or not addon.db.profile.widgets then
-        print("|cFFFF0000[DragonUI]|r No widgets configuration found")
+        
         return
     end
     
@@ -472,12 +468,12 @@ local function ApplyWidgetPosition()
         local anchor = widgetConfig.anchor or "TOPRIGHT"
         PetFrameModule.anchor:ClearAllPoints()
         PetFrameModule.anchor:SetPoint(anchor, UIParent, anchor, widgetConfig.posX, widgetConfig.posY)
-        print("|cFF00FF00[DragonUI]|r Pet frame positioned via widgets:", anchor, widgetConfig.posX, widgetConfig.posY)
+        
     else
         --  POSICIÓN POR DEFECTO COMO RETAILUI (esquina superior derecha)
         PetFrameModule.anchor:ClearAllPoints()
         PetFrameModule.anchor:SetPoint("TOPRIGHT", UIParent, "TOPRIGHT", -50, -150)
-        print("|cFF00FF00[DragonUI]|r Pet frame positioned with defaults: TOPRIGHT -50 -150")
+        
     end
 end
 
@@ -494,7 +490,7 @@ function PetFrameModule:LoadDefaultSettings()
             posX = -50,
             posY = -150
         }
-        print("|cFF00FF00[DragonUI]|r Pet frame: Created default widget settings")
+        
     end
     
     --  ASEGURAR QUE EXISTE LA CONFIGURACIÓN EN UNITFRAME.PET
@@ -504,7 +500,7 @@ function PetFrameModule:LoadDefaultSettings()
     
     if not addon.db.profile.unitframe.pet then
         -- La configuración del pet ya debería existir en database.lua
-        print("|cFF00FF00[DragonUI]|r Pet frame: Using existing unitframe.pet settings")
+        
     end
 end
 
@@ -604,7 +600,7 @@ local function InitializePetFrameForEditor()
     })
     
     PetFrameModule.initialized = true
-    print("|cFF00FF00[DragonUI]|r Pet frame registered with centralized system")
+    
 end
 
 --  INICIALIZACIÓN
@@ -623,4 +619,3 @@ readyFrame:SetScript("OnEvent", function(self, event, addonName)
     end
 end)
 
-print("|cFF00FF00[DragonUI]|r Pet Frame module loaded successfully - CENTRALIZED SYSTEM")

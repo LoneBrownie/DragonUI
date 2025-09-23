@@ -39,9 +39,9 @@ end
 
 function addon.core:OnEnable()
     -- Now we can safely create and register options (after all modules are loaded)
-    print("|cFFFF0000[Core Init Debug]|r About to create options table, EditorMode exists:", addon.EditorMode ~= nil)
+    
     addon.options = addon:CreateOptionsTable();
-    print("|cFFFF0000[Core Init Debug]|r Options table created")
+    
 
     -- Inject AceDBOptions into the profiles section
     local profilesOptions = LibStub("AceDBOptions-3.0"):GetOptionsTable(addon.db);
@@ -268,34 +268,11 @@ function addon.core:SlashCommand(input)
         else
             self:Print("Editor mode not available. Make sure the editor_mode module is loaded.");
         end
-    elseif input:lower() == "debug" or input:lower() == "test" then
-        --  COMANDO DE DIAGNÓSTICO DEL SISTEMA CENTRALIZADO
-        self:Print("=== DragonUI Centralized System Debug ===");
-        
-        if addon.EditableFrames then
-            self:Print("Registered frames: " .. tostring(addon:tcount(addon.EditableFrames)));
-            for name, frameData in pairs(addon.EditableFrames) do
-                local frameStatus = frameData.frame and "OK" or "MISSING"
-                local configPath = table.concat(frameData.configPath, ".")
-                self:Print("  - " .. name .. " (frame: " .. frameStatus .. ", config: " .. configPath .. ")");
-            end
-        else
-            self:Print("ERROR: No EditableFrames table found!");
-        end
-        
-        if addon.db and addon.db.profile.widgets then
-            self:Print("Database widgets:");
-            for widgetName, widgetData in pairs(addon.db.profile.widgets) do
-                self:Print("  - " .. widgetName .. ": " .. (widgetData.anchor or "NONE") .. " (" .. (widgetData.posX or 0) .. "," .. (widgetData.posY or 0) .. ")");
-            end
-        else
-            self:Print("ERROR: No widgets in database!");
-        end
     else
         self:Print("Commands:");
         self:Print("/dragonui config - Open configuration");
         self:Print("/dragonui edit - Toggle editor mode for moving UI elements");
-        self:Print("/dragonui debug - Show centralized system debug info");
+
     end
 end
 
@@ -410,7 +387,7 @@ end
 
 function SaveUIFramePosition(frame, configPath1, configPath2)
     if not frame then
-        print("|cFFFF0000[DragonUI]|r SaveUIFramePosition: frame is nil")
+
         return
     end
 
@@ -431,8 +408,7 @@ function SaveUIFramePosition(frame, configPath1, configPath2)
         addon.db.profile[configPath1][configPath2].posX = posX or 0
         addon.db.profile[configPath1][configPath2].posY = posY or 0
 
-        print(string.format("[DragonUI] %s.%s position saved: %s (%.0f, %.0f)", 
-              configPath1, configPath2, anchor or "CENTER", posX or 0, posY or 0))
+
     else
         -- Caso: SaveUIFramePosition(frame, "minimap") - compatibilidad hacia atrás
         local widgetName = configPath1
@@ -449,8 +425,7 @@ function SaveUIFramePosition(frame, configPath1, configPath2)
         addon.db.profile.widgets[widgetName].posX = posX or 0
         addon.db.profile.widgets[widgetName].posY = posY or 0
 
-        print(string.format("[DragonUI] %s position saved: %s (%.0f, %.0f)", 
-              widgetName, anchor or "CENTER", posX or 0, posY or 0))
+
     end
 end
 
@@ -529,7 +504,7 @@ function addon:RegisterEditableFrame(frameInfo)
     }
     
     self.EditableFrames[frameInfo.name] = frameData
-    print("|cFF00FF00[DragonUI]|r Registered editable frame:", frameInfo.name)
+
 end
 
 --  FUNCIÓN PARA MOSTRAR TODOS LOS FRAMES EN EDITOR MODE

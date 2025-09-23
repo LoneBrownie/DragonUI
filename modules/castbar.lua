@@ -1314,13 +1314,13 @@ end
 --  FUNCIÓN PARA APLICAR POSICIÓN DESDE WIDGETS (COMO party.lua)
 local function ApplyWidgetPosition()
     if not CastbarModule.anchor then
-        print("|cFFFF0000[DragonUI]|r Castbar anchor frame not created")
+        
         return
     end
 
     --  ASEGURAR QUE EXISTE LA CONFIGURACIÓN
     if not addon.db or not addon.db.profile or not addon.db.profile.widgets then
-        print("|cFFFF0000[DragonUI]|r No widgets configuration found")
+        
         return
     end
     
@@ -1330,12 +1330,12 @@ local function ApplyWidgetPosition()
         local anchor = widgetConfig.anchor or "BOTTOM"
         CastbarModule.anchor:ClearAllPoints()
         CastbarModule.anchor:SetPoint(anchor, UIParent, anchor, widgetConfig.posX, widgetConfig.posY)
-        print("|cFF00FF00[DragonUI]|r Player castbar positioned via widgets:", anchor, widgetConfig.posX, widgetConfig.posY)
+        
     else
         --  POSICIÓN POR DEFECTO COMO RETAILUI
         CastbarModule.anchor:ClearAllPoints()
         CastbarModule.anchor:SetPoint("BOTTOM", UIParent, "BOTTOM", 0, 270)
-        print("|cFF00FF00[DragonUI]|r Player castbar positioned with defaults: BOTTOM 0 270")
+        
     end
 end
 
@@ -1352,7 +1352,7 @@ function CastbarModule:LoadDefaultSettings()
             posX = 0,
             posY = 270
         }
-        print("|cFF00FF00[DragonUI]|r Player castbar: Created default widget settings")
+        
     end
     
     --  ASEGURAR QUE EXISTE LA CONFIGURACIÓN EN CASTBAR
@@ -1363,7 +1363,7 @@ function CastbarModule:LoadDefaultSettings()
     if not addon.db.profile.castbar.enabled then
         -- La configuración del castbar ya existe en database.lua
         -- Solo aseguramos que esté inicializada
-        print("|cFF00FF00[DragonUI]|r Player castbar: Using existing castbar settings")
+        
     end
 end
 
@@ -1468,7 +1468,7 @@ local function InitializeCastbarForEditor()
     })
     
     CastbarModule.initialized = true
-    print("|cFF00FF00[DragonUI]|r Player castbar registered with centralized system")
+    
 end
 
 -- ============================================================================

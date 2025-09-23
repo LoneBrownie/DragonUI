@@ -22,6 +22,9 @@ addon.MinimapModule = MinimapModule;
 
 MinimapModule.minimapFrame = nil
 MinimapModule.borderFrame = nil
+MinimapModule.isEnabled = false
+MinimapModule.originalMinimapSettings = {}  -- Store original Blizzard settings
+MinimapModule.originalMask = nil  -- Store original minimap mask
 
 local DEFAULT_MINIMAP_WIDTH = Minimap:GetWidth() * 1.36
 local DEFAULT_MINIMAP_HEIGHT = Minimap:GetHeight() * 1.36
@@ -42,7 +45,7 @@ local function GetAtlasFunction()
     elseif SetAtlasTexture then
         return SetAtlasTexture
     else
-        print("[DragonUI] ERROR: No atlas function found!")
+        
         return nil
     end
 end
@@ -286,7 +289,7 @@ local function ReplaceBlizzardFrame(frame)
             SetTracking()
             -- Update the tracking display
             MinimapModule:UpdateTrackingIcon()
-            print("|cFF00FF00[DragonUI]|r Tracking cleared")
+            
         else
             -- Left click - use default behavior
             ToggleDropDownMenu(1, nil, MiniMapTrackingDropDown, "MiniMapTrackingButton")
@@ -585,12 +588,12 @@ function MinimapModule:UpdateTrackingIcon()
         return
     end
 
-    print("  - FINAL MODE:", useOldStyle and "OLD STYLE" or "MODERN STYLE")
+    
 
     if useOldStyle then
-        print("  - Using OLD STYLE tracking")
+        
         if texture == 'Interface\\Minimap\\Tracking\\None' then
-            print("    - No tracking: showing default magnifying glass")
+            
             -- OLD STYLE + No tracking = Mostrar icono de lupa por defecto
             MiniMapTrackingIcon:SetTexture('')
             MiniMapTrackingIcon:SetAlpha(0)
@@ -611,7 +614,7 @@ function MinimapModule:UpdateTrackingIcon()
                 SetAtlasTexture(highlightTexture, 'Minimap-Tracking-Highlight')
             end
         else
-            print("    - Tracking active: showing classic icon", texture)
+            
             -- OLD STYLE + Tracking active = Mostrar el icono específico del tracking
             MiniMapTrackingIcon:SetTexture(texture)
             MiniMapTrackingIcon:SetTexCoord(0, 1, 0, 1)
@@ -629,7 +632,7 @@ function MinimapModule:UpdateTrackingIcon()
             end
         end
     else
-        print("  - Using MODERN STYLE tracking")
+        
         --  MODERN STYLE: Siempre mostrar botón moderno (RetailUI style)
 
         -- Limpiar el icono clásico para que no interfiera
@@ -652,7 +655,7 @@ function MinimapModule:UpdateTrackingIcon()
             SetAtlasTexture(highlightTexture, 'Minimap-Tracking-Highlight')
         end
 
-        print("    - Modern binoculars button applied")
+        
     end
 
     -- Siempre ocultar overlay
@@ -716,7 +719,103 @@ local function MiniMapInstanceDifficulty_OnEvent(self)
     end
 end
 
-function MinimapModule:Initialize()
+-- =================================================================
+-- MODULE ENABLE/DISABLE SYSTEM
+-- =================================================================
+
+function MinimapModule:StoreOriginalSettings()
+    -- Store original Blizzard minimap settings
+    if MinimapCluster then
+        local point, relativeTo, relativePoint, xOfs, yOfs = MinimapCluster:GetPoint()
+        self.originalMinimapSettings = {
+            scale = MinimapCluster:GetScale(),
+            point = point,
+            relativeTo = relativeTo,
+            relativePoint = relativePoint,
+            xOfs = xOfs,
+            yOfs = yOfs,
+            isStored = true
+        }
+    end
+    
+    -- Store that we need to restore to Blizzard default mask
+    if not self.originalMask then
+        self.originalMask = "Textures\\MinimapMask"  -- Standard Blizzard default
+        
+    end
+end
+
+function MinimapModule:ApplyMinimapSystem()
+    if self.isEnabled then
+        return  -- Already enabled
+    end
+    
+    
+    
+    -- Store original settings before applying DragonUI changes
+    self:StoreOriginalSettings()
+    
+    -- Initialize the DragonUI minimap system
+    self:InitializeMinimapSystem()
+    
+    self.isEnabled = true
+    
+end
+
+function MinimapModule:RestoreMinimapSystem()
+    if not self.isEnabled then
+        return  -- Already disabled
+    end
+    
+    
+    
+    -- Hide DragonUI frames
+    if self.minimapFrame then
+        self.minimapFrame:Hide()
+    end
+    if self.borderFrame then
+        self.borderFrame:Hide()
+    end
+    
+    -- Restore original Blizzard minimap settings
+    if MinimapCluster and self.originalMinimapSettings.isStored then
+        MinimapCluster:ClearAllPoints()
+        MinimapCluster:SetPoint(
+            self.originalMinimapSettings.point or "TOPRIGHT",
+            self.originalMinimapSettings.relativeTo or UIParent,
+            self.originalMinimapSettings.relativePoint or "TOPRIGHT",
+            self.originalMinimapSettings.xOfs or -16,
+            self.originalMinimapSettings.yOfs or -116
+        )
+        MinimapCluster:SetScale(self.originalMinimapSettings.scale or 1.0)
+    end
+    
+    -- Restore original Blizzard frames that were hidden
+    if MiniMapWorldMapButton then
+        MiniMapWorldMapButton:Show()
+    end
+    
+    -- Restore original textures and positions
+    if MinimapBorder then
+        MinimapBorder:Show()
+    end
+    
+    if Minimap.Circle then
+        Minimap.Circle:Hide()
+    end
+    
+    -- CRITICAL: Restore original Blizzard minimap mask
+    if Minimap then
+        local maskToRestore = self.originalMask or "Textures\\MinimapMask"
+        Minimap:SetMaskTexture(maskToRestore)
+        
+    end
+    
+    self.isEnabled = false
+    
+end
+
+function MinimapModule:InitializeMinimapSystem()
     -- Load TimeManager addon if not loaded
     if not IsAddOnLoaded('Blizzard_TimeManager') then
         LoadAddOn('Blizzard_TimeManager')
@@ -763,7 +862,26 @@ function MinimapModule:Initialize()
     -- Initial tracking icon update
     self:UpdateTrackingIcon()
 
-    print("|cFF00FF00[DragonUI]|r Minimap module initialized")
+    
+end
+
+function MinimapModule:Initialize()
+    -- Check if minimap module is enabled
+    local isEnabled = addon.db and addon.db.profile and addon.db.profile.modules and 
+                     addon.db.profile.modules.minimap and addon.db.profile.modules.minimap.enabled
+
+    if isEnabled == nil then
+        isEnabled = true  -- Default to enabled for existing installations
+    end
+
+    if not isEnabled then
+        
+        -- Don't apply any DragonUI modifications when disabled
+        return
+    end
+
+    -- Only apply DragonUI modifications if module is enabled
+    self:ApplyMinimapSystem()
 end
 
 -- Eliminar las funciones que no existen más y convertir en funciones DragonUI
@@ -780,13 +898,13 @@ function MinimapModule:UpdateSettings()
             anchor = widgetConfig.anchor or "TOPRIGHT"
             x = widgetConfig.posX or 0
             y = widgetConfig.posY or 0
-            print("[DragonUI] Using EDITOR MODE position:", anchor, x, y)
+            
         else
             -- 2. Fallback a posición legacy (x, y)
             x = addon.db.profile.minimap.x or -7
             y = addon.db.profile.minimap.y or 0
             anchor = "TOPRIGHT"
-            print("[DragonUI] Using LEGACY position:", anchor, x, y)
+            
         end
         
         --  APLICAR POSICIÓN
@@ -796,7 +914,7 @@ function MinimapModule:UpdateSettings()
         --  APLICAR ESCALA (funciona perfecto ahora)
         if MinimapCluster then
             MinimapCluster:SetScale(scale)
-            print("[DragonUI] Applied scale to MinimapCluster:", scale)
+            
         end
 
         if self.borderFrame then
@@ -821,7 +939,7 @@ function MinimapModule:UpdateSettings()
     --  REFRESCAR OTROS ELEMENTOS
     self:UpdateTrackingIcon()
     
-    print("[DragonUI] UpdateSettings completed - Scale:", scale)
+    
 end
 
 local function GetClockTextFrame()
@@ -931,9 +1049,9 @@ function MinimapModule:ApplyAllSettings()
         if clockText then
             local font, _, flags = clockText:GetFont()
             clockText:SetFont(font, settings.clock_font_size, flags)
-            print("|cff00FF00[DragonUI]|r Clock font size applied:", settings.clock_font_size)
+            
         else
-            print("|cffFF6600[DragonUI]|r Warning: Clock text frame not found for font size")
+            
         end
     end
 
@@ -959,7 +1077,7 @@ end
 function MinimapModule:UpdateWidgets()
     --  USAR LA BASE DE DATOS CORRECTA: addon.db (no addon.core.db)
     if not addon.db or not addon.db.profile.widgets or not addon.db.profile.widgets.minimap then
-        print("[DragonUI] Minimap widgets config not found, loading defaults")
+        
         self:LoadDefaultSettings()
         return
     end
@@ -967,19 +1085,36 @@ function MinimapModule:UpdateWidgets()
     local widgetOptions = addon.db.profile.widgets.minimap
     self.minimapFrame:SetPoint(widgetOptions.anchor, widgetOptions.posX, widgetOptions.posY)
     
-    print(string.format("[DragonUI] Minimap positioned at: %s (%d, %d)", 
-          widgetOptions.anchor, widgetOptions.posX, widgetOptions.posY))
+
 end
 
 --  FUNCIONES EDITOR MODE ELIMINADAS - AHORA USA SISTEMA CENTRALIZADO
 
 -- Función de refresh para ser llamada desde options.lua
 function addon:RefreshMinimap()
-    MinimapModule:UpdateSettings()
-    -- Also update tracking icon when settings change
-    MinimapModule:UpdateTrackingIcon()
-    --  NUEVO: Refrescar skinning de iconos de addons
-    RemoveAllMinimapIconBorders()
+    if MinimapModule.isEnabled then
+        MinimapModule:UpdateSettings()
+        -- Also update tracking icon when settings change
+        MinimapModule:UpdateTrackingIcon()
+        --  NUEVO: Refrescar skinning de iconos de addons
+        RemoveAllMinimapIconBorders()
+    end
+end
+
+-- Función de refresh del sistema para habilitar/deshabilitar
+function addon:RefreshMinimapSystem()
+    local isEnabled = addon.db and addon.db.profile and addon.db.profile.modules and 
+                     addon.db.profile.modules.minimap and addon.db.profile.modules.minimap.enabled
+
+    if isEnabled == nil then
+        isEnabled = true  -- Default to enabled
+    end
+
+    if isEnabled then
+        MinimapModule:ApplyMinimapSystem()
+    else
+        MinimapModule:RestoreMinimapSystem()
+    end
 end
 
 --  NUEVA FUNCIÓN: Limpiar skinning de todos los botones
@@ -996,14 +1131,14 @@ end
 
 --  FUNCIÓN PARA DEBUGGING
 function addon:DebugMinimapButtons()
-    print("|cFFFFFF00[DragonUI Debug]|r Minimap buttons:")
+    
     for i = 1, Minimap:GetNumChildren() do
         local child = select(i, Minimap:GetChildren())
         if child and child:GetObjectType() == "Button" then
             local name = child:GetName() or "Unnamed"
             local hasBorder = child.circle and "YES" or "NO"
             local width, height = child:GetSize()
-            print(string.format("  - %s: %dx%d, Border: %s", name, width, height, hasBorder))
+            
         end
     end
 end
@@ -1018,7 +1153,20 @@ initFrame:RegisterEvent("ADDON_LOADED")
 initFrame:RegisterEvent("PLAYER_ENTERING_WORLD")
 initFrame:SetScript("OnEvent", function(self, event, addonName)
     if event == "ADDON_LOADED" and addonName == "DragonUI" then
-        -- Esperar a que todo esté cargado
+        -- Set original mask to standard Blizzard default
+        if not MinimapModule.originalMask then
+            MinimapModule.originalMask = "Textures\\MinimapMask"
+            
+        end
+        
+        -- Check if minimap module should be disabled and restore mask immediately
+        if addon.db and addon.db.profile and addon.db.profile.modules and addon.db.profile.modules.minimap then
+            local isEnabled = addon.db.profile.modules.minimap.enabled
+            if isEnabled == false then
+                Minimap:SetMaskTexture(MinimapModule.originalMask)
+                
+            end
+        end
     elseif event == "PLAYER_ENTERING_WORLD" then
         MinimapModule:Initialize()
         self:UnregisterAllEvents()

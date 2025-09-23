@@ -72,7 +72,7 @@ local function CreateVehicleFrames()
     -- Get mainbar reference
     pUiMainBar = addon.pUiMainBar or _G.pUiMainBar
     if not pUiMainBar then
-        print("|cFFFF8000[DragonUI]|r Vehicle module: Cannot create frames - pUiMainBar not found")
+        
         return false
     end
     
@@ -480,7 +480,7 @@ local function ApplyVehicleSystem()
     
     -- Check dependencies
     if not CheckDependencies() then
-        print("|cFFFF8000[DragonUI]|r Vehicle module requires Mainbars module to be enabled")
+        
         return
     end
     
@@ -489,7 +489,7 @@ local function ApplyVehicleSystem()
     
     -- Create frames
     if not CreateVehicleFrames() then
-        print("|cFFFF8000[DragonUI]|r Vehicle module: Failed to create frames")
+        
         return
     end
     
@@ -546,7 +546,7 @@ local function ApplyVehicleSystem()
     SetupBonusBarVehicle()
     
     VehicleModule.applied = true
-    print("|cFF00FF00[DragonUI]|r Vehicle module applied")
+    
 end
 local function RestoreVehicleSystem()
     if not VehicleModule.applied then return end
@@ -592,7 +592,7 @@ local function RestoreVehicleSystem()
     pUiMainBar = nil
     
     VehicleModule.applied = false
-    print("|cFF00FF00[DragonUI]|r Vehicle module restored to Blizzard defaults")
+    
 end
 
 -- ============================================================================
@@ -649,7 +649,7 @@ local function WaitForDependencies(callback, attempts)
     attempts = attempts or 0
     
     if attempts > 20 then -- Give up after 10 seconds
-        print("|cFFFF8000[DragonUI]|r Vehicle module: Timeout waiting for dependencies")
+        
         return
     end
     

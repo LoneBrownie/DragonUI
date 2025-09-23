@@ -170,16 +170,16 @@ local function createGridOverlay()
     end
     
     --  DEBUG: Mostrar información de simetría
-    print("|cFFFFFF00[DragonUI Grid]|r Horizontal: " .. halfCellsHorizontal .. " celdas por lado (" .. totalHorizontalCells .. " total)")
-    print("|cFFFFFF00[DragonUI Grid]|r Vertical: " .. halfCellsVertical .. " celdas por lado (" .. totalVerticalCells .. " total)")
-    print("|cFFFFFF00[DragonUI Grid]|r Tamaño real: " .. string.format("%.1f", actualCellWidth) .. "x" .. string.format("%.1f", actualCellHeight))
+    
+    
+    
     
     gridOverlay:Hide()
 end
 
 function EditorMode:Show()
     if InCombatLockdown() then
-        print("Cannot open editor mode while in combat")
+        
         return
     end
 
@@ -209,7 +209,7 @@ function EditorMode:Show()
     -- Refresh AceConfig to update button state
     self:RefreshOptionsUI()
     
-    print("|cFF00FF00[DragonUI]|r Editor mode activated")
+    
 end
 
 
@@ -232,7 +232,7 @@ function EditorMode:Hide()
     -- Refresh AceConfig to update button state
     self:RefreshOptionsUI()
     
-    print("|cFF00FF00[DragonUI]|r Editor mode deactivated")
+    
 end
 
 function EditorMode:RefreshOptionsUI()
@@ -320,24 +320,24 @@ end
 --  FUNCIÓN PARA RESETEAR SOLO WIDGETS USANDO ACE3 (FUERA DEL EDITOR MODE)
 function EditorMode:ResetAllPositions()
     if not addon.db or not addon.db.profile then
-        print("|cffFF0000[DragonUI]|r Error: Database not available")
+        
         return
     end
     
-    print("|cff00FF00[DragonUI]|r Resetting all UI widget positions using Ace3...")
+    
     
     -- Resetear solo la sección widgets usando los defaults de Ace3
     if addon.defaults and addon.defaults.profile and addon.defaults.profile.widgets then
         -- Usar deep copy de los defaults para widgets (preserva el resto de configuración)
         addon.db.profile.widgets = addon:CopyTable(addon.defaults.profile.widgets)
-        print("|cff00FF00[DragonUI]|r Widget positions reset to defaults")
+        
     else
-        print("|cffFF0000[DragonUI]|r Error: Could not find default widget positions")
+        
         return
     end
     
     -- Usar ReloadUI para aplicar completamente los cambios (como reset de perfil)
-    print("|cffFFFF00[DragonUI]|r Reloading UI to apply changes...")
+    
     ReloadUI()
 end
 

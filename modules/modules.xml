@@ -8,20 +8,27 @@
     <Script file="vehicle.lua"/>
     <Script file="petbar.lua"/>
     <Script file="multicast.lua"/>
+    
+    <!-- Micro Menu & Bag module -->
     <Script file="micromenu.lua"/>
+    
+    <!-- Buffs, Minimap & Quest Tracker modules -->
     <Script file="BuffFrame.lua"/> 
     <Script file="minimap.lua"/>    
     <Script file="questtracker.lua"/>   
+    
     <!-- UnitFrames -->
     <Include file="unitframes\unitframes.xml"/>
+    
     <!-- Cast Bar module -->
     <Script file="castbar.lua"/>               
-    <!-- Chat module -->
-    <Script file="Chat.lua"/>
+    
     <!-- Game Menu module -->
     <Script file="gamemenu.lua"/>
+    
     <!-- Editor Mode module -->
     <Script file="editor_mode.lua"/>
+    
     <!-- Conflict Detection module -->
     <Script file="compatibility.lua"/>
 </Ui>

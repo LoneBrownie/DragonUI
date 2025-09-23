@@ -115,5 +115,5 @@ end)
 -- Public API for options
 function addon.RefreshNoopSystem()
     -- Since this requires reload, just inform the user
-    print("|cFFFF8000[DragonUI]|r NOOP module changes require a /reload to take effect")
+    
 end

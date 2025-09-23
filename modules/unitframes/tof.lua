@@ -237,7 +237,7 @@ local function InitializeFrame()
 
     -- Verificar que FoT existe
     if not FocusFrameToT then
-        print("|cFFFF0000[DragonUI]|r FocusFrameToT not available")
+        
         return
     end
 
@@ -455,4 +455,3 @@ function addon:RefreshToFFrame()
     RefreshFrame()
 end
 
-print("|cFF00FF00[DragonUI]|r Focus of Target module loaded and optimized v1.0")

@@ -236,7 +236,7 @@ local function InitializeFrame()
 
     -- Verificar que ToT existe
     if not TargetFrameToT then
-        print("|cFFFF0000[DragonUI]|r TargetFrameToT not available")
+        
         return
     end
 
@@ -457,4 +457,4 @@ function addon:RefreshToTFrame()
     RefreshFrame()
 end
 
-print("|cFF00FF00[DragonUI]|r Target of Target module loaded and optimized v1.0")
+

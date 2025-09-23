@@ -127,7 +127,7 @@ function QuestTrackerModule:Initialize()
     hooksecurefunc('WatchFrame_Collapse', WatchFrame_Collapse)
     hooksecurefunc('WatchFrame_Update', WatchFrame_Update)
     
-    print("|cFF00FF00[DragonUI]|r Quest Tracker module initialized")
+    
 end
 
 -- =============================================================================
@@ -158,7 +158,7 @@ function QuestTrackerModule:ShowEditorTest()
             end
         end)
 
-        print("|cFF00FF00[DragonUI]|r Quest Tracker now draggable")
+        
     end
 end
 
@@ -171,7 +171,7 @@ function QuestTrackerModule:HideEditorTest(savePosition)
 
         if savePosition then
             UpdateQuestTrackerPosition()
-            print("|cFF00FF00[DragonUI]|r Quest Tracker position saved")
+            
         end
     end
 end

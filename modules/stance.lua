@@ -637,7 +637,7 @@ end
 -- Debug function for troubleshooting stance bar issues
 function addon.DebugStanceBar()
     if not IsModuleEnabled() then
-        print("Stance module is DISABLED")
+        
         return {enabled = false}
     end
     
@@ -657,14 +657,14 @@ function addon.DebugStanceBar()
 		rightBarVisible = (_G["MultiBarBottomRight"] or MultiBarBottomRight) and (_G["MultiBarBottomRight"] or MultiBarBottomRight):IsShown() or false
 	};
 	
-	print("=== DragonUI Stance Bar Debug Info ===");
+	
 	for k, v in pairs(info) do
-		print(k .. ": " .. tostring(v));
+	
 	end
 	
 	if anchor then
 		local point, relativeTo, relativePoint, x, y = anchor:GetPoint();
-		print("Current anchor point: " .. (point or "none") .. " to " .. (relativeTo and relativeTo:GetName() or "nil") .. " at " .. (relativePoint or "none") .. " (" .. (x or 0) .. ", " .. (y or 0) .. ")");
+	
 	end
 	
 	return info;

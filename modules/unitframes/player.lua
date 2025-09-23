@@ -1,6 +1,6 @@
 local addon = select(2, ...)
 
-print("|cFF00FF00[DragonUI]|r Player.lua LOADING")
+
 
 -- ====================================================================
 -- DRAGONUI PLAYER FRAME MODULE - Optimized for WoW 3.3.5a
@@ -402,7 +402,7 @@ local function PlayerFrame_OnUpdate(self, elapsed)
     end)
 
     if not success then
-        print("|cFFFF0000[DragonUI]|r Error in PlayerFrame_OnUpdate:", err)
+        
     end
 end
 
@@ -667,7 +667,7 @@ local function UpdatePowerBarTexture(statusBar)
     local currentTexture = statusBar:GetStatusBarTexture():GetTexture()
     if currentTexture ~= powerTexture then
         statusBar:GetStatusBarTexture():SetTexture(powerTexture)
-        print("|cFF00FF00[DragonUI]|r Power texture changed to:", powerTypeString)
+        
     end
 end
 
@@ -790,7 +790,7 @@ local function UpdatePlayerDragonDecoration()
     -- Get dragon coordinates
     local coords = DRAGON_COORDINATES[decorationType]
     if not coords then
-        print("|cFFFF0000[DragonUI]|r Invalid dragon decoration type:", decorationType)
+        
         return
     end
 
@@ -813,7 +813,7 @@ local function UpdatePlayerDragonDecoration()
 
     UpdateLeadershipIcons() -- Reposicionar icons de liderazgo
 
-    print("|cFF00FF00[DragonUI]|r Player decorative dragon applied:", decorationType, "with target textures")
+    
 end
 
 -- Create custom DragonUI textures and elements
@@ -821,7 +821,7 @@ local function CreatePlayerFrameTextures()
     local dragonFrame = _G["DragonUIUnitframeFrame"]
     if not dragonFrame then
         dragonFrame = CreateFrame('FRAME', 'DragonUIUnitframeFrame', UIParent)
-        print("|cFF00FF00[DragonUI]|r Created DragonUIUnitframeFrame")
+        
     end
 
     HideBlizzardGlows()
@@ -852,7 +852,7 @@ local function CreatePlayerFrameTextures()
         dragonFrame.DragonUICombatGlow = combatFlashFrame
         dragonFrame.DragonUICombatTexture = combatTexture
 
-        print("|cFF00FF00[DragonUI]|r Created independent Combat Flash with high z-order")
+        
     end
 
     -- CREATE ELITE GLOW SYSTEM - Two glows using ELITE_GLOW_COORDINATES
@@ -891,7 +891,7 @@ local function CreatePlayerFrameTextures()
         dragonFrame.EliteCombatGlow = combatFrame
         dragonFrame.EliteCombatTexture = eliteCombatTexture
 
-        print("|cFF00FF00[DragonUI]|r Created Elite Glow System with golden coordinates")
+        
     end
 
     -- Create background texture
@@ -1100,7 +1100,7 @@ local function ChangePlayerframe()
     UpdateManaBarColor(PlayerFrameManaBar)
     UpdateLeadershipIcons()
 
-    print("|cFF00FF00[DragonUI]|r PlayerFrame configured successfully")
+    
 end
 
 local function SetCombatFlashVisible(visible)
@@ -1156,7 +1156,7 @@ local function ApplyWidgetPosition()
     PlayerFrame:ClearAllPoints()
     PlayerFrame:SetPoint("CENTER", Module.playerFrame, "CENTER", -15, -7)
 
-    print("|cFF00FF00[DragonUI]|r Player frame positioned via widgets:", widgetConfig.posX, widgetConfig.posY)
+    
 end
 
 -- Apply configuration settings
@@ -1183,7 +1183,7 @@ local function ApplyPlayerConfig()
 
     UpdatePlayerDragonDecoration()
     UpdateGlowVisibility()
-    print("|cFF00FF00[DragonUI]|r PlayerFrame config applied - Scale:", config.scale)
+    
 end
 
 -- ============================================================================
@@ -1198,7 +1198,7 @@ local function ResetPlayerFrame()
         addon:SetConfigValue("unitframe", "player", key, value)
     end
     ApplyPlayerConfig()
-    print("|cFF00FF00[DragonUI]|r PlayerFrame reset to defaults")
+    
 end
 
 -- Refresh frame configuration
@@ -1217,7 +1217,7 @@ local function RefreshPlayerFrame()
         Module.textSystem.update()
     end
 
-    print("|cFF00FF00[DragonUI]|r PlayerFrame refreshed via Ace3")
+    
 end
 
 -- ============================================================================
@@ -1234,7 +1234,7 @@ local function SetupPlayerClassColorHooks()
         end)
 
         _G.DragonUI_PlayerHealthHookSetup = true
-        print("|cFF00FF00[DragonUI]|r Player class color hook installed")
+        
     end
 end
 -- Initialize the PlayerFrame module
@@ -1310,7 +1310,7 @@ local function InitializePlayerFrame()
         end
     end
     Module.initialized = true
-    print("|cFF00FF00[DragonUI]|r PlayerFrame module initialized")
+    
 end
 
 -- ============================================================================
@@ -1353,7 +1353,7 @@ local function SetupPlayerEvents()
         PLAYER_ENTERING_WORLD = function()
             ChangePlayerframe()
             ApplyPlayerConfig()
-            print("|cFF00FF00[DragonUI]|r PlayerFrame fully configured")
+            
         end,
 
         RUNE_TYPE_UPDATE = function(runeIndex)
@@ -1407,7 +1407,7 @@ local function SetupPlayerEvents()
         end
     end)
 
-    print("|cFF00FF00[DragonUI Player]|r Optimized event system configured")
+    
 end
 
 -- ============================================================================
@@ -1431,6 +1431,6 @@ addon.PlayerFrame = {
     UpdatePlayerHealthBarColor = UpdatePlayerHealthBarColor
 }
 
-print("|cFF00FF00[DragonUI]|r Player.lua LOADED")
+
 
 --  FUNCIONES EDITOR MODE ELIMINADAS - AHORA USA SISTEMA CENTRALIZADO
