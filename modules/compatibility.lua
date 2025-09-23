@@ -87,38 +87,6 @@ behaviors.ConflictWarning = function(addonName, addonInfo)
     StaticPopup_Show(popupName)
 end
 
--- Behavior: Coordinate party frames in raids
-behaviors.CoordinatePartyFrames = function(addonName, addonInfo)
-    local function UpdateFrameVisibility()
-        if not addon.unitframe or not addon.unitframe.PartyMoveFrame then
-            return
-        end
-
-        local isInRaid = GetNumRaidMembers() > 0
-        
-        -- Hide party frames when in raid, show when in party only
-        if isInRaid then
-            addon.unitframe.PartyMoveFrame:Hide()
-        else
-            -- In party or solo, let DragonUI handle normal logic
-            -- Only force Show if we are in party (not solo)
-            local isInParty = GetNumPartyMembers() > 0
-            if isInParty then
-                addon.unitframe.PartyMoveFrame:Show()
-            end
-            -- If solo, don't interfere - DragonUI decides
-        end
-    end
-
-    -- Initial check with small delay
-    DelayedCall(UpdateFrameVisibility, 0.2)
-
-    -- Register for future events
-    if not compatibility.raidUpdateHandlers then
-        compatibility.raidUpdateHandlers = {}
-    end
-    compatibility.raidUpdateHandlers[addonName] = UpdateFrameVisibility
-end
 
 -- ============================================================================
 -- ADDON REGISTRY
@@ -131,14 +99,6 @@ local ADDON_REGISTRY = {
         behavior = behaviors.ConflictWarning,
         checkOnce = true
     },
-    
-    ["CompactRaidFrame"] = {
-        name = "Compact Raid Frames",
-        reason = "Coordinate party frame visibility in raids.",
-        behavior = behaviors.CoordinatePartyFrames,
-        checkOnce = false,
-        listenToRaidEvents = true
-    }
 }
 
 -- ============================================================================
