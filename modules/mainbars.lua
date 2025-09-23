@@ -687,22 +687,6 @@ end
                 frame:SetAlpha(0)
             end
         end
-
-        if MainMenuBar then
-            MainMenuBar:EnableMouse(false)
-        end
-        if ShapeshiftBarFrame then
-            ShapeshiftBarFrame:EnableMouse(false)
-        end
-        if PossessBarFrame then
-            PossessBarFrame:EnableMouse(false)
-        end
-        if PetActionBarFrame then
-            PetActionBarFrame:EnableMouse(false)
-        end
-        if MultiCastActionBarFrame then
-            MultiCastActionBarFrame:EnableMouse(false)
-        end
     end
 
     function MainMenuBarMixin:initialize()

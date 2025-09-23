@@ -1097,7 +1097,7 @@ function addon:CreateOptionsTable()
                                     x_position = {
                                         type = 'range',
                                         name = "X Position",
-                                        desc = "Horizontal position of stance bar",
+                                        desc = "Horizontal position of stance bar from screen center. Negative values move left, positive values move right.",
                                         min = -1500,
                                         max = 1500,
                                         step = 1,
@@ -1116,8 +1116,8 @@ function addon:CreateOptionsTable()
                                     y_offset = {
                                         type = 'range',
                                         name = "Y Offset",
-                                        desc = "|cff00FF00Smart Anchoring:|r The stance bar automatically positions above the main action bar using intelligent anchoring.\n" ..
-                                            "|cffFFFF00Fine-Tuning:|r Use this offset to make small vertical adjustments while preserving the smart anchoring behavior.\n" ..
+                                        desc = "|cff00FF00Static Positioning:|r The stance bar uses a fixed position from the bottom of the screen (base Y=200).\n" ..
+                                            "|cffFFFF00Y Offset:|r Additional vertical adjustment added to the base position.\n" ..
                                             "|cffFFD700Note:|r Positive values move the bar up, negative values move it down.",
                                         min = -1500,
                                         max = 1500,
@@ -1132,6 +1132,44 @@ function addon:CreateOptionsTable()
                                             end
                                         end,
                                         order = 2,
+                                        width = "full"
+                                    },
+                                    button_size = {
+                                        type = 'range',
+                                        name = "Button Size",
+                                        desc = "Size of individual stance buttons in pixels.",
+                                        min = 16,
+                                        max = 64,
+                                        step = 1,
+                                        get = function()
+                                            return addon.db.profile.additional.stance.button_size
+                                        end,
+                                        set = function(info, value)
+                                            addon.db.profile.additional.stance.button_size = value
+                                            if addon.RefreshStance then
+                                                addon.RefreshStance()
+                                            end
+                                        end,
+                                        order = 3,
+                                        width = "full"
+                                    },
+                                    button_spacing = {
+                                        type = 'range',
+                                        name = "Button Spacing",
+                                        desc = "Space between stance buttons in pixels.",
+                                        min = 0,
+                                        max = 20,
+                                        step = 1,
+                                        get = function()
+                                            return addon.db.profile.additional.stance.button_spacing
+                                        end,
+                                        set = function(info, value)
+                                            addon.db.profile.additional.stance.button_spacing = value
+                                            if addon.RefreshStance then
+                                                addon.RefreshStance()
+                                            end
+                                        end,
+                                        order = 4,
                                         width = "full"
                                     }
                                 }
