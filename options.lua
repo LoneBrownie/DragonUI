@@ -1553,6 +1553,22 @@ function addon:CreateOptionsTable()
                         order = 4
                     },
 
+                    blip_skin = {
+                        type = 'toggle',
+                        name = "New Blip Style",
+                        desc = "Use new DragonUI object icons on the minimap. When disabled, uses classic Blizzard icons.",
+                        get = function()
+                            return addon.db.profile.minimap.blip_skin
+                        end,
+                        set = function(info, value)
+                            addon.db.profile.minimap.blip_skin = value
+                            if addon.MinimapModule then
+                                addon.MinimapModule:UpdateSettings()
+                            end
+                        end,
+                        order = 3.5
+                    },
+
                     addon_button_skin = {
                         type = 'toggle',
                         name = "Addon Button Skin",

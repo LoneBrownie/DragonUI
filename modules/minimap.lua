@@ -190,8 +190,15 @@ local function ReplaceBlizzardFrame(frame)
     minimapFrame:SetPlayerTextureHeight(playerArrowSize)
     minimapFrame:SetPlayerTextureWidth(playerArrowSize)
 
-    -- Blip texture (always use DragonUI modern icons)
-    minimapFrame:SetBlipTexture("Interface\\AddOns\\DragonUI\\assets\\objecticons")
+    -- Blip texture (configurable: new DragonUI icons vs old Blizzard icons)
+    local useNewBlipStyle = addon.db and addon.db.profile and addon.db.profile.minimap and
+                           addon.db.profile.minimap.blip_skin
+    if useNewBlipStyle == nil then
+        useNewBlipStyle = true -- Default to new style
+    end
+    
+    local blipTexture = useNewBlipStyle and "Interface\\AddOns\\DragonUI\\assets\\objecticons" or 'Interface\\Minimap\\ObjectIcons'
+    minimapFrame:SetBlipTexture(blipTexture)
     local MINIMAP_POINTS = {}
     for i = 1, Minimap:GetNumPoints() do
         MINIMAP_POINTS[i] = {Minimap:GetPoint(i)}
@@ -927,7 +934,14 @@ function MinimapModule:UpdateSettings()
 
     --  CONFIGURACIONES GLOBALES DEL MINIMAP
     if Minimap then
-        Minimap:SetBlipTexture("Interface\\AddOns\\DragonUI\\assets\\objecticons")
+        -- Apply blip texture based on user setting (new vs old style)
+        local useNewBlipStyle = addon.db.profile.minimap.blip_skin
+        if useNewBlipStyle == nil then
+            useNewBlipStyle = true -- Default to new style
+        end
+        
+        local blipTexture = useNewBlipStyle and "Interface\\AddOns\\DragonUI\\assets\\objecticons" or 'Interface\\Minimap\\ObjectIcons'
+        Minimap:SetBlipTexture(blipTexture)
         
         local playerArrowSize = addon.db.profile.minimap.player_arrow_size
         if playerArrowSize then
@@ -1059,6 +1073,18 @@ function MinimapModule:ApplyAllSettings()
     if settings.zonetext_font_size and MinimapZoneText then
         local font, _, flags = MinimapZoneText:GetFont()
         MinimapZoneText:SetFont(font, settings.zonetext_font_size, flags)
+    end
+
+    --  APLICAR BLIP TEXTURE (NEW VS OLD STYLE)
+    if settings.blip_skin ~= nil and Minimap then
+        local blipTexture = settings.blip_skin and "Interface\\AddOns\\DragonUI\\assets\\objecticons" or 'Interface\\Minimap\\ObjectIcons'
+        Minimap:SetBlipTexture(blipTexture)
+    end
+
+    --  APLICAR PLAYER ARROW SIZE
+    if settings.player_arrow_size and Minimap then
+        Minimap:SetPlayerTextureHeight(settings.player_arrow_size)
+        Minimap:SetPlayerTextureWidth(settings.player_arrow_size)
     end
 end
 --  Editor Mode Functions

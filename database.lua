@@ -221,6 +221,7 @@ local defaults = {
         minimap = {
             scale = 0.9,
             border_alpha = 1,
+            blip_skin = true, -- true = new/modern style, false = old/classic Blizzard style
             tracking_icons = true,
             zoom_buttons = true,
             calendar = true,
