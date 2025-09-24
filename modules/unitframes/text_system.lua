@@ -13,10 +13,10 @@ addon.TextSystem = TextSystem
 
 -- Formatos de texto disponibles
 TextSystem.TEXT_FORMATS = {
-    numeric = "numeric",           -- Solo números actuales
-    percentage = "percentage",     -- Solo porcentaje  
-    both = "both",                -- Números + porcentaje (dual)
-    formatted = "formatted"       -- Formato "current / max"
+    numeric = "numeric", -- Solo números actuales
+    percentage = "percentage", -- Solo porcentaje  
+    both = "both", -- Números + porcentaje (dual)
+    formatted = "formatted" -- Formato "current / max"
 }
 
 -- ===============================================================
@@ -81,61 +81,57 @@ end
 function TextSystem.CreateDualTextElements(parentFrame, barFrame, prefix, layer, font)
     layer = layer or "OVERLAY"
     font = font or "TextStatusBarText"
-    
+
     local elements = {}
-    
+
     -- Texto central (para formatos numeric, percentage, formatted)
     if not parentFrame[prefix .. "Text"] then
         local centerText = barFrame:CreateFontString(nil, layer, font)
         local fontPath, originalSize, flags = centerText:GetFont()
         if fontPath and originalSize then
-            centerText:SetFont(fontPath, originalSize + 1, flags)  --  FUENTE MÁS GRANDE
+            centerText:SetFont(fontPath, originalSize + 1, flags) --  FUENTE MÁS GRANDE
         end
         centerText:SetPoint("CENTER", barFrame, "CENTER", 0, 0)
         centerText:SetJustifyH("CENTER")
         parentFrame[prefix .. "Text"] = centerText
         elements.center = centerText
     end
-    
+
     -- Texto izquierdo (para formato "both")
     if not parentFrame[prefix .. "TextLeft"] then
         local leftText = barFrame:CreateFontString(nil, layer, font)
         local fontPath, originalSize, flags = leftText:GetFont()
         if fontPath and originalSize then
-            leftText:SetFont(fontPath, originalSize + 1, flags)  --  FUENTE MÁS GRANDE
+            leftText:SetFont(fontPath, originalSize + 1, flags) --  FUENTE MÁS GRANDE
         end
         leftText:SetPoint("LEFT", barFrame, "LEFT", 6, 0)
         leftText:SetJustifyH("LEFT")
         parentFrame[prefix .. "TextLeft"] = leftText
         elements.left = leftText
     end
-    
+
     -- Texto derecho (para formato "both")
     if not parentFrame[prefix .. "TextRight"] then
         local rightText = barFrame:CreateFontString(nil, layer, font)
         local fontPath, originalSize, flags = rightText:GetFont()
         if fontPath and originalSize then
-            rightText:SetFont(fontPath, originalSize + 1, flags)  --  FUENTE MÁS GRANDE
+            rightText:SetFont(fontPath, originalSize + 1, flags) --  FUENTE MÁS GRANDE
         end
-        
-        --  POSICIÓN ESPECIAL PARA TARGET MANA TEXT
+
+        --  POSICIÓN ESPECIAL PARA TARGET Y FOCUS MANA TEXT
         if prefix == "TargetFrameMana" then
+            rightText:SetPoint("RIGHT", barFrame, "RIGHT", -13, 0) --  MÁS A LA IZQUIERDA
+        elseif prefix == "FocusFrameMana" then
             rightText:SetPoint("RIGHT", barFrame, "RIGHT", -13, 0) --  MÁS A LA IZQUIERDA
         else
             rightText:SetPoint("RIGHT", barFrame, "RIGHT", -6, 0) --  POSICIÓN NORMAL
         end
 
-        if prefix == "FocusFrameMana" then
-            rightText:SetPoint("RIGHT", barFrame, "RIGHT", -13, 0) --  MÁS A LA IZQUIERDA
-        else
-            rightText:SetPoint("RIGHT", barFrame, "RIGHT", -6, 0) --  POSICIÓN NORMAL
-        end
-        
         rightText:SetJustifyH("RIGHT")
         parentFrame[prefix .. "TextRight"] = rightText
         elements.right = rightText
     end
-    
+
     return elements
 end
 
@@ -146,20 +142,28 @@ end
 -- Función para actualizar texto en elementos duales
 function TextSystem.UpdateDualText(parentFrame, prefix, formattedText, textFormat, shouldShow)
     local centerText = parentFrame[prefix .. "Text"]
-    local leftText = parentFrame[prefix .. "TextLeft"] 
+    local leftText = parentFrame[prefix .. "TextLeft"]
     local rightText = parentFrame[prefix .. "TextRight"]
-    
+
     if not shouldShow then
         -- Ocultar todos los textos
-        if centerText then centerText:Hide() end
-        if leftText then leftText:Hide() end
-        if rightText then rightText:Hide() end
+        if centerText then
+            centerText:Hide()
+        end
+        if leftText then
+            leftText:Hide()
+        end
+        if rightText then
+            rightText:Hide()
+        end
         return
     end
-    
+
     if textFormat == TextSystem.TEXT_FORMATS.both and type(formattedText) == "table" then
         -- Formato dual: mostrar left y right, ocultar center
-        if centerText then centerText:Hide() end
+        if centerText then
+            centerText:Hide()
+        end
         if leftText then
             leftText:SetText(formattedText.left or "")
             leftText:Show()
@@ -170,8 +174,12 @@ function TextSystem.UpdateDualText(parentFrame, prefix, formattedText, textForma
         end
     else
         -- Formato simple: mostrar center, ocultar left y right
-        if leftText then leftText:Hide() end
-        if rightText then rightText:Hide() end
+        if leftText then
+            leftText:Hide()
+        end
+        if rightText then
+            rightText:Hide()
+        end
         if centerText then
             centerText:SetText(formattedText or "")
             centerText:Show()
@@ -188,7 +196,7 @@ function TextSystem.IsMouseOverFrame(frame)
     if not frame or not frame:IsVisible() then
         return false
     end
-    
+
     --  USAR IsMouseOver() QUE ES MÁS CONFIABLE
     return frame:IsMouseOver()
 end
@@ -198,7 +206,7 @@ function TextSystem.GetFrameTextConfig(frameType, configKey)
     if not addon.db or not addon.db.profile or not addon.db.profile.unitframe then
         return {}
     end
-    
+
     local config = addon.db.profile.unitframe[frameType] or {}
     return {
         textFormat = config.textFormat or "both",
@@ -217,22 +225,21 @@ function TextSystem.HookStatusBar(statusBar, parentFrame, prefix, frameType, uni
     if not statusBar or not parentFrame then
         return
     end
-    
+
     --  HOOKEAR LA FUNCIÓN NATIVA SetValue
     if not statusBar.DragonUIHooked then
         statusBar.DragonUIOriginalSetValue = statusBar.SetValue
         statusBar.SetValue = function(self, value)
             -- Llamar función original
             statusBar.DragonUIOriginalSetValue(self, value)
-            
+
             -- Actualizar nuestro texto inmediatamente
             if updateCallback then
                 updateCallback()
             end
         end
         statusBar.DragonUIHooked = true
-        
-        
+
     end
 end
 
@@ -246,32 +253,34 @@ function TextSystem.UpdateFrameText(frameType, unit, parentFrame, healthBar, man
     if not UnitExists(unit) or UnitIsDeadOrGhost(unit) then
         return TextSystem.ClearFrameText(parentFrame, prefix)
     end
-    
+
     local config = TextSystem.GetFrameTextConfig(frameType)
-    
+
     -- Detectar hover específico en cada barra
     local healthHover = healthBar and TextSystem.IsMouseOverFrame(healthBar) or false
     local manaHover = manaBar and TextSystem.IsMouseOverFrame(manaBar) or false
-    
+
     -- Determinar si mostrar cada tipo de texto
     local shouldShowHealth = config.showHealthTextAlways or healthHover
     local shouldShowMana = config.showManaTextAlways or manaHover
-    
+
     -- Actualizar health text
     if healthBar and shouldShowHealth then
         local health = UnitHealth(unit) or 0
         local maxHealth = UnitHealthMax(unit) or 1
-        local healthText = TextSystem.FormatStatusText(health, maxHealth, config.textFormat, config.breakUpLargeNumbers, frameType)
+        local healthText = TextSystem.FormatStatusText(health, maxHealth, config.textFormat, config.breakUpLargeNumbers,
+            frameType)
         TextSystem.UpdateDualText(parentFrame, prefix .. "Health", healthText, config.textFormat, true)
     else
         TextSystem.UpdateDualText(parentFrame, prefix .. "Health", "", config.textFormat, false)
     end
-    
+
     -- Actualizar mana text
     if manaBar and shouldShowMana then
         local power = UnitPower(unit) or 0
         local maxPower = UnitPowerMax(unit) or 1
-        local powerText = TextSystem.FormatStatusText(power, maxPower, config.textFormat, config.breakUpLargeNumbers, frameType)
+        local powerText = TextSystem.FormatStatusText(power, maxPower, config.textFormat, config.breakUpLargeNumbers,
+            frameType)
         TextSystem.UpdateDualText(parentFrame, prefix .. "Mana", powerText, config.textFormat, true)
     else
         TextSystem.UpdateDualText(parentFrame, prefix .. "Mana", "", config.textFormat, false)
@@ -292,30 +301,30 @@ end
 function TextSystem.SetupFrameTextSystem(frameType, unit, parentFrame, healthBar, manaBar, prefix)
     --  VALIDACIONES DE SEGURIDAD
     if not parentFrame then
-        
+
         return {
-            update = function() end,
-            clear = function() end
+            update = function()
+            end,
+            clear = function()
+            end
         }
     end
-    
+
     if not healthBar then
-        
+
     end
-    
+
     if not manaBar then
-        
+
     end
-    
+
     prefix = prefix or frameType:gsub("^%l", string.upper) .. "Frame"
-    
-    
-    
+
     --  FUNCIÓN DE ACTUALIZACIÓN COMÚN
     local function updateCallback()
         TextSystem.UpdateFrameText(frameType, unit, parentFrame, healthBar, manaBar, prefix)
     end
-    
+
     --  CREAR ELEMENTOS DE TEXTO DUALES (CON FUENTE MÁS GRANDE)
     if healthBar then
         TextSystem.CreateDualTextElements(parentFrame, healthBar, prefix .. "Health", "OVERLAY", "TextStatusBarText")
@@ -327,12 +336,10 @@ function TextSystem.SetupFrameTextSystem(frameType, unit, parentFrame, healthBar
         --  HOOKEAR STATUSBAR PARA ACTUALIZACIÓN AUTOMÁTICA
         TextSystem.HookStatusBar(manaBar, parentFrame, prefix .. "Mana", frameType, unit, updateCallback)
     end
-    
+
     --  CONFIGURAR EVENTOS DE HOVER (MANTENER)
     TextSystem.SetupHoverEvents(parentFrame, healthBar, manaBar, updateCallback)
-    
-    
-    
+
     return {
         update = updateCallback,
         clear = function()
@@ -348,22 +355,22 @@ function TextSystem.SetupHoverEvents(parentFrame, healthBar, manaBar, updateCall
         healthHover:SetAllPoints(healthBar)
         healthHover:EnableMouse(true)
         healthHover:SetFrameLevel(parentFrame:GetFrameLevel() + 10)
-        
+
         healthHover:SetScript("OnEnter", updateCallback)
         healthHover:SetScript("OnLeave", updateCallback)
-        
+
         parentFrame.DragonUIHealthHover = healthHover
     end
-    
+
     if manaBar then
         local manaHover = CreateFrame("Frame", nil, parentFrame)
         manaHover:SetAllPoints(manaBar)
         manaHover:EnableMouse(true)
         manaHover:SetFrameLevel(parentFrame:GetFrameLevel() + 10)
-        
+
         manaHover:SetScript("OnEnter", updateCallback)
         manaHover:SetScript("OnLeave", updateCallback)
-        
+
         parentFrame.DragonUIManaHover = manaHover
     end
 end
