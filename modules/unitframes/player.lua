@@ -149,11 +149,39 @@ local function GetPlayerConfig()
 end
 
 
-
 -- ============================================================================
 -- BLIZZARD FRAME MANAGEMENT
 -- ============================================================================
-
+-- Hide Blizzard's original player frame texts permanently using alpha 0
+local function HideBlizzardPlayerTexts()
+    -- Get Blizzard's ORIGINAL text elements (not our custom ones)
+    local blizzardTexts = {
+        -- These are the actual Blizzard frame text elements in WoW 3.3.5a
+        PlayerFrameHealthBar.TextString,
+        PlayerFrameManaBar.TextString,
+        -- Alternative names that might exist
+        _G.PlayerFrameHealthBarText,
+        _G.PlayerFrameManaBarText
+    }
+    
+    -- Hide each BLIZZARD text element permanently with alpha 0 (ONE TIME SETUP)
+    for _, textElement in pairs(blizzardTexts) do
+        if textElement and not textElement.DragonUIHidden then
+            -- Set alpha to 0 immediately (taint-free)
+            textElement:SetAlpha(0)
+            
+            -- Override Show function to maintain permanent invisibility
+            textElement.DragonUIShow = textElement.Show
+            textElement.Show = function(self)
+                -- Always stay invisible - no timer needed
+                self:SetAlpha(0)
+            end
+            
+            -- Mark as processed to avoid duplicate setup
+            textElement.DragonUIHidden = true
+        end
+    end
+end
 -- Hide and disable Blizzard glow effects
 local function HideBlizzardGlows()
     local glows = {PlayerStatusGlow, PlayerRestGlow}
@@ -1099,6 +1127,9 @@ local function ChangePlayerframe()
     UpdateHealthBarColor(PlayerFrameHealthBar, "player")
     UpdateManaBarColor(PlayerFrameManaBar)
     UpdateLeadershipIcons()
+    
+    -- Hide Blizzard texts after frame configuration
+    HideBlizzardPlayerTexts()
 
     
 end
@@ -1309,6 +1340,10 @@ local function InitializePlayerFrame()
             end)
         end
     end
+    
+    -- Hide Blizzard texts after module initialization
+    HideBlizzardPlayerTexts()
+    
     Module.initialized = true
     
 end
@@ -1353,7 +1388,8 @@ local function SetupPlayerEvents()
         PLAYER_ENTERING_WORLD = function()
             ChangePlayerframe()
             ApplyPlayerConfig()
-            
+            -- Ensure Blizzard texts are hidden after entering world
+            HideBlizzardPlayerTexts()
         end,
 
         RUNE_TYPE_UPDATE = function(runeIndex)
@@ -1410,6 +1446,7 @@ local function SetupPlayerEvents()
     
 end
 
+
 -- ============================================================================
 -- MODULE STARTUP
 -- ============================================================================
@@ -1417,6 +1454,9 @@ end
 -- Initialize event system
 SetupPlayerEvents()
 SetupPlayerClassColorHooks()
+
+-- Hide Blizzard texts after initialization
+HideBlizzardPlayerTexts()
 
 -- Expose public API
 addon.PlayerFrame = {
