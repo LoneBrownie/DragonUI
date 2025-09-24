@@ -423,6 +423,9 @@ local defaults = {
             },
             minimap = {
                 enabled = true -- Apply DragonUI minimap enhancements including custom styling, positioning, tracking icons, and calendar
+            },
+            buffs = {
+                enabled = true -- Enable DragonUI buff frame with custom styling, positioning, and toggle button functionality
             }
         }
     }
