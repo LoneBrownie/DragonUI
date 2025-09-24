@@ -32,7 +32,8 @@ local ButtonsModule = {
     initialized = false,
     applied = false,
     originalValues = {},  -- Store original button states for restoration
-    hooked = false
+    hooked = false,
+    pendingRefresh = false  -- Flag to indicate pending refresh after combat
 }
 
 -- ============================================================================
@@ -79,6 +80,9 @@ end
 local function handleActionButton(button, wowAlwaysShow)
     if not IsModuleEnabled() then return end
     
+    -- CRITICAL: Avoid taint during combat by not modifying protected frames
+    if InCombatLockdown() then return end
+    
     if wowAlwaysShow then
         button:SetAttribute('showgrid', 1)
         ActionButton_ShowGrid(button)
@@ -93,6 +97,12 @@ end
 
 function addon.actionbuttons_grid()
     if not IsModuleEnabled() then return end
+    
+    -- CRITICAL: Don't modify action buttons during combat to avoid taint
+    if InCombatLockdown() then 
+        ButtonsModule.pendingRefresh = true
+        return 
+    end
     
     local wowAlwaysShow = GetCVar("alwaysShowActionBars") == "1"
     local db = GetButtonsConfig()
@@ -217,6 +227,9 @@ end
 local function main_buttons(button)
     if not IsModuleEnabled() then return end
     
+    -- CRITICAL: Don't style buttons during combat to avoid taint
+    if InCombatLockdown() then return end
+    
 	if not button or button.__styled then return; end
 
     -- Store original state before styling
@@ -272,6 +285,9 @@ end
 
 local function additional_buttons(button)
     if not IsModuleEnabled() then return end
+    
+    -- CRITICAL: Don't style buttons during combat to avoid taint
+    if InCombatLockdown() then return end
     
 	if not button then return; end
 	
@@ -462,6 +478,12 @@ end
 
 function addon.RefreshButtons()
     if not IsModuleEnabled() then return end
+    
+    -- CRITICAL: Don't refresh buttons during combat to avoid taint
+    if InCombatLockdown() then 
+        ButtonsModule.pendingRefresh = true
+        return 
+    end
     
     local db = GetButtonsConfig()
     if not db then return end
@@ -656,36 +678,38 @@ end,
     'PLAYER_LOGIN'
 );
 
--- Auto-initialize when addon loads
+-- Auto-initialize when addon loads and handle post-combat refresh
 local initFrame = CreateFrame("Frame")
 initFrame:RegisterEvent("ADDON_LOADED")
+initFrame:RegisterEvent("PLAYER_REGEN_ENABLED")
 initFrame:SetScript("OnEvent", function(self, event, addonName)
-    if addonName == "DragonUI" then
+    if event == "ADDON_LOADED" and addonName == "DragonUI" then
         Initialize()
         self:UnregisterEvent("ADDON_LOADED")
+    elseif event == "PLAYER_REGEN_ENABLED" then
+        -- Execute pending refreshes after combat ends
+        if IsModuleEnabled() and ButtonsModule.pendingRefresh then
+            ButtonsModule.pendingRefresh = false
+            addon.actionbuttons_grid()
+            addon.RefreshButtons()
+        end
     end
 end)
 
--- monitor alwaysShowActionBars CVar changes
-local frame = CreateFrame("Frame")
-local lastState = GetCVar("alwaysShowActionBars")
-frame:SetScript("OnUpdate", function(self, elapsed)
+-- Monitor alwaysShowActionBars CVar changes with proper event (no more constant timer)
+local cvarFrame = CreateFrame("Frame")
+cvarFrame:RegisterEvent("CVAR_UPDATE")
+cvarFrame:SetScript("OnEvent", function(self, event, cvarName)
     if not IsModuleEnabled() then return end
     
-    self.timer = (self.timer or 0) + elapsed
-    if self.timer >= 0.3 then
-        self.timer = 0
-        local currentState = GetCVar("alwaysShowActionBars")
-        if lastState ~= currentState then
-            lastState = currentState
-            
-            -- refresh button grids when CVar changes
-            addon.actionbuttons_grid()
-            
-            -- refresh main bar background
-            if MainMenuBarMixin and MainMenuBarMixin.update_main_bar_background then
-                MainMenuBarMixin:update_main_bar_background()
-            end
+    -- Only react to the specific CVar we care about
+    if event == "CVAR_UPDATE" and cvarName == "alwaysShowActionBars" then
+        -- Execute immediately - no timer needed
+        addon.actionbuttons_grid()
+        
+        -- Refresh main bar background
+        if MainMenuBarMixin and MainMenuBarMixin.update_main_bar_background then
+            MainMenuBarMixin:update_main_bar_background()
         end
     end
 end)
