@@ -412,8 +412,18 @@ local function UpdateNameBackground()
         return
     end
 
-    local r, g, b = UnitSelectionColor("target")
-    TargetFrameNameBackground:SetVertexColor(r or 0.5, g or 0.5, b or 0.5, 0.8)
+    local r, g, b
+    
+    -- LÓGICA CORRECTA: Verificar tap-denied PRIMERO
+    if UnitIsTapped("target") and not UnitIsTappedByPlayer("target") then
+        -- Target está tapped por otro jugador/grupo = GRIS
+        r, g, b = 0.5, 0.5, 0.5
+    else
+        -- Target no está tap-denied = usar color normal de facción
+        r, g, b = UnitSelectionColor("target")
+    end
+    
+    TargetFrameNameBackground:SetVertexColor(r, g, b)
     TargetFrameNameBackground:Show()
 end
 
@@ -509,7 +519,6 @@ local function InitializeFrame()
         TargetFrameNameBackground:SetTexture(TEXTURES.NAME_BACKGROUND)
         TargetFrameNameBackground:SetDrawLayer("BORDER", 1)
         TargetFrameNameBackground:SetBlendMode("ADD")
-        TargetFrameNameBackground:SetAlpha(0.9)
     end
 
     -- Configure portrait ONCE
@@ -640,7 +649,7 @@ local function InitializeFrame()
             --  BACKGROUND CON COLOR DEL PLAYER Y NUESTRA TEXTURA
             if TargetFrameNameBackground then
                 local r, g, b = UnitSelectionColor("player")
-                TargetFrameNameBackground:SetVertexColor(r, g, b, 0.8)
+                TargetFrameNameBackground:SetVertexColor(r, g, b)
                 TargetFrameNameBackground:Show()
             end
             
