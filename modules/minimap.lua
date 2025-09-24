@@ -13,8 +13,8 @@ end
 
 -- #################################################################
 -- ##                    DragonUI Minimap Module                  ##
--- ##              Unified minimap system (1 file)               ##
--- ##        Based on RetailUI pattern but with DragonUI assets  ##
+-- ##              Unified minimap system (1 file)                ##
+-- ##        Based on RetailUI pattern                            ##
 -- #################################################################
 
 local MinimapModule = {};
