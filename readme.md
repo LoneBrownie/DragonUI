@@ -12,6 +12,7 @@ A personal project bringing Dragonflight UI aesthetics to WotLK 3.3.5a.
 ## Features
 
 *   **Modular System:** Enable or disable major UI modules individually, including Cast Bars,Mini Map, Action Bars, Micro Menu (with integrated bags), and the Cooldown system.
+*   **Keybinding System:** Easily set or change your action bar keybinds by hovering over a button and pressing a key, no menus needed.
 *   **Unit Frames:** Refactored Player, Target, Focus, and Party frames, each implemented as separate modules (including ToT/ToF)
 *   **Micro Menu:** Two styles available (colored and grayscale), both with enhanced design, player portrait, faction-based PvP indicators, and integrated bags bar.
 *   **Cast Bars:** Improved casting bars with modern styling.
