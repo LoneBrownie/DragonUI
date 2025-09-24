@@ -1516,58 +1516,7 @@ function addon:CreateOptionsTable()
                         end,
                         order = 2
                     },
-                    tracking_icons = {
-                        type = "toggle",
-                        name = "Tracking Icons",
-                        desc = "Show current tracking icons (old style)",
-                        get = function()
-                            return addon.db.profile.minimap.tracking_icons
-                        end,
-                        set = function(_, val)
-                            addon.db.profile.minimap.tracking_icons = val
-                            if addon.MinimapModule then
-                                addon.MinimapModule:UpdateTrackingIcon()
-                            end
-                        end,
-                        order = 3
-                    },
-                    zoom_buttons = {
-                        type = 'toggle',
-                        name = "Zoom Buttons",
-                        desc = "Show zoom buttons (+/-)",
-                        get = function()
-                            return addon.db.profile.minimap.zoom_buttons
-                        end,
-                        set = function(info, value)
-                            addon.db.profile.minimap.zoom_buttons = value
-                            if MinimapZoomIn and MinimapZoomOut then
-                                if value then
-                                    MinimapZoomIn:Show()
-                                    MinimapZoomOut:Show()
-                                else
-                                    MinimapZoomIn:Hide()
-                                    MinimapZoomOut:Hide()
-                                end
-                            end
-                        end,
-                        order = 4
-                    },
-
-                    blip_skin = {
-                        type = 'toggle',
-                        name = "New Blip Style",
-                        desc = "Use new DragonUI object icons on the minimap. When disabled, uses classic Blizzard icons.",
-                        get = function()
-                            return addon.db.profile.minimap.blip_skin
-                        end,
-                        set = function(info, value)
-                            addon.db.profile.minimap.blip_skin = value
-                            if addon.MinimapModule then
-                                addon.MinimapModule:UpdateSettings()
-                            end
-                        end,
-                        order = 3.5
-                    },
+                    
 
                     addon_button_skin = {
                         type = 'toggle',
@@ -1686,6 +1635,58 @@ function addon:CreateOptionsTable()
                     display_header = {
                         type = 'header',
                         name = "Display Settings",
+                        order = 5
+                    },
+                    tracking_icons = {
+                        type = "toggle",
+                        name = "Tracking Icons",
+                        desc = "Show current tracking icons (old style)",
+                        get = function()
+                            return addon.db.profile.minimap.tracking_icons
+                        end,
+                        set = function(_, val)
+                            addon.db.profile.minimap.tracking_icons = val
+                            if addon.MinimapModule then
+                                addon.MinimapModule:UpdateTrackingIcon()
+                            end
+                        end,
+                        order = 5
+                    },
+                    zoom_buttons = {
+                        type = 'toggle',
+                        name = "Zoom Buttons",
+                        desc = "Show zoom buttons (+/-)",
+                        get = function()
+                            return addon.db.profile.minimap.zoom_buttons
+                        end,
+                        set = function(info, value)
+                            addon.db.profile.minimap.zoom_buttons = value
+                            if MinimapZoomIn and MinimapZoomOut then
+                                if value then
+                                    MinimapZoomIn:Show()
+                                    MinimapZoomOut:Show()
+                                else
+                                    MinimapZoomIn:Hide()
+                                    MinimapZoomOut:Hide()
+                                end
+                            end
+                        end,
+                        order = 5
+                    },
+
+                    blip_skin = {
+                        type = 'toggle',
+                        name = "New Blip Style",
+                        desc = "Use new DragonUI object icons on the minimap. When disabled, uses classic Blizzard icons.",
+                        get = function()
+                            return addon.db.profile.minimap.blip_skin
+                        end,
+                        set = function(info, value)
+                            addon.db.profile.minimap.blip_skin = value
+                            if addon.MinimapModule then
+                                addon.MinimapModule:UpdateSettings()
+                            end
+                        end,
                         order = 5
                     },
                     zonetext_font_size = {
