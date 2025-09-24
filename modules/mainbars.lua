@@ -109,7 +109,9 @@ local function InitializeMainbars()
     -- constants
     local faction = UnitFactionGroup('player');
     local MainMenuBarMixin = {};
+    addon.MainMenuBarMixin = MainMenuBarMixin;  -- Store globally for access
     local pUiMainBar = CreateFrame('Frame', 'pUiMainBar', UIParent, 'MainMenuBarUiTemplate');
+    addon.pUiMainBar = pUiMainBar;  -- Store globally for access
 
     local pUiMainBarArt = CreateFrame('Frame', 'pUiMainBarArt', pUiMainBar);
 
@@ -135,49 +137,8 @@ local function InitializeMainbars()
     -- ALL THE MAINBARS FUNCTIONS (ONLY WHEN ENABLED)
     -- ============================================================================
 
-    local function UpdateGryphonStyle()
-        if not MainMenuBarLeftEndCap or not MainMenuBarRightEndCap then
-            return
-        end
-
-        local db_style = addon.db and addon.db.profile and addon.db.profile.style
-        if not db_style then
-            db_style = config.style
-        end
-
-        local faction = UnitFactionGroup('player')
-
-        if db_style.gryphons == 'old' then
-            MainMenuBarLeftEndCap:SetClearPoint('BOTTOMLEFT', -85, -22)
-            MainMenuBarRightEndCap:SetClearPoint('BOTTOMRIGHT', 84, -22)
-            MainMenuBarLeftEndCap:set_atlas('ui-hud-actionbar-gryphon-left', true)
-            MainMenuBarRightEndCap:set_atlas('ui-hud-actionbar-gryphon-right', true)
-            MainMenuBarLeftEndCap:Show()
-            MainMenuBarRightEndCap:Show()
-        elseif db_style.gryphons == 'new' then
-            MainMenuBarLeftEndCap:SetClearPoint('BOTTOMLEFT', -94, -23)
-            MainMenuBarRightEndCap:SetClearPoint('BOTTOMRIGHT', 95, -23)
-            if faction == 'Alliance' then
-                MainMenuBarLeftEndCap:set_atlas('ui-hud-actionbar-gryphon-thick-left', true)
-                MainMenuBarRightEndCap:set_atlas('ui-hud-actionbar-gryphon-thick-right', true)
-            else
-                MainMenuBarLeftEndCap:set_atlas('ui-hud-actionbar-wyvern-thick-left', true)
-                MainMenuBarRightEndCap:set_atlas('ui-hud-actionbar-wyvern-thick-right', true)
-            end
-            MainMenuBarLeftEndCap:Show()
-            MainMenuBarRightEndCap:Show()
-        elseif db_style.gryphons == 'flying' then
-            MainMenuBarLeftEndCap:SetClearPoint('BOTTOMLEFT', -80, -21)
-            MainMenuBarRightEndCap:SetClearPoint('BOTTOMRIGHT', 80, -21)
-            MainMenuBarLeftEndCap:set_atlas('ui-hud-actionbar-gryphon-flying-left', true)
-            MainMenuBarRightEndCap:set_atlas('ui-hud-actionbar-gryphon-flying-right', true)
-            MainMenuBarLeftEndCap:Show()
-            MainMenuBarRightEndCap:Show()
-        else
-            MainMenuBarLeftEndCap:Hide()
-            MainMenuBarRightEndCap:Hide()
-        end
-    end
+    -- Use the global UpdateGryphonStyle function
+    local UpdateGryphonStyle = addon.UpdateGryphonStyle
 
     -- ============================================================================
     -- ORIGINAL STATE STORAGE
@@ -1019,6 +980,10 @@ end
         MainbarsModule.applied = true
     end
 
+    -- Store functions globally for RefreshMainbarsSystem access
+    addon.ApplyActionBarPositions = ApplyActionBarPositions
+    addon.PositionActionBarsToContainers = PositionActionBarsToContainers
+
     -- Initialize immediately since we're already enabled
     ApplyMainbarsSystem()
 
@@ -1273,7 +1238,102 @@ initFrame:SetScript("OnEvent", function(self, event, addonName)
     end
 end)
 
+-- Global UpdateGryphonStyle function (accessible from RefreshMainbarsSystem)
+function addon.UpdateGryphonStyle()
+    if not MainMenuBarLeftEndCap or not MainMenuBarRightEndCap then
+        return
+    end
+
+    local db_style = addon.db and addon.db.profile and addon.db.profile.style
+    if not db_style then
+        db_style = config.style
+    end
+
+    local faction = UnitFactionGroup('player')
+
+    if db_style.gryphons == 'old' then
+        MainMenuBarLeftEndCap:SetClearPoint('BOTTOMLEFT', -85, -22)
+        MainMenuBarRightEndCap:SetClearPoint('BOTTOMRIGHT', 84, -22)
+        MainMenuBarLeftEndCap:set_atlas('ui-hud-actionbar-gryphon-left', true)
+        MainMenuBarRightEndCap:set_atlas('ui-hud-actionbar-gryphon-right', true)
+        MainMenuBarLeftEndCap:Show()
+        MainMenuBarRightEndCap:Show()
+    elseif db_style.gryphons == 'new' then
+        MainMenuBarLeftEndCap:SetClearPoint('BOTTOMLEFT', -94, -23)
+        MainMenuBarRightEndCap:SetClearPoint('BOTTOMRIGHT', 95, -23)
+        if faction == 'Alliance' then
+            MainMenuBarLeftEndCap:set_atlas('ui-hud-actionbar-gryphon-thick-left', true)
+            MainMenuBarRightEndCap:set_atlas('ui-hud-actionbar-gryphon-thick-right', true)
+        else
+            MainMenuBarLeftEndCap:set_atlas('ui-hud-actionbar-wyvern-thick-left', true)
+            MainMenuBarRightEndCap:set_atlas('ui-hud-actionbar-wyvern-thick-right', true)
+        end
+        MainMenuBarLeftEndCap:Show()
+        MainMenuBarRightEndCap:Show()
+    elseif db_style.gryphons == 'flying' then
+        MainMenuBarLeftEndCap:SetClearPoint('BOTTOMLEFT', -80, -21)
+        MainMenuBarRightEndCap:SetClearPoint('BOTTOMRIGHT', 80, -21)
+        MainMenuBarLeftEndCap:set_atlas('ui-hud-actionbar-gryphon-flying-left', true)
+        MainMenuBarRightEndCap:set_atlas('ui-hud-actionbar-gryphon-flying-right', true)
+        MainMenuBarLeftEndCap:Show()
+        MainMenuBarRightEndCap:Show()
+    else
+        MainMenuBarLeftEndCap:Hide()
+        MainMenuBarRightEndCap:Hide()
+    end
+end
+
 -- Public API for options
 function addon.RefreshMainbarsSystem()
+    if not IsModuleEnabled() then
+        return
+    end
 
+    -- Apply scales to all action bars
+    local db = addon.db and addon.db.profile and addon.db.profile.mainbars
+    if not db then
+        return
+    end
+
+    -- Apply main bar scale
+    if addon.pUiMainBar and db.scale_actionbar then
+        addon.pUiMainBar:SetScale(db.scale_actionbar)
+    end
+
+    -- Apply scales to other bars (safe to do even in combat)
+    if MultiBarRight and db.scale_rightbar then
+        MultiBarRight:SetScale(db.scale_rightbar)
+    end
+
+    if MultiBarLeft and db.scale_leftbar then
+        MultiBarLeft:SetScale(db.scale_leftbar)
+    end
+
+    if MultiBarBottomLeft and db.scale_bottomleft then
+        MultiBarBottomLeft:SetScale(db.scale_bottomleft)
+    end
+
+    if MultiBarBottomRight and db.scale_bottomright then
+        MultiBarBottomRight:SetScale(db.scale_bottomright)
+    end
+
+    -- Update gryphon style and background
+    addon.UpdateGryphonStyle()
+    if addon.MainMenuBarMixin and addon.MainMenuBarMixin.update_main_bar_background then
+        addon.MainMenuBarMixin:update_main_bar_background()
+    end
+
+    -- Update positioning
+    addon.PositionActionBars()
+
+    -- Update widget positions if available
+    if addon.ActionBarFrames and addon.ApplyActionBarPositions then
+        addon.ApplyActionBarPositions()
+        if addon.PositionActionBarsToContainers then
+            addon.PositionActionBarsToContainers()
+        end
+    end
 end
+
+-- Alias for compatibility
+addon.RefreshMainbars = addon.RefreshMainbarsSystem
