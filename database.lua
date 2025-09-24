@@ -7,8 +7,8 @@ local defaults = {
         widgets = {
             minimap = {
                 anchor = "TOPRIGHT",
-                posX = 14,
-                posY = 14
+                posX = 0,
+                posY = 0
             },
             player = {
                 anchor = "TOPLEFT",
