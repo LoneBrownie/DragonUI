@@ -482,14 +482,26 @@ local function InitializeFrame()
     -- Configure text elements
     if FocusFrameTextureFrameName then
         FocusFrameTextureFrameName:ClearAllPoints()
-        FocusFrameTextureFrameName:SetPoint("BOTTOM", FocusFrameHealthBar, "TOP", 10, 1)
+        FocusFrameTextureFrameName:SetPoint("BOTTOM", FocusFrameHealthBar, "TOP", 10, 4)
         FocusFrameTextureFrameName:SetDrawLayer("OVERLAY", 2)
+        
+        -- NUEVO: Establecer tamaño de fuente fijo para consistencia
+        local font, size, flags = FocusFrameTextureFrameName:GetFont()
+        if font and flags then
+            FocusFrameTextureFrameName:SetFont(font, 11, flags)  -- Tamaño fijo 11
+        end
     end
     
     if FocusFrameTextureFrameLevelText then
         FocusFrameTextureFrameLevelText:ClearAllPoints()
-        FocusFrameTextureFrameLevelText:SetPoint("BOTTOMRIGHT", FocusFrameHealthBar, "TOPLEFT", 16, 1)
+        FocusFrameTextureFrameLevelText:SetPoint("BOTTOMRIGHT", FocusFrameHealthBar, "TOPLEFT", 20, 3)
         FocusFrameTextureFrameLevelText:SetDrawLayer("OVERLAY", 2)
+        
+        -- NUEVO: Establecer tamaño de fuente fijo para consistencia
+        local font, size, flags = FocusFrameTextureFrameLevelText:GetFont()
+        if font and flags then
+            FocusFrameTextureFrameLevelText:SetFont(font, 11, flags)  -- Tamaño fijo 11
+        end
     end
     
     -- Setup bar hooks

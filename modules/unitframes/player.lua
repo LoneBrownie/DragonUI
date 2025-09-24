@@ -1040,9 +1040,9 @@ local function ChangePlayerframe()
 
     -- Position name and level
     PlayerName:ClearAllPoints()
-    PlayerName:SetPoint('BOTTOMLEFT', PlayerFrameHealthBar, 'TOPLEFT', 0, 1)
+    PlayerName:SetPoint('BOTTOMLEFT', PlayerFrameHealthBar, 'TOPLEFT', 0, 2)
     PlayerLevelText:ClearAllPoints()
-    PlayerLevelText:SetPoint('BOTTOMRIGHT', PlayerFrameHealthBar, 'TOPRIGHT', -5, 1)
+    PlayerLevelText:SetPoint('BOTTOMRIGHT', PlayerFrameHealthBar, 'TOPRIGHT', -5, 3)
 
     -- Configure health bar
     PlayerFrameHealthBar:ClearAllPoints()

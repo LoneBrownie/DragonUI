@@ -533,13 +533,13 @@ local function InitializeFrame()
     -- Configure text elements ONCE
     if TargetFrameTextureFrameName then
         TargetFrameTextureFrameName:ClearAllPoints()
-        TargetFrameTextureFrameName:SetPoint("BOTTOM", TargetFrameHealthBar, "TOP", 10, 1)
+        TargetFrameTextureFrameName:SetPoint("BOTTOM", TargetFrameHealthBar, "TOP", 10, 3)
         TargetFrameTextureFrameName:SetDrawLayer("OVERLAY", 2)
     end
 
     if TargetFrameTextureFrameLevelText then
         TargetFrameTextureFrameLevelText:ClearAllPoints()
-        TargetFrameTextureFrameLevelText:SetPoint("BOTTOMRIGHT", TargetFrameHealthBar, "TOPLEFT", 16, 1)
+        TargetFrameTextureFrameLevelText:SetPoint("BOTTOMRIGHT", TargetFrameHealthBar, "TOPLEFT", 18, 3)
         TargetFrameTextureFrameLevelText:SetDrawLayer("OVERLAY", 2)
     end
 
