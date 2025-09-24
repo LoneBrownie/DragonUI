@@ -320,7 +320,17 @@ local function GetTargetAuraOffset()
     
     -- Simple approach: check if target has multiple aura rows
     if TargetFrame and TargetFrame.auraRows and TargetFrame.auraRows > 1 then
-        return (TargetFrame.auraRows - 1) * 24  -- 24px per extra row
+        local rows = TargetFrame.auraRows
+        local offset = 0
+        
+        -- Sistema progresivo inverso: cada fila adicional empuja menos
+        -- Fila 1: +24px, Fila 2: +18px, Fila 3: +14px, Fila 4: +12px, etc.
+        for i = 2, rows do
+            local rowOffset = math.max(4, 16 - (i * 2))  -- Decremento de 3px por fila, mínimo 8px
+            offset = offset + rowOffset
+        end
+        
+        return offset
     end
     
     return 0

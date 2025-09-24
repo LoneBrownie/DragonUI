@@ -259,26 +259,30 @@ local function SetupBarHooks()
                 return
             end
 
-            local now = GetTime()
-            if now - updateCache.lastPowerUpdate < 0.05 then
-                return
-            end
-            updateCache.lastPowerUpdate = now
+            -- ELIMINAR THROTTLING: Actualización inmediata para formas de druida
+            -- local now = GetTime()
+            -- if now - updateCache.lastPowerUpdate < 0.05 then
+            --     return
+            -- end
+            -- updateCache.lastPowerUpdate = now
 
             local texture = self:GetStatusBarTexture()
             if not texture then
                 return
             end
 
-            -- Update texture path based on power type
+            -- Update texture path based on power type - INMEDIATO
             local powerType = UnitPowerType("target")
             local powerName = POWER_MAP[powerType] or "Mana"
             local texturePath = TEXTURES.BAR_PREFIX .. powerName
 
-            if texture:GetTexture() ~= texturePath then
-                texture:SetTexture(texturePath)
-                texture:SetDrawLayer("ARTWORK", 1)
-            end
+            -- FORZAR TEXTURA INMEDIATAMENTE (como en focus.lua)
+            texture:SetTexture(texturePath)
+            texture:SetDrawLayer("ARTWORK", 1)
+            
+            -- FORZAR COLOR INMEDIATAMENTE
+            texture:SetVertexColor(1,1,1)
+            TargetFrameManaBar:SetStatusBarColor(1,1,1)
 
             -- Update texture coords
             local min, max = self:GetMinMaxValues()

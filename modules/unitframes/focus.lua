@@ -197,16 +197,6 @@ local function UpdatePowerBar()
     -- Forzar color blanco inmediatamente (múltiples métodos para asegurar que se aplique)
     texture:SetVertexColor(1, 1, 1)
     FocusFrameManaBar:SetStatusBarColor(1, 1, 1) -- Método alternativo
-    
-    -- Programar un recheck para asegurar que el color persista
-    C_Timer.After(0.01, function()
-        if UnitExists("focus") and FocusFrameManaBar then
-            local tex = FocusFrameManaBar:GetStatusBarTexture()
-            if tex then
-                tex:SetVertexColor(1, 1, 1)
-            end
-        end
-    end)
 end
 
 local function SetupBarHooks()
