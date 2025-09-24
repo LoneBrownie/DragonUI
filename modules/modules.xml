@@ -12,6 +12,9 @@
     <!-- Micro Menu & Bag module -->
     <Script file="micromenu.lua"/>
     
+    <!-- KeyBinding module -->
+    <Script file="keybinding.lua"/>
+    
     <!-- Buffs, Minimap & Quest Tracker modules -->
     <Script file="BuffFrame.lua"/> 
     <Script file="minimap.lua"/>    

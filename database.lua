@@ -427,6 +427,10 @@ local defaults = {
             },
             buffs = {
                 enabled = true -- Enable DragonUI buff frame with custom styling, positioning, and toggle button functionality
+            },
+            keybinding = {
+                enabled = true, -- Enable LibKeyBound integration for intuitive keybinding (hover + key press)
+                auto_register_action_buttons = true -- Automatically make action buttons bindable
             }
         }
     }

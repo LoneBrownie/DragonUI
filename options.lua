@@ -52,6 +52,36 @@ function addon:CreateOptionsTable()
                 disabled = false,
                 order = 0 -- El orden más bajo para que aparezca primero
             },
+            
+            -- ✅ KEYBINDING MODE BUTTON
+            toggle_keybind_mode = {
+                type = 'execute',
+                name = function()
+                    if LibStub and LibStub("LibKeyBound-1.0", true) and LibStub("LibKeyBound-1.0"):IsShown() then
+                        return "|cffFF6347KeyBind Mode Active|r"
+                    else
+                        return "|cff00FF00KeyBind Mode|r"
+                    end
+                end,
+                desc = "Toggle keybinding mode. Hover over action buttons and press keys to bind them instantly. Press ESC to clear bindings.",
+                func = function()
+                    GameTooltip:Hide()
+                    -- Close DragonUI options window
+                    LibStub("AceConfigDialog-3.0"):Close("DragonUI")
+                    
+                    if addon.KeyBindingModule and LibStub and LibStub("LibKeyBound-1.0", true) then
+                        local LibKeyBound = LibStub("LibKeyBound-1.0")
+                        LibKeyBound:Toggle()
+                    else
+                        print("|cFFFF0000[DragonUI]|r KeyBinding module not available")
+                    end
+                end,
+                disabled = function()
+                    return not (addon.KeyBindingModule and addon.KeyBindingModule.enabled)
+                end,
+                order = 0.3
+            },
+            
             --  SEPARADOR VISUAL
             editor_separator = {
                 type = 'header',
@@ -272,7 +302,9 @@ function addon:CreateOptionsTable()
                             StaticPopup_Show("DRAGONUI_RELOAD_UI")
                         end,
                         order = 25
-                    }
+                    },
+
+
                 }
             },
             actionbars = {

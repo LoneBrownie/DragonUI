@@ -156,6 +156,14 @@ end
 local function actionbuttons_hotkey(button)
     if not IsModuleEnabled() then return end
     
+    -- CRITICAL: Don't modify hotkeys during keybinding mode
+    if addon.KeyBindingModule and addon.KeyBindingModule.enabled and LibStub and LibStub("LibKeyBound-1.0") then
+        local LibKeyBound = LibStub("LibKeyBound-1.0")
+        if LibKeyBound:IsShown() then
+            return -- Let LibKeyBound handle hotkey display
+        end
+    end
+    
 	if not button then return; end
 	local buttonName = button:GetName();
 	if not buttonName then return; end
@@ -470,6 +478,14 @@ end
 local function actionbuttons_update(button)
     if not IsModuleEnabled() then return end
     
+    -- CRITICAL: Don't interfere with LibKeyBound during keybind mode
+    if addon.KeyBindingModule and addon.KeyBindingModule.enabled and LibStub and LibStub("LibKeyBound-1.0") then
+        local LibKeyBound = LibStub("LibKeyBound-1.0")
+        if LibKeyBound:IsShown() then
+            return -- Skip updates during keybinding mode
+        end
+    end
+    
 	if not button then return; end
 	local name = button:GetName();
 	if name:find('MultiCast') then return; end
@@ -593,6 +609,14 @@ local function SetupHooks()
 
     hooksecurefunc('ActionButton_ShowGrid', function(button)
         if not IsModuleEnabled() then return end
+        
+        -- CRITICAL: Don't interfere with LibKeyBound during keybind mode
+        if addon.KeyBindingModule and addon.KeyBindingModule.enabled and LibStub and LibStub("LibKeyBound-1.0") then
+            local LibKeyBound = LibStub("LibKeyBound-1.0")
+            if LibKeyBound:IsShown() then
+                return -- Skip updates during keybinding mode
+            end
+        end
         
         if not button then return end
         
