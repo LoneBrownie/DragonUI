@@ -39,7 +39,7 @@ If you're interested in helping develop or improve it, contributions are welcome
 
 ## Known Issues
 
-- **Party Frames Vehicle Bug:** Party frames do not display correctly when party members enter vehicles.
+- **Vehicle & Party UI Bugs:** Action bars, unit frames, and party frames may break, move, or display incorrectly when entering vehicles. All vehicle-related UI behavior still needs to be fixed.
 - Other bugs are still present and will be polished over time.
 
 ## Credits
