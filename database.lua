@@ -219,11 +219,11 @@ local defaults = {
 
         -- MINIMAP SETTINGS
         minimap = {
-            scale = 0.9,
+            scale = 1,
             border_alpha = 1,
             blip_skin = true, -- true = new/modern style, false = old/classic Blizzard style
             tracking_icons = true,
-            zoom_buttons = true,
+            zoom_buttons = false,
             calendar = true,
             clock = true,
             clock_font_size = 12,
