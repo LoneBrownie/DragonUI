@@ -1182,8 +1182,11 @@ function CastbarModule:HandleCastingEvent(event, unit)
             self:FinishSpell(unitType)
         end
     elseif event == 'UNIT_SPELLCAST_INTERRUPTED' then
-        self:HandleCastStop(unitType, true)  -- Verdadera interrupción
-    end
+        self:HandleCastStop(unitType, true)
+        -- NUEVO: Manejo de delays/pushbacks
+    elseif event == 'UNIT_SPELLCAST_DELAYED' or event == 'UNIT_SPELLCAST_CHANNEL_UPDATE' then
+        self:HandleCastDelayed(unitType, unit)
+    end  -- Verdadera interrupción   
 end
 
 function CastbarModule:HandleTargetChanged()
@@ -1218,6 +1221,66 @@ function CastbarModule:HandleFocusChanged()
             end
         end, 0.05)
     end
+end
+
+-- ============================================================================
+-- Función de manejo de delays 
+-- ============================================================================
+
+function CastbarModule:HandleCastDelayed(unitType, unit)
+    local state = self.states[unitType]
+    local frames = self.frames[unitType]
+    
+    -- Solo procesar si estamos casting/channeling
+    if not state.casting and not state.isChanneling then return end
+    
+    local name, _, _, iconTex, startTime, endTime
+    
+    -- Obtener nueva información del servidor
+    if state.casting and not state.isChanneling then
+        name, _, _, iconTex, startTime, endTime = UnitCastingInfo(unit)
+    elseif state.isChanneling then
+        name, _, _, iconTex, startTime, endTime = UnitChannelInfo(unit)
+    end
+    
+    -- Verificar que sigue siendo el mismo spell
+    if not name or name ~= state.spellName then return end
+    
+    -- Actualizar tiempos desde el servidor
+    local start, finish, duration = ParseCastTimes(startTime, endTime)
+    state.maxValue = duration
+    
+    -- Recalcular progreso actual
+    local currentTime = GetTime()
+    
+    if state.casting and not state.isChanneling then
+        -- Casting: progreso desde inicio
+        local elapsed = currentTime - start
+        state.currentValue = max(0, min(elapsed, duration))
+    else
+        -- Channeling: tiempo restante
+        local remaining = finish - currentTime
+        state.currentValue = max(0, min(remaining, duration))
+    end
+    
+    -- Actualizar barra inmediatamente
+    frames.castbar:SetMinMaxValues(0, state.maxValue)
+    frames.castbar:SetValue(state.currentValue)
+    
+    -- Actualizar elementos visuales
+    local progress = state.maxValue > 0 and (state.currentValue / state.maxValue) or 0
+    if frames.castbar.UpdateTextureClipping then
+        frames.castbar:UpdateTextureClipping(progress, state.isChanneling)
+    end
+    
+    -- Actualizar spark
+    if frames.spark and frames.spark:IsShown() then
+        local actualWidth = frames.castbar:GetWidth() * progress
+        frames.spark:ClearAllPoints()
+        frames.spark:SetPoint('CENTER', frames.castbar, 'LEFT', actualWidth, 0)
+    end
+    
+    UpdateTimeText(unitType)
 end
 
 -- ============================================================================
@@ -1269,11 +1332,13 @@ local eventFrame = CreateFrame('Frame', 'DragonUICastbarEventHandler')
 local events = {
     'PLAYER_ENTERING_WORLD',
     'UNIT_SPELLCAST_START',
+    'UNIT_SPELLCAST_DELAYED',          
     'UNIT_SPELLCAST_STOP',
     'UNIT_SPELLCAST_FAILED',
     'UNIT_SPELLCAST_INTERRUPTED',
     'UNIT_SPELLCAST_CHANNEL_START',
     'UNIT_SPELLCAST_CHANNEL_STOP',
+    'UNIT_SPELLCAST_CHANNEL_UPDATE',   
     'UNIT_SPELLCAST_SUCCEEDED',
     'UNIT_AURA',
     'PLAYER_TARGET_CHANGED',
