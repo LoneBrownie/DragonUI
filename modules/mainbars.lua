@@ -299,12 +299,13 @@ local function InitializeMainbars()
 end
 
     function MainMenuBarMixin:actionbar_art_setup()
-        -- setup art frames
-        MainMenuBarArtFrame:SetParent(pUiMainBar)
+        -- setup art frames - CORREGIDO
+        MainMenuBarArtFrame:SetParent(pUiMainBarArt)  -- ✅ Va al contenedor de arte
+        
+        -- CRÍTICO: Los grifones deben ir a pUiMainBarArt, NO a pUiMainBar
         for _, art in pairs({MainMenuBarLeftEndCap, MainMenuBarRightEndCap}) do
-            -- CRÍTICO: Usar pUiMainBar para que se arrastren correctamente
-            art:SetParent(pUiMainBar)
-            art:SetDrawLayer('ARTWORK')
+            art:SetParent(pUiMainBarArt)  -- ✅ Al contenedor de arte correcto
+            art:SetDrawLayer('OVERLAY', 7)  -- ✅ Layer más alto que ARTWORK
         end
 
         -- apply background settings
