@@ -1169,17 +1169,17 @@ local function ApplyMicromenuSystem()
             -- Crear frame contenedor usando el sistema estándar
             local microMenuFrame = addon.CreateUIFrame(240, 40, "MicroMenu")
 
-            -- Aplicar posición desde database o usar default
+            -- CORREGIDO: Aplicar posición desde widgets O usar fallback
             local microMenuConfig = addon.db and addon.db.profile.widgets and addon.db.profile.widgets.micromenu
-            if microMenuConfig and microMenuConfig.anchor then
+            if microMenuConfig and microMenuConfig.posX and microMenuConfig.posY then
+                -- Usar posición guardada del editor
                 microMenuFrame:SetPoint(microMenuConfig.anchor or "BOTTOMRIGHT", UIParent,
-                    microMenuConfig.anchor or "BOTTOMRIGHT", microMenuConfig.posX or (xOffset + config.x_position),
-                    microMenuConfig.posY or config.y_position)
-
+                    microMenuConfig.anchor or "BOTTOMRIGHT", 
+                    microMenuConfig.posX, microMenuConfig.posY)
             else
-                microMenuFrame:SetPoint("BOTTOMRIGHT", UIParent, "BOTTOMRIGHT", xOffset + config.x_position,
-                    config.y_position)
-
+                -- Usar posición por defecto solo si no hay configuración de widgets
+                microMenuFrame:SetPoint("BOTTOMRIGHT", UIParent, "BOTTOMRIGHT", 
+                    xOffset + config.x_position, config.y_position)
             end
 
             -- Asegurar que el menú real siga al frame contenedor
@@ -1206,16 +1206,31 @@ local function ApplyMicromenuSystem()
                 end
             end)
 
+            -- CORREGIDO: Añadir función de actualización de widgets
+            local function UpdateMicroMenuWidgets()
+                local microMenuConfig = addon.db and addon.db.profile.widgets and addon.db.profile.widgets.micromenu
+                if microMenuConfig and microMenuConfig.posX and microMenuConfig.posY then
+                    microMenuFrame:ClearAllPoints()
+                    microMenuFrame:SetPoint(microMenuConfig.anchor or "BOTTOMRIGHT", UIParent,
+                        microMenuConfig.anchor or "BOTTOMRIGHT", 
+                        microMenuConfig.posX, microMenuConfig.posY)
+                    
+                    -- Actualizar posición del menú real
+                    menu:ClearAllPoints()
+                    menu:SetPoint("CENTER", microMenuFrame, "CENTER", -140, -70)
+                end
+            end
+
             addon:RegisterEditableFrame({
                 name = "micromenu",
                 frame = microMenuFrame,
                 blizzardFrame = menu,
                 configPath = {"widgets", "micromenu"},
-                module = addon.MicroMenuModule or {}
+                module = addon.MicroMenuModule or {},
+                UpdateWidgets = UpdateMicroMenuWidgets  -- AÑADIDO: Función de actualización
             })
 
             menu.registeredInEditor = true
-
         end
 
         for _, button in pairs(MICRO_BUTTONS) do
@@ -1424,36 +1439,52 @@ local function ApplyMicromenuSystem()
     end
 
     function addon.RefreshMicromenuPosition()
-        if not _G.pUiMicroMenu then
-            return
+    if not _G.pUiMicroMenu then
+        return
+    end
+
+    local frameInfo = addon:GetEditableFrameInfo("micromenu")
+    if frameInfo and frameInfo.frame then
+        -- CORREGIDO: Usar configuración del sistema de widgets en lugar de la antigua
+        local microMenuConfig = addon.db and addon.db.profile.widgets and addon.db.profile.widgets.micromenu
+        
+        if microMenuConfig and microMenuConfig.posX and microMenuConfig.posY then
+            -- Usar posición guardada del editor
+            frameInfo.frame:ClearAllPoints()
+            frameInfo.frame:SetPoint(microMenuConfig.anchor or "BOTTOMRIGHT", UIParent,
+                microMenuConfig.anchor or "BOTTOMRIGHT", 
+                microMenuConfig.posX, microMenuConfig.posY)
+        else
+            -- Solo usar fallback si no hay configuración de widgets
+            local useGrayscale = addon.db.profile.micromenu.grayscale_icons
+            local configMode = useGrayscale and "grayscale" or "normal"
+            local config = addon.db.profile.micromenu[configMode]
+            local xOffset = IsAddOnLoaded('ezCollections') and -180 or -166
+            
+            frameInfo.frame:ClearAllPoints()
+            frameInfo.frame:SetPoint("BOTTOMRIGHT", UIParent, "BOTTOMRIGHT", 
+                xOffset + config.x_position, config.y_position)
         end
 
+        -- Asegurar que el menú siga al contenedor con posicionamiento corregido
+        _G.pUiMicroMenu:ClearAllPoints()
+        _G.pUiMicroMenu:SetPoint("CENTER", frameInfo.frame, "CENTER", -50, 10)
+    else
+        -- Fallback al método anterior si no hay contenedor
         local useGrayscale = addon.db.profile.micromenu.grayscale_icons
         local configMode = useGrayscale and "grayscale" or "normal"
         local config = addon.db.profile.micromenu[configMode]
-
-        local frameInfo = addon:GetEditableFrameInfo("micromenu")
-        if frameInfo and frameInfo.frame then
-            -- Mover el contenedor, el menú lo seguirá automáticamente
-            local xOffset = IsAddOnLoaded('ezCollections') and -180 or -166
-            frameInfo.frame:ClearAllPoints()
-            frameInfo.frame:SetPoint("BOTTOMRIGHT", UIParent, "BOTTOMRIGHT", xOffset + config.x_position,
-                config.y_position)
-
-            -- Asegurar que el menú siga al contenedor con posicionamiento corregido
-            _G.pUiMicroMenu:ClearAllPoints()
-            _G.pUiMicroMenu:SetPoint("CENTER", frameInfo.frame, "CENTER", -50, 10)
-        else
-            -- Fallback al método anterior si no hay contenedor
-            local microMenu = _G.pUiMicroMenu
-            microMenu:SetScale(config.scale_menu);
-            local xOffset = IsAddOnLoaded('ezCollections') and -180 or -166
-            microMenu:ClearAllPoints();
-            microMenu:SetPoint('BOTTOMLEFT', UIParent, 'BOTTOMRIGHT', xOffset + config.x_position, config.y_position);
-        end
-
-        updateMicroButtonSpacing();
+        
+        local microMenu = _G.pUiMicroMenu
+        microMenu:SetScale(config.scale_menu)
+        local xOffset = IsAddOnLoaded('ezCollections') and -180 or -166
+        microMenu:ClearAllPoints()
+        microMenu:SetPoint('BOTTOMLEFT', UIParent, 'BOTTOMRIGHT', 
+            xOffset + config.x_position, config.y_position)
     end
+
+    updateMicroButtonSpacing()
+end
 
     function addon.RefreshBagsPosition()
         if not _G.pUiBagsBar then
@@ -1529,45 +1560,47 @@ local function ApplyMicromenuSystem()
     end
 
     function addon.RefreshMicromenu()
-        if not addon.db or not addon.db.profile or not addon.db.profile.micromenu then
-            return
-        end
-
-        if not _G.pUiMicroMenu then
-            return
-        end
-
-        local useGrayscale = addon.db.profile.micromenu.grayscale_icons
-        local configMode = useGrayscale and "grayscale" or "normal"
-        local config = addon.db.profile.micromenu[configMode]
-
-        _G.pUiMicroMenu:SetScale(config.scale_menu)
-        _G.pUiMicroMenu:ClearAllPoints()
-        local xOffset = IsAddOnLoaded('ezCollections') and -180 or -166
-        _G.pUiMicroMenu:SetPoint('BOTTOMLEFT', UIParent, 'BOTTOMRIGHT', xOffset + config.x_position, config.y_position)
-
-        addon.RefreshMicromenuIcons()
-
-        local buttonxOffset = 0
-        for _, button in pairs(MICRO_BUTTONS) do
-            local originalSetPoint = button.SetPoint
-            if button.SetPoint == addon._noop then
-                button.SetPoint = UIParent.SetPoint
-            end
-
-            button:ClearAllPoints()
-            button:SetPoint('BOTTOMLEFT', _G.pUiMicroMenu, 'BOTTOMRIGHT', buttonxOffset, 55)
-
-            if originalSetPoint == addon._noop then
-                button.SetPoint = originalSetPoint
-            end
-
-            buttonxOffset = buttonxOffset + config.icon_spacing
-        end
-
-        addon.RefreshMicromenuVehicle()
-        UpdateCharacterPortraitVisibility()
+    if not addon.db or not addon.db.profile or not addon.db.profile.micromenu then
+        return
     end
+
+    if not _G.pUiMicroMenu then
+        return
+    end
+
+    local useGrayscale = addon.db.profile.micromenu.grayscale_icons
+    local configMode = useGrayscale and "grayscale" or "normal"
+    local config = addon.db.profile.micromenu[configMode]
+
+    -- CORREGIDO: Solo aplicar escala, NO posición (eso lo maneja el editor)
+    _G.pUiMicroMenu:SetScale(config.scale_menu)
+    
+    -- ELIMINADO: No sobrescribir posición del editor
+    -- _G.pUiMicroMenu:ClearAllPoints()
+    -- _G.pUiMicroMenu:SetPoint('BOTTOMLEFT', UIParent, 'BOTTOMRIGHT', xOffset + config.x_position, config.y_position)
+
+    addon.RefreshMicromenuIcons()
+
+    local buttonxOffset = 0
+    for _, button in pairs(MICRO_BUTTONS) do
+        local originalSetPoint = button.SetPoint
+        if button.SetPoint == addon._noop then
+            button.SetPoint = UIParent.SetPoint
+        end
+
+        button:ClearAllPoints()
+        button:SetPoint('BOTTOMLEFT', _G.pUiMicroMenu, 'BOTTOMRIGHT', buttonxOffset, 55)
+
+        if originalSetPoint == addon._noop then
+            button.SetPoint = originalSetPoint
+        end
+
+        buttonxOffset = buttonxOffset + config.icon_spacing
+    end
+
+    addon.RefreshMicromenuVehicle()
+    UpdateCharacterPortraitVisibility()
+end
 
     function addon.RefreshBags()
         if not _G.pUiBagsBar then
@@ -1912,7 +1945,41 @@ end
 
 -- Keep all the existing refresh functions as they are
 -- They will only work when the module is enabled
+-- ============================================================================
+-- Función para cargar configuración por defecto de widgets
+-- ============================================================================
 
+-- Añadir esta función cerca del final del archivo, antes de la inicialización:
+
+local function LoadDefaultWidgetSettings()
+    -- Asegurar que existe la configuración de widgets
+    if not addon.db.profile.widgets then
+        addon.db.profile.widgets = {}
+    end
+    
+    if not addon.db.profile.widgets.micromenu then
+        -- Calcular posición por defecto basada en configuración actual
+        local useGrayscale = addon.db.profile.micromenu and addon.db.profile.micromenu.grayscale_icons
+        local configMode = useGrayscale and "grayscale" or "normal"
+        local config = addon.db.profile.micromenu and addon.db.profile.micromenu[configMode]
+        
+        if config then
+            local xOffset = IsAddOnLoaded('ezCollections') and -180 or -166
+            addon.db.profile.widgets.micromenu = {
+                anchor = "BOTTOMRIGHT",
+                posX = xOffset + config.x_position,
+                posY = config.y_position
+            }
+        else
+            -- Fallback absoluto
+            addon.db.profile.widgets.micromenu = {
+                anchor = "BOTTOMRIGHT", 
+                posX = -166,
+                posY = 4
+            }
+        end
+    end
+end
 -- ============================================================================
 -- INITIALIZATION
 -- ============================================================================
@@ -1922,7 +1989,10 @@ local function Initialize()
         return
     end
 
-    -- Only apply if module is enabled
+    -- AÑADIDO: Cargar configuración por defecto de widgets
+    LoadDefaultWidgetSettings()
+
+    -- Solo apply if module is enabled
     if IsModuleEnabled() then
         -- Wait for PLAYER_LOGIN to apply system
         addon.package:RegisterEvents(function()
