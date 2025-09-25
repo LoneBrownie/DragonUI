@@ -453,14 +453,28 @@ end
 local function SetupBonusBarVehicle()
     if not pUiMainBar or not vehicleExit then return end
     
+    -- ✅ Pasar TODAS las referencias al entorno seguro primero
     pUiMainBar:SetFrameRef('vehicleExit', vehicleExit)
+    
+    -- ✅ Obtener referencias a los ActionButtons también
+    for i = 1, 12 do
+        local actionButton = _G['ActionButton'..i]
+        if actionButton then
+            pUiMainBar:SetFrameRef('ActionButton'..i, actionButton)
+        end
+    end
+    
     pUiMainBar:Execute([[
         vehicleExit = self:GetFrameRef('vehicleExit')
         buttons = newtable()
         for i = 1, 12 do
-            table.insert(buttons, self:GetFrameRef('ActionButton'..i))
+            local button = self:GetFrameRef('ActionButton'..i)
+            if button then
+                table.insert(buttons, button)
+            end
         end
     ]])
+    
     pUiMainBar:SetAttribute('_onstate-page', [[
         for i, button in ipairs(buttons) do
             button:SetAttribute('actionpage', tonumber(newstate))
@@ -474,13 +488,31 @@ end
 -- ============================================================================
 -- APPLY/RESTORE FUNCTIONS
 -- ============================================================================
-
+local function SetupVehicleExitStateDriver()
+    if not pUiMainBar or not vehicleExit then return end
+    
+    -- ✅ Pasar la referencia al entorno seguro ANTES del state driver
+    pUiMainBar:SetFrameRef('vehicleExitButton', vehicleExit)
+    pUiMainBar:Execute([[
+        vehicleExit = self:GetFrameRef('vehicleExitButton')
+    ]])
+    
+    -- ✅ Ahora configurar el state driver
+    VehicleModule.stateDrivers.vehicleExitBar = {frame = pUiMainBar, state = 'vehicle'}
+    pUiMainBar:SetAttribute('_onstate-vehicle', [[
+        if newstate == '1' then
+            vehicleExit:Show()
+        else
+            vehicleExit:Hide()
+        end
+    ]])
+    RegisterStateDriver(pUiMainBar, 'vehicle', '[bonusbar:5] 1; 0')
+end
 local function ApplyVehicleSystem()
     if VehicleModule.applied or not IsModuleEnabled() then return end
     
     -- Check dependencies
     if not CheckDependencies() then
-        
         return
     end
     
@@ -489,7 +521,6 @@ local function ApplyVehicleSystem()
     
     -- Create frames
     if not CreateVehicleFrames() then
-        
         return
     end
     
@@ -530,24 +561,16 @@ local function ApplyVehicleSystem()
         end
         SetupVehicleExitButton()
         
-        -- Setup vehicle exit state driver
-        VehicleModule.stateDrivers.vehicleExitBar = {frame = pUiMainBar, state = 'vehicle'}
-        pUiMainBar:SetAttribute('_onstate-vehicle', [[
-            if newstate == '1' then
-                vehicleExit:Show()
-            else
-                vehicleExit:Hide()
-            end
-        ]])
-        RegisterStateDriver(pUiMainBar, 'vehicle', '[bonusbar:5] 1; 0')
+        -- ✅ FIX: Configurar correctamente el state driver
+        SetupVehicleExitStateDriver()
     end
     
     SetupVehicleLeaveButton()
     SetupBonusBarVehicle()
     
     VehicleModule.applied = true
-    
 end
+
 local function RestoreVehicleSystem()
     if not VehicleModule.applied then return end
     

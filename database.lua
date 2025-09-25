@@ -209,7 +209,7 @@ local defaults = {
             },
             vehicle = {
                 x_position = 0,
-                artstyle = true
+                artstyle = false
             },
             totem = {
                 x_position = -210,
