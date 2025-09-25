@@ -1587,7 +1587,7 @@ local function ApplyWidgetPosition()
         CastbarModule.anchor:SetPoint(anchor, UIParent, anchor, widgetConfig.posX, widgetConfig.posY)
         
     else
-        --  POSICIÓN POR DEFECTO COMO RETAILUI
+        --  POSICIÓN POR DEFECTO 
         CastbarModule.anchor:ClearAllPoints()
         CastbarModule.anchor:SetPoint("BOTTOM", UIParent, "BOTTOM", 0, 270)
         
