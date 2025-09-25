@@ -48,7 +48,7 @@ This project combines and adapts code from several sources:
 
 - **[s0h2x](https://github.com/s0h2x)** – Two specific addons: one for action bars and another for minimap, which have been merged and integrated into DragonUI.
 - **[KarlHeinz_Schneider - Dragonflight UI (Classic)](https://www.curseforge.com/wow/addons/dragonflight-ui-classic)** – Original addon from which many elements have been taken and backported/adapted to 3.3.5a, including the micro menu and other features built from scratch based on this design.
-- **[Raz0r1337 - RetailUI](https://github.com/Raz0r1337/RetailUI)** – Large portions of code are used as reference and directly integrated for UI elements and implementation approaches.
+- **[a3st - RetailUI](https://github.com/a3st/RetailUI)** – Large portions of code are used as reference and directly integrated for UI elements and implementation approaches.
 
 ## Special Thanks
 
