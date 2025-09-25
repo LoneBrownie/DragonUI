@@ -84,7 +84,11 @@ for _, unitType in ipairs({"player", "target", "focus"}) do
         holdTime = 0,
         castSucceeded = false,
         graceTime = 0,
-        selfInterrupt = false  --  Flag para interrupciones naturales
+        selfInterrupt = false,  --  Flag para interrupciones naturales
+        unitGUID = nil,
+        endTime = 0,
+        startTime = 0,
+        lastServerCheck = 0
     }
     CastbarModule.frames[unitType] = {}
     CastbarModule.lastRefreshTime[unitType] = 0
@@ -203,16 +207,27 @@ local function HideBlizzardCastbar(unitType)
     local frame = frames[unitType]
     if not frame then return end
     
+    --  More aggressive hiding to prevent interference
+    frame:Hide()
+    frame:SetAlpha(0)
+    
     if unitType == "target" then
-        -- Keep target updates for sync but hide visually
-        frame:SetAlpha(0)
+        -- For target, we still want events but hide completely
         frame:ClearAllPoints()
-        frame:SetPoint("TOPLEFT", UIParent, "TOPLEFT", -2000, -2000)
-    else
-        frame:Hide()
-        frame:SetAlpha(0)
+        frame:SetPoint("TOPLEFT", UIParent, "TOPLEFT", -5000, -5000)
+        frame:SetSize(1, 1)  -- Minimize size
+        
+        --  Disable Blizzard's own show/hide logic
         if frame.SetScript then
-            frame:SetScript("OnShow", function(self) self:Hide() end)
+            frame:SetScript("OnShow", function(self) 
+                self:Hide() 
+            end)
+        end
+    else
+        if frame.SetScript then
+            frame:SetScript("OnShow", function(self) 
+                self:Hide() 
+            end)
         end
     end
 end
@@ -625,11 +640,16 @@ function CastbarModule:HandleCastStart(unitType, unit)
     local state = self.states[unitType]
     local frames = self.frames[unitType]
     
+    --  Guardar GUID y tiempos del servidor
+    if unitType ~= "player" then
+        state.unitGUID = UnitGUID(unit)
+    end
+    
     state.casting = true
     state.isChanneling = false
     state.holdTime = 0
     state.spellName = name
-    state.selfInterrupt = false  --  Reset flag
+    state.selfInterrupt = false
     
     if unitType == "player" then
         state.castSucceeded = false
@@ -638,6 +658,11 @@ function CastbarModule:HandleCastStart(unitType, unit)
     
     local start, finish, duration = ParseCastTimes(startTime, endTime)
     state.maxValue = duration
+    
+    --  Guardar tiempos del servidor para validación (PARA TODOS)
+    state.startTime = start
+    state.endTime = finish
+    state.lastServerCheck = GetTime()
     
     --  FIX: Calcular progreso actual basado en tiempo transcurrido
     local currentTime = GetTime()
@@ -714,11 +739,16 @@ function CastbarModule:HandleChannelStart(unitType, unit)
     local state = self.states[unitType]
     local frames = self.frames[unitType]
     
+    -- Guardar GUID y tiempos del servidor
+    if unitType ~= "player" then
+        state.unitGUID = UnitGUID(unit)
+    end
+    
     state.casting = true
     state.isChanneling = true
     state.holdTime = 0
     state.spellName = name
-    state.selfInterrupt = false  --  Reset flag
+    state.selfInterrupt = false
     
     if unitType == "player" then
         state.castSucceeded = false
@@ -727,6 +757,11 @@ function CastbarModule:HandleChannelStart(unitType, unit)
     
     local start, finish, duration = ParseCastTimes(startTime, endTime)
     state.maxValue = duration
+    
+    --  Guardar tiempos del servidor para validación (PARA TODOS)
+    state.startTime = start
+    state.endTime = finish
+    state.lastServerCheck = GetTime()
     
     --  FIX: Calcular progreso actual para channels (restante)
     local currentTime = GetTime()
@@ -878,12 +913,75 @@ function CastbarModule:OnUpdate(unitType, castbar, elapsed)
     
     if not cfg or not cfg.enabled then return end
     
-    -- Check if unit still exists
-    if unitType ~= "player" and not UnitExists(unitType) then
-        if state.casting or state.isChanneling then
-            self:HideCastbar(unitType)
+    -- Para PLAYER, verificar si cast se interrumpió por pérdida de target
+    if unitType == "player" and (state.casting or state.isChanneling) then
+        -- Verificación adicional: si player está casteando pero el servidor dice que no
+        local now = GetTime()
+        if (now - state.lastServerCheck) > 0.1 then  -- Cada 100ms para player
+            state.lastServerCheck = now
+            
+            local serverName
+            if state.casting and not state.isChanneling then
+                serverName = UnitCastingInfo("player")
+            elseif state.isChanneling then
+                serverName = UnitChannelInfo("player")
+            end
+            
+            -- Si no hay cast en servidor, el cast se interrumpió (target fuera de rango, etc.)
+            if not serverName then
+                self:HideCastbar(unitType)
+                return
+            end
         end
-        return
+    end
+
+    -- Validación robusta para target/focus
+    if unitType ~= "player" then
+        if not UnitExists(unitType) then
+            if state.casting or state.isChanneling then
+                self:HideCastbar(unitType)
+            end
+            return
+        end
+        
+        --  Verificar GUID mismatch (target switching)
+        local currentGUID = UnitGUID(unitType)
+        if state.unitGUID and state.unitGUID ~= currentGUID then
+            if state.casting or state.isChanneling then
+                self:HideCastbar(unitType)
+            end
+            return
+        end
+        
+        --  Verificar si cast expiró por tiempo
+        if (state.casting or state.isChanneling) and state.endTime > 0 then
+            local now = GetTime()
+            if now > state.endTime then
+                self:HideCastbar(unitType)
+                return
+            end
+        end
+        
+        --  Verificación periódica del servidor (throttled)
+        if state.casting or state.isChanneling then
+            local now = GetTime()
+            if (now - state.lastServerCheck) > 0.2 then  -- Cada 200ms
+                state.lastServerCheck = now
+                
+                local serverName
+                if state.casting and not state.isChanneling then
+                    serverName = UnitCastingInfo(unitType)
+                elseif state.isChanneling then
+                    serverName = UnitChannelInfo(unitType)
+                end
+                
+                -- Si no hay cast en servidor, ocultar (target fuera de rango, etc.)
+                if not serverName then
+                    self:HideCastbar(unitType)
+                    return
+                end
+            end
+        end
     end
     
     -- Handle success grace period (player only)
@@ -921,10 +1019,6 @@ function CastbarModule:OnUpdate(unitType, castbar, elapsed)
     
     -- Update casting/channeling
     if state.casting or state.isChanneling then
-        --  ELIMINADO: Ya no verificamos UnitCastingInfo/UnitChannelInfo aquí
-        -- Esto causaba falsos "interrupted" con lag porque el OnUpdate
-        -- corría antes que los eventos llegaran del servidor
-        
         -- Update progress
         if state.casting and not state.isChanneling then
             state.currentValue = min(state.currentValue + elapsed, state.maxValue)
@@ -1121,16 +1215,26 @@ function CastbarModule:HideCastbar(unitType)
     if frames.shield then frames.shield:Hide() end
     if frames.icon then frames.icon:Hide() end
     
+    --  Limpiar completamente el estado
     state.casting = false
     state.isChanneling = false
     state.holdTime = 0
     state.maxValue = 0
     state.currentValue = 0
-    state.selfInterrupt = false  --  Reset flag
+    state.selfInterrupt = false
+    state.endTime = 0
+    state.startTime = 0
+    state.lastServerCheck = 0
+    state.spellName = ""
     
     if unitType == "player" then
         state.castSucceeded = false
         state.graceTime = 0
+    else
+        --  Para target/focus, limpiar GUID solo si no hay unidad
+        if not UnitExists(unitType) then
+            state.unitGUID = nil
+        end
     end
 end
 
@@ -1150,9 +1254,22 @@ function CastbarModule:HandleCastingEvent(event, unit)
         return
     end
     
-    if not IsEnabled(unitType) then return end
+    if not IsEnabled(unitType) then 
+        return 
+    end
     
     HideBlizzardCastbar(unitType)
+    
+    --  Verificar GUID para todos los eventos (excepto player)
+    if unitType ~= "player" then
+        local state = self.states[unitType]
+        local currentGUID = UnitGUID(unit)
+        
+        -- Si tenemos un cast activo pero el GUID cambió, ignorar el evento
+        if (state.casting or state.isChanneling) and state.unitGUID and state.unitGUID ~= currentGUID then
+            return
+        end
+    end
     
     if event == 'UNIT_SPELLCAST_START' then
         self:HandleCastStart(unitType, unit)
@@ -1164,8 +1281,16 @@ function CastbarModule:HandleCastingEvent(event, unit)
     elseif event == 'UNIT_SPELLCAST_CHANNEL_START' then
         self:HandleChannelStart(unitType, unit)
     elseif event == 'UNIT_SPELLCAST_STOP' or event == 'UNIT_SPELLCAST_CHANNEL_STOP' then
-        --  UNIFICADO: Misma lógica para ambos eventos
+        --   Verificar que el evento corresponde al cast actual
         local state = self.states[unitType]
+        
+        --  Verificar GUID para evitar eventos de units incorrectos
+        if unitType ~= "player" then
+            local currentGUID = UnitGUID(unit)
+            if not currentGUID or state.unitGUID ~= currentGUID then
+                return
+            end
+        end
         
         -- Para channels, marcar como terminado naturalmente
         if event == 'UNIT_SPELLCAST_CHANNEL_STOP' and state.isChanneling then
@@ -1190,36 +1315,78 @@ function CastbarModule:HandleCastingEvent(event, unit)
 end
 
 function CastbarModule:HandleTargetChanged()
+    local state = self.states.target
+    
+    --  Guardar GUID anterior para comparación
+    local oldGUID = state.unitGUID
+    local newGUID = UnitExists("target") and UnitGUID("target") or nil
+    
+    --  Si cambió target, SIEMPRE ocultar inmediatamente
+    if oldGUID ~= newGUID then
+        self:HideCastbar("target")
+        state.unitGUID = newGUID
+    end
+    
     HideBlizzardCastbar("target")
-    self:HideCastbar("target")
     
     self.auraCache.target.lastUpdate = 0
-    self.auraCache.target.lastGUID = nil
+    self.auraCache.target.lastGUID = newGUID
     
+    --  Solo proceder si hay target válido
     if UnitExists("target") and IsEnabled("target") then
+        --  Verificar que target no cambió durante el delay
         addon.core:ScheduleTimer(function()
-            if UnitCastingInfo("target") then
-                self:HandleCastingEvent('UNIT_SPELLCAST_START', "target")
-            elseif UnitChannelInfo("target") then
-                self:HandleCastingEvent('UNIT_SPELLCAST_CHANNEL_START', "target")
+            -- Double-check: asegurar que el target sigue siendo el mismo
+            if UnitGUID("target") == newGUID then
+                if UnitCastingInfo("target") then
+                    state.unitGUID = newGUID  -- Establecer GUID antes del evento
+                    self:HandleCastingEvent('UNIT_SPELLCAST_START', "target")
+                elseif UnitChannelInfo("target") then
+                    state.unitGUID = newGUID  -- Establecer GUID antes del evento
+                    self:HandleCastingEvent('UNIT_SPELLCAST_CHANNEL_START', "target")
+                end
+                ApplyTargetAuraOffset()
             end
-            ApplyTargetAuraOffset()
         end, 0.05)
+    else
+        --  Asegurar limpieza si no hay target
+        state.unitGUID = nil
     end
 end
 
 function CastbarModule:HandleFocusChanged()
-    HideBlizzardCastbar("focus")
-    self:HideCastbar("focus")
+    local state = self.states.focus
     
+    --  Guardar GUID anterior para comparación
+    local oldGUID = state.unitGUID
+    local newGUID = UnitExists("focus") and UnitGUID("focus") or nil
+    
+    --  Si cambió focus, SIEMPRE ocultar inmediatamente
+    if oldGUID ~= newGUID then
+        self:HideCastbar("focus")
+        state.unitGUID = newGUID
+    end
+    
+    HideBlizzardCastbar("focus")
+    
+    --  Solo proceder si hay focus válido
     if UnitExists("focus") and IsEnabled("focus") then
+        --  Verificar que focus no cambió durante el delay
         addon.core:ScheduleTimer(function()
-            if UnitCastingInfo("focus") then
-                self:HandleCastingEvent('UNIT_SPELLCAST_START', "focus")
-            elseif UnitChannelInfo("focus") then
-                self:HandleCastingEvent('UNIT_SPELLCAST_CHANNEL_START', "focus")
+            -- Double-check: asegurar que el focus sigue siendo el mismo
+            if UnitGUID("focus") == newGUID then
+                if UnitCastingInfo("focus") then
+                    state.unitGUID = newGUID  -- Establecer GUID antes del evento
+                    self:HandleCastingEvent('UNIT_SPELLCAST_START', "focus")
+                elseif UnitChannelInfo("focus") then
+                    state.unitGUID = newGUID  -- Establecer GUID antes del evento
+                    self:HandleCastingEvent('UNIT_SPELLCAST_CHANNEL_START', "focus")
+                end
             end
         end, 0.05)
+    else
+        --  Asegurar limpieza si no hay focus
+        state.unitGUID = nil
     end
 end
 
@@ -1357,6 +1524,19 @@ if TargetFrameSpellBar then
         local cfg = GetConfig("target")
         if cfg and cfg.enabled and cfg.autoAdjust then
             addon.core:ScheduleTimer(ApplyTargetAuraOffset, 0.05)
+        end
+    end)
+end
+
+--  También necesitamos asegurar que el TargetFrameSpellBar no interfiera
+if TargetFrameSpellBar then
+    -- Disable Blizzard's own hiding logic that might interfere
+    TargetFrameSpellBar:SetScript("OnHide", nil)
+    TargetFrameSpellBar:SetScript("OnShow", function(self)
+        local cfg = GetConfig("target")
+        if cfg and cfg.enabled then
+            DebugPrint("BLOCKING Blizzard TargetFrameSpellBar:Show()")
+            self:Hide()
         end
     end)
 end
