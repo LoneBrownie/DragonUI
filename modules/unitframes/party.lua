@@ -151,13 +151,13 @@ end
 
 function PartyFrames:UpdateWidgets()
     ApplyWidgetPosition()
-    -- Reposition all party frames relative to the updated anchor
     if not InCombatLockdown() then
+        local step = GetPartyStep()
         for i = 1, MAX_PARTY_MEMBERS do
             local frame = _G['PartyMemberFrame' .. i]
             if frame and PartyFrames.anchor then
                 frame:ClearAllPoints()
-                local yOffset = (i - 1) * -50
+                local yOffset = (i - 1) * -step
                 frame:SetPoint("TOPLEFT", PartyFrames.anchor, "TOPLEFT", 0, yOffset)
             end
         end
@@ -233,6 +233,14 @@ local function GetSettings()
     end
     
     return settings
+end
+
+-- Calcular el paso vertical usando el padding de la config
+local function GetPartyStep()
+    local settings = GetSettings()
+    local pad = (settings and tonumber(settings.padding)) or 10      -- separación extra
+    local base = 49                                                  -- alto visual del frame
+    return base + pad
 end
 
 -- Format numbers helper
@@ -539,26 +547,19 @@ end
 -- Main styling function for party frames
 local function StylePartyFrames()
     local settings = GetSettings()
-    if not settings then
-        return
-    end
+    if not settings then return end
 
-    -- Create anchor frame if it doesn't exist
     CreatePartyAnchorFrame()
-
-    -- Apply widget position
     ApplyWidgetPosition()
 
+    local step = GetPartyStep()
     for i = 1, MAX_PARTY_MEMBERS do
         local frame = _G['PartyMemberFrame' .. i]
         if frame then
-            -- Scale and texture setup
             frame:SetScale(settings.scale or 1)
-
-            -- Positioning relative to anchor
             if not InCombatLockdown() then
                 frame:ClearAllPoints()
-                local yOffset = (i - 1) * -50 -- Stack vertically with 50px separation
+                local yOffset = (i - 1) * -step
                 frame:SetPoint("TOPLEFT", PartyFrames.anchor, "TOPLEFT", 0, yOffset)
             end
 
@@ -945,15 +946,14 @@ end
 
 -- Setup all necessary hooks for party frames
 local function SetupPartyHooks()
-    -- Main hook to maintain styles (simplified)
     hooksecurefunc("PartyMemberFrame_UpdateMember", function(frame)
         if frame and frame:GetName():match("^PartyMemberFrame%d+$") then
-            -- Maintain positioning relative to anchor
             if PartyFrames.anchor and not InCombatLockdown() then
                 local frameIndex = frame:GetID()
                 if frameIndex and frameIndex >= 1 and frameIndex <= 4 then
                     frame:ClearAllPoints()
-                    local yOffset = (frameIndex - 1) * -50
+                    local step = GetPartyStep()
+                    local yOffset = (frameIndex - 1) * -step
                     frame:SetPoint("TOPLEFT", PartyFrames.anchor, "TOPLEFT", 0, yOffset)
                 end
             end

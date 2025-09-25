@@ -359,7 +359,7 @@ local defaults = {
                 showHealthTextAlways = false,
                 showManaTextAlways = false,
                 orientation = 'vertical',
-                padding = 10,
+                padding = 15,
                 scale = 1.0
 
             },

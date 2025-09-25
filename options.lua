@@ -1759,8 +1759,8 @@ function addon:CreateOptionsTable()
 
                             addon.db.profile.widgets.minimap = {
                                 anchor = "TOPRIGHT",
-                                posX = 14,
-                                posY = 14
+                                posX = 0,
+                                posY = 0
                             }
 
                             if addon.MinimapModule then
@@ -3306,66 +3306,7 @@ function addon:CreateOptionsTable()
                                 end,
                                 order = 5
                             },
-                            override = {
-                                type = 'toggle',
-                                name = "Override Position",
-                                desc = "Override default party frame position",
-                                get = function()
-                                    return addon.db.profile.unitframe.party.override
-                                end,
-                                set = function(info, value)
-                                    addon.db.profile.unitframe.party.override = value
-                                    --  AUTO-REFRESH
-                                    if addon.RefreshPartyFrames then
-                                        addon.RefreshPartyFrames()
-                                    end
-                                end,
-                                order = 6
-                            },
-                            x = {
-                                type = 'range',
-                                name = "X Position",
-                                desc = "Horizontal position",
-                                min = -1000,
-                                max = 1000,
-                                step = 1,
-                                get = function()
-                                    return addon.db.profile.unitframe.party.x
-                                end,
-                                set = function(info, value)
-                                    addon.db.profile.unitframe.party.x = value
-                                    --  AUTO-REFRESH INMEDIATO
-                                    if addon.RefreshPartyFrames then
-                                        addon.RefreshPartyFrames()
-                                    end
-                                end,
-                                order = 7,
-                                disabled = function()
-                                    return not addon.db.profile.unitframe.party.override
-                                end
-                            },
-                            y = {
-                                type = 'range',
-                                name = "Y Position",
-                                desc = "Vertical position",
-                                min = -1000,
-                                max = 1000,
-                                step = 1,
-                                get = function()
-                                    return addon.db.profile.unitframe.party.y
-                                end,
-                                set = function(info, value)
-                                    addon.db.profile.unitframe.party.y = value
-                                    --  AUTO-REFRESH INMEDIATO
-                                    if addon.RefreshPartyFrames then
-                                        addon.RefreshPartyFrames()
-                                    end
-                                end,
-                                order = 8,
-                                disabled = function()
-                                    return not addon.db.profile.unitframe.party.override
-                                end
-                            }
+                           
                         }
                     }
                 }
