@@ -7,7 +7,7 @@
 A personal project bringing Dragonflight UI aesthetics to WotLK 3.3.5a.
 
 <img width="816" height="551" alt="{649C1BC5-978C-4852-B622-5ED11CE01A1F}" src="https://github.com/user-attachments/assets/54b8d8df-caf2-40e4-bb1e-5fec3a7f5039" />
-<img width="816" height="551" alt="{C6E21362-EE1B-47F8-8FCD-AD4FF5210198}" src="https://github.com/user-attachments/assets/4e759a8a-f2b1-40d0-aaa7-a22d79f9d126" />
+<img width="816" height="551" alt="{1233C38B-B4C6-4D9F-BF7F-40165F6417E8}" src="https://github.com/user-attachments/assets/28b3ccfa-55a2-470f-8510-c6f5a484c063" />
 
 ## Features
 
