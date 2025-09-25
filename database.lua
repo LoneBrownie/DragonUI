@@ -354,7 +354,6 @@ local defaults = {
             party = {
                 enabled = true,
                 classcolor = false,
-                textFormat = 'both',
                 breakUpLargeNumbers = true,
                 showHealthTextAlways = false,
                 showManaTextAlways = false,
