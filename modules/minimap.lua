@@ -172,7 +172,7 @@ local function ReplaceBlizzardFrame(frame)
 
     local minimapFrame = Minimap
     minimapFrame:ClearAllPoints()
-    minimapFrame:SetPoint("CENTER", minimapCluster, "CENTER", 0, -30)
+    minimapFrame:SetPoint("CENTER", minimapCluster, "CENTER", 0, -25)
     minimapFrame:SetWidth(DEFAULT_MINIMAP_WIDTH / blipScale)
     minimapFrame:SetHeight(DEFAULT_MINIMAP_HEIGHT / blipScale)
     minimapFrame:SetScale(blipScale)
