@@ -87,6 +87,234 @@ behaviors.ConflictWarning = function(addonName, addonInfo)
     StaticPopup_Show(popupName)
 end
 
+-- Behavior: CompactRaidFrame taint mitigation
+behaviors.CompactRaidFrameFix = function(addonName, addonInfo)
+    print("|cFFFFFF00DragonUI COMPATIBILITY:|r CompactRaidFrame taint mitigation activated!")
+    
+    -- Simple state tracking
+    local inCombat = false
+    local needsRefresh = false
+    local lastPartySize = GetNumPartyMembers()
+    
+    -- Complete party frame recreation system (simulates /reload for party frames)
+    local function ForcePartyFrameReload()
+        -- STEP 1: Complete cleanup and reset of all party frames
+        for i = 1, 4 do
+            local frameName = 'PartyMemberFrame' .. i
+            local frame = _G[frameName]
+            
+            if frame then
+                
+                -- Hide and clear all events
+                frame:Hide()
+                frame:UnregisterAllEvents()
+                
+                -- Reset all frame properties to initial state
+                frame:SetAlpha(1)
+                frame:ClearAllPoints()
+                
+                -- Clear unit assignment
+                frame.unit = nil
+                frame.id = nil
+                
+                -- Reset health bar
+                local healthBar = _G[frameName .. 'HealthBar']
+                if healthBar then
+                    healthBar:UnregisterAllEvents()
+                    healthBar:SetMinMaxValues(0, 100)
+                    healthBar:SetValue(0)
+                    healthBar:SetStatusBarColor(1, 1, 1, 1)
+                end
+                
+                -- Reset mana bar  
+                local manaBar = _G[frameName .. 'ManaBar']
+                if manaBar then
+                    manaBar:UnregisterAllEvents()
+                    manaBar:SetMinMaxValues(0, 100)
+                    manaBar:SetValue(0)
+                    manaBar:SetStatusBarColor(1, 1, 1, 1)
+                end
+                
+                -- Clear portrait
+                local portrait = _G[frameName .. 'Portrait']
+                if portrait then
+                    portrait:SetTexture(nil)
+                end
+                
+                -- Reset name text
+                local nameText = _G[frameName .. 'Name']
+                if nameText then
+                    nameText:SetText("")
+                end
+                
+                -- Clear all DragonUI custom elements
+                if frame.DragonUI_CustomTexts then
+                    frame.DragonUI_CustomTexts = nil
+                end
+                if frame.DragonUI_HealthText then
+                    frame.DragonUI_HealthText:Hide()
+                    frame.DragonUI_HealthText = nil
+                end
+                if frame.DragonUI_ManaText then
+                    frame.DragonUI_ManaText:Hide()
+                    frame.DragonUI_ManaText = nil
+                end
+                if frame.DragonUI_TextFrame then
+                    frame.DragonUI_TextFrame:Hide()
+                    frame.DragonUI_TextFrame = nil
+                end
+            end
+        end
+        
+        -- STEP 2: Wait a bit for cleanup, then completely reinitialize
+        DelayedCall(function()
+            -- Force complete party system reload
+            if _G.PartyMemberFrame_UpdateParty then
+                _G.PartyMemberFrame_UpdateParty()
+            end
+            
+            -- Reinitialize each frame from scratch (like on first load)
+            for i = 1, 4 do
+                local frameName = 'PartyMemberFrame' .. i
+                local frame = _G[frameName]
+                
+                if frame then
+                    -- Simulate OnLoad event for complete reset
+                    if _G.PartyMemberFrame_OnLoad then
+                        _G.PartyMemberFrame_OnLoad(frame)
+                    end
+                    
+                    -- Set proper unit and ID
+                    frame.unit = 'party' .. i
+                    frame.id = i
+                    
+                    -- Register all necessary events (like on first load)
+                    frame:RegisterEvent("PARTY_MEMBERS_CHANGED")
+                    frame:RegisterEvent("PARTY_LEADER_CHANGED")
+                    frame:RegisterEvent("PARTY_MEMBER_ENABLE")
+                    frame:RegisterEvent("PARTY_MEMBER_DISABLE")
+                    frame:RegisterEvent("UNIT_HEALTH")
+                    frame:RegisterEvent("UNIT_MAXHEALTH")
+                    frame:RegisterEvent("UNIT_MANA")
+                    frame:RegisterEvent("UNIT_MAXMANA")
+                    frame:RegisterEvent("UNIT_RAGE")
+                    frame:RegisterEvent("UNIT_ENERGY")
+                    frame:RegisterEvent("UNIT_AURA")
+                    frame:RegisterEvent("UNIT_PET")
+                    frame:RegisterEvent("UNIT_PORTRAIT_UPDATE")
+                    frame:RegisterEvent("PORTRAIT_UPDATE")
+                end
+            end
+            
+            -- STEP 3: Apply proper visibility based on current party state
+            DelayedCall(function()
+                local numMembers = GetNumPartyMembers()
+                
+                for i = 1, 4 do
+                    local frame = _G['PartyMemberFrame' .. i]
+                    if frame then
+                        if i <= numMembers then
+                            -- ALWAYS show frame if party member slot should exist
+                            frame:Show()
+                            
+                            -- Check if unit actually exists
+                            if UnitExists('party' .. i) then
+                                -- Force complete member update for existing unit
+                                if _G.PartyMemberFrame_UpdateMember then
+                                    _G.PartyMemberFrame_UpdateMember(frame)
+                                end
+                                
+                                -- Force health/mana updates
+                                local healthBar = _G[frame:GetName() .. 'HealthBar']
+                                if healthBar and _G.UnitFrameHealthBar_Update then
+                                    _G.UnitFrameHealthBar_Update(healthBar, 'party' .. i)
+                                end
+                                
+                                local manaBar = _G[frame:GetName() .. 'ManaBar']
+                                if manaBar and _G.UnitFrameManaBar_Update then
+                                    _G.UnitFrameManaBar_Update(manaBar, 'party' .. i)
+                                end
+                                
+                            else
+                                -- Show frame but with "Connecting..." or empty state
+                                local nameText = _G[frame:GetName() .. 'Name']
+                                if nameText then
+                                    nameText:SetText("Connecting...")
+                                end
+                            end
+                        else
+                            -- Hide unused frames  
+                            frame:Hide()
+                        end
+                    end
+                end
+                
+                -- STEP 4: Apply DragonUI customizations on top
+                DelayedCall(function()
+                    if addon and addon.RefreshPartyFrames then
+                        addon.RefreshPartyFrames()
+                    end
+                end, 0.2)
+                
+            end, 0.3)
+            
+        end, 0.2)
+    end
+    
+    -- Create a frame for simple polling system (more reliable than events)
+    local pollingFrame = CreateFrame("Frame")
+    local checkInterval = 0
+    
+    pollingFrame:SetScript("OnUpdate", function(self, elapsed)
+        checkInterval = checkInterval + elapsed
+        
+        if checkInterval >= 0.5 then -- Check every 0.5 seconds
+            checkInterval = 0
+            
+            local currentlyInCombat = InCombatLockdown()
+            local currentPartySize = GetNumPartyMembers()
+            
+            -- Detect combat state change
+            if inCombat and not currentlyInCombat then
+                -- Just exited combat
+                
+                if needsRefresh or (currentPartySize ~= lastPartySize) then
+                    -- Execute auto-refresh after combat
+                    ForcePartyFrameReload()
+                    needsRefresh = false
+                end
+                
+                lastPartySize = currentPartySize
+            elseif not inCombat and currentlyInCombat then
+                -- Just entered combat
+                lastPartySize = currentPartySize
+            end
+            
+            -- Detect party change during combat
+            if currentlyInCombat and (currentPartySize ~= lastPartySize) then
+                needsRefresh = true
+                lastPartySize = currentPartySize
+            end
+            
+            -- Update combat state
+            inCombat = currentlyInCombat
+        end
+    end)
+    
+    -- Create a slash command for manual testing
+    SLASH_DRAGONUI_PARTYFIX1 = "/duipartyfix"
+    SlashCmdList["DRAGONUI_PARTYFIX"] = function(msg)
+        if msg == "force" then
+            ForcePartyFrameReload()
+        else
+            print("DragonUI Party Fix:")
+            print("  /duipartyfix force - Force party frame reload")
+        end
+    end
+    
+    print("|cFFFFFF00DragonUI:|r CompactRaidFrame compatibility system ready!")
+end
+
 
 -- ============================================================================
 -- ADDON REGISTRY
@@ -98,6 +326,13 @@ local ADDON_REGISTRY = {
         reason = "Conflicts with DragonUI's custom unit frame textures and power bar system.",
         behavior = behaviors.ConflictWarning,
         checkOnce = true
+    },
+    ["compactraidframe"] = {
+        name = "CompactRaidFrame",
+        reason = "Known taint issues when manipulating party frames during combat. DragonUI provides automatic fixes.",
+        behavior = behaviors.CompactRaidFrameFix,
+        checkOnce = true,
+        listenToRaidEvents = true -- Enable raid event monitoring
     },
 }
 
