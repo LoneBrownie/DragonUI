@@ -355,12 +355,17 @@ local defaults = {
                 enabled = true,
                 classcolor = false,
                 breakUpLargeNumbers = true,
+                textFormat = 'both',
                 showHealthTextAlways = false,
                 showManaTextAlways = false,
                 orientation = 'vertical',
                 padding = 15,
-                scale = 1.0
-
+                scale = 1.0,
+                override = false,
+                anchor = 'TOPLEFT',
+                anchorParent = 'TOPLEFT',
+                x = 10,
+                y = -200
             },
             tot = {
                 classcolor = false,

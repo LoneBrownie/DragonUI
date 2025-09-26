@@ -3265,8 +3265,57 @@ function addon:CreateOptionsTable()
                                 end,
                                 order = 3
                             },
-                            -- ❌ ELIMINADAS: textFormat, showHealthTextAlways, showManaTextAlways
-                            --  RAZÓN: El party ya no usa el sistema de textos personalizado
+                            showHealthTextAlways = {
+                                type = 'toggle',
+                                name = "Always Show Health Text",
+                                desc = "Always show health text on party frames (instead of only on hover)",
+                                get = function()
+                                    return addon.db.profile.unitframe.party.showHealthTextAlways
+                                end,
+                                set = function(info, value)
+                                    addon.db.profile.unitframe.party.showHealthTextAlways = value
+                                    if addon.RefreshPartyFrames then
+                                        addon.RefreshPartyFrames()
+                                    end
+                                end,
+                                order = 3.1
+                            },
+                            showManaTextAlways = {
+                                type = 'toggle',
+                                name = "Always Show Mana Text",
+                                desc = "Always show mana text on party frames (instead of only on hover)",
+                                get = function()
+                                    return addon.db.profile.unitframe.party.showManaTextAlways
+                                end,
+                                set = function(info, value)
+                                    addon.db.profile.unitframe.party.showManaTextAlways = value
+                                    if addon.RefreshPartyFrames then
+                                        addon.RefreshPartyFrames()
+                                    end
+                                end,
+                                order = 3.2
+                            },
+                            textFormat = {
+                                type = 'select',
+                                name = "Text Format",
+                                desc = "Choose how to display health and mana text",
+                                values = {
+                                    ['numeric'] = 'Current Value Only (2345)',
+                                    ['formatted'] = 'Formatted Current (2.3k)', 
+                                    ['percentage'] = 'Percentage Only (75%)',
+                                    ['both'] = 'Percentage + Current (75% | 2.3k)'
+                                },
+                                get = function()
+                                    return addon.db.profile.unitframe.party.textFormat or 'both'
+                                end,
+                                set = function(info, value)
+                                    addon.db.profile.unitframe.party.textFormat = value
+                                    if addon.RefreshPartyFrames then
+                                        addon.RefreshPartyFrames()
+                                    end
+                                end,
+                                order = 3.3
+                            },
                             orientation = {
                                 type = 'select',
                                 name = "Orientation",
