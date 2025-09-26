@@ -83,6 +83,10 @@ local function ApplyWidgetPosition()
         return
     end
 
+    -- CRITICAL: Set BACKGROUND strata to stay behind Compact Raid Frames (which use LOW/MEDIUM)
+    PartyFrames.anchor:SetFrameStrata('BACKGROUND')
+    PartyFrames.anchor:SetFrameLevel(1)
+
     -- Ensure configuration exists
     if not addon.db or not addon.db.profile or not addon.db.profile.widgets then
         return
@@ -860,10 +864,10 @@ CreateCustomTexts = function(frame)
         }
     end
     
-    -- Create text frame with higher level than border (border is +10, texts will be +15)
+    -- Create text frame with proper layering (above border)
     if not frame.DragonUI_TextFrame then
         frame.DragonUI_TextFrame = CreateFrame("Frame", nil, frame)
-        frame.DragonUI_TextFrame:SetFrameLevel(frame:GetFrameLevel() + 15) -- Higher than border (+10)
+        frame.DragonUI_TextFrame:SetFrameLevel(frame:GetFrameLevel() + 4) -- Above border and bars
         frame.DragonUI_TextFrame:SetAllPoints(frame)
     end
 
@@ -877,7 +881,7 @@ CreateCustomTexts = function(frame)
             frame.DragonUI_HealthText:SetTextColor(1, 1, 1, 1)
             frame.DragonUI_HealthText:SetPoint("CENTER", healthBar, "CENTER", 0, 0)
             frame.DragonUI_HealthText:SetJustifyH("CENTER")
-            frame.DragonUI_HealthText:SetDrawLayer("OVERLAY", 1)
+            frame.DragonUI_HealthText:SetDrawLayer("OVERLAY", 1) -- Above everything
         end
         -- Texto izquierdo para formato "both" (porcentaje)
         if not frame.DragonUI_HealthTextLeft then
@@ -886,7 +890,7 @@ CreateCustomTexts = function(frame)
             frame.DragonUI_HealthTextLeft:SetTextColor(1, 1, 1, 1)
             frame.DragonUI_HealthTextLeft:SetPoint("RIGHT", healthBar, "RIGHT", -39, 0)
             frame.DragonUI_HealthTextLeft:SetJustifyH("LEFT")
-            frame.DragonUI_HealthTextLeft:SetDrawLayer("OVERLAY", 1)
+            frame.DragonUI_HealthTextLeft:SetDrawLayer("OVERLAY", 1) -- Above everything
         end
         -- Texto derecho para formato "both" (números)
         if not frame.DragonUI_HealthTextRight then
@@ -895,7 +899,7 @@ CreateCustomTexts = function(frame)
             frame.DragonUI_HealthTextRight:SetTextColor(1, 1, 1, 1)
             frame.DragonUI_HealthTextRight:SetPoint("RIGHT", healthBar, "RIGHT", -3, 0)
             frame.DragonUI_HealthTextRight:SetJustifyH("RIGHT")
-            frame.DragonUI_HealthTextRight:SetDrawLayer("OVERLAY", 1)
+            frame.DragonUI_HealthTextRight:SetDrawLayer("OVERLAY", 1) -- Above everything
         end
     end
 
@@ -909,7 +913,7 @@ CreateCustomTexts = function(frame)
             frame.DragonUI_ManaText:SetTextColor(1, 1, 1, 1)
             frame.DragonUI_ManaText:SetPoint("CENTER", manaBar, "CENTER", 1.5, 0)
             frame.DragonUI_ManaText:SetJustifyH("CENTER")
-            frame.DragonUI_ManaText:SetDrawLayer("OVERLAY", 1)
+            frame.DragonUI_ManaText:SetDrawLayer("OVERLAY", 1) -- Above everything
         end
         -- Texto izquierdo para formato "both" (porcentaje)
         if not frame.DragonUI_ManaTextLeft then
@@ -918,7 +922,7 @@ CreateCustomTexts = function(frame)
             frame.DragonUI_ManaTextLeft:SetTextColor(1, 1, 1, 1)
             frame.DragonUI_ManaTextLeft:SetPoint("RIGHT", manaBar, "RIGHT", -39, 0)
             frame.DragonUI_ManaTextLeft:SetJustifyH("LEFT")
-            frame.DragonUI_ManaTextLeft:SetDrawLayer("OVERLAY", 1)
+            frame.DragonUI_ManaTextLeft:SetDrawLayer("OVERLAY", 1) -- Above everything
         end
         -- Texto derecho para formato "both" (números)
         if not frame.DragonUI_ManaTextRight then
@@ -927,7 +931,7 @@ CreateCustomTexts = function(frame)
             frame.DragonUI_ManaTextRight:SetTextColor(1, 1, 1, 1)
             frame.DragonUI_ManaTextRight:SetPoint("RIGHT", manaBar, "RIGHT", -3, 0)
             frame.DragonUI_ManaTextRight:SetJustifyH("RIGHT")
-            frame.DragonUI_ManaTextRight:SetDrawLayer("OVERLAY", 1)
+            frame.DragonUI_ManaTextRight:SetDrawLayer("OVERLAY", 1) -- Above everything
         end
     end
     
@@ -997,6 +1001,11 @@ local function StylePartyFrames()
         local frame = _G['PartyMemberFrame' .. i]
         if frame then
             frame:SetScale(settings.scale or 1)
+            
+            -- CRITICAL: Set each party frame to BACKGROUND strata like old code
+            frame:SetFrameStrata('BACKGROUND')
+            frame:SetFrameLevel(1)
+            
             if not InCombatLockdown() then
                 frame:ClearAllPoints()
                 local yOffset = (i - 1) * -step
@@ -1023,7 +1032,7 @@ local function StylePartyFrames()
                 healthbar:SetSize(71, 10)
                 healthbar:ClearAllPoints()
                 healthbar:SetPoint('TOPLEFT', 44, -19)
-                healthbar:SetFrameLevel(frame:GetFrameLevel())
+                healthbar:SetFrameLevel(1)  -- Lower level so border texture can appear above
                 healthbar:SetStatusBarColor(1, 1, 1, 1)
 
                 -- Configure dynamic clipping with class color
@@ -1040,7 +1049,7 @@ local function StylePartyFrames()
                 manabar:SetSize(74, 6.5)
                 manabar:ClearAllPoints()
                 manabar:SetPoint('TOPLEFT', 41, -30.5)
-                manabar:SetFrameLevel(frame:GetFrameLevel()) -- Same level as the frame
+                manabar:SetFrameLevel(1)  -- Lower level so border texture can appear above
                 manabar:SetStatusBarColor(1, 1, 1, 1)
 
                 -- Configure dynamic clipping
@@ -1091,28 +1100,39 @@ local function StylePartyFrames()
 
             -- Create background and mark as styled
             if not frame.DragonUIStyled then
-                -- Background (behind)
-                local background = frame:CreateTexture(nil, 'BACKGROUND', nil, 3)
+                -- Background (behind everything)
+                local background = frame:CreateTexture(nil, 'BACKGROUND', nil, 0)
                 background:SetTexture(TEXTURES.frame)
                 background:SetTexCoord(GetPartyCoords("background"))
                 background:SetSize(120, 49)
                 background:SetPoint('TOPLEFT', 1, -2)
 
-                -- Border (above everything) - with forced framelevel
-                local border = frame:CreateTexture(nil, 'ARTWORK', nil, 10)
-                border:SetTexture(TEXTURES.border)
-                border:SetTexCoord(GetPartyCoords("border"))
-                border:SetSize(128, 64)
-                border:SetPoint('TOPLEFT', 1, -2)
-                border:SetVertexColor(1, 1, 1, 1)
+                -- Create border as a separate FRAME (not texture) to appear above bars
+                if not frame.DragonUI_BorderFrame then
+                    frame.DragonUI_BorderFrame = CreateFrame("Frame", nil, frame)
+                    frame.DragonUI_BorderFrame:SetFrameLevel(frame:GetFrameLevel() + 3) -- Above health/mana bars (level 2)
+                    frame.DragonUI_BorderFrame:SetAllPoints(frame)
+                    
+                    -- Now create border texture inside the border frame
+                    local border = frame.DragonUI_BorderFrame:CreateTexture(nil, 'ARTWORK', nil, 1)
+                    border:SetTexture(TEXTURES.border)
+                    border:SetTexCoord(GetPartyCoords("border"))
+                    border:SetSize(128, 64)
+                    border:SetPoint('TOPLEFT', 1, -2)
+                    border:SetVertexColor(1, 1, 1, 1)
+                    frame.DragonUI_BorderFrame.texture = border
+                end
 
-                -- Force the border to have a higher framelevel
-                local borderFrame = CreateFrame("Frame", nil, frame)
-                borderFrame:SetFrameLevel(frame:GetFrameLevel() + 10)
-                borderFrame:SetAllPoints(frame)
-                border:SetParent(borderFrame)
+                -- Create icon container well above border frame
+                if not frame.DragonUI_IconContainer then
+                    local iconContainer = CreateFrame("Frame", nil, frame)
+                    iconContainer:SetFrameStrata("BACKGROUND")  -- Same strata as party frame
+                    iconContainer:SetFrameLevel(frame:GetFrameLevel() + 10)  -- Well above border (+3)
+                    iconContainer:SetAllPoints(frame)
+                    frame.DragonUI_IconContainer = iconContainer
+                end
 
-                -- Move texts to the border frame so they are above
+                -- Move icons to HIGH strata container and configure layers
                 local name = _G[frame:GetName() .. 'Name']
                 local healthText = _G[frame:GetName() .. 'HealthBarText']
                 local manaText = _G[frame:GetName() .. 'ManaBarText']
@@ -1122,42 +1142,42 @@ local function StylePartyFrames()
                 local statusIcon = _G[frame:GetName() .. 'StatusIcon']
                 local blizzardRoleIcon = _G[frame:GetName() .. 'RoleIcon']
                 local guideIcon = _G[frame:GetName() .. 'GuideIcon']
-                -- Move texts without creating taint (only change parent)
+                
+                -- Text elements stay in normal layer
                 if name then
-                    name:SetParent(borderFrame)
-                    name:SetDrawLayer('OVERLAY', 11) -- Above the border
+                    name:SetDrawLayer('OVERLAY', 1)
                 end
                 if healthText then
-                    healthText:SetParent(borderFrame)
-                    healthText:SetDrawLayer('OVERLAY', 11)
+                    healthText:SetDrawLayer('OVERLAY', 1)
                 end
                 if manaText then
-                    manaText:SetParent(borderFrame)
-                    manaText:SetDrawLayer('OVERLAY', 11)
+                    manaText:SetDrawLayer('OVERLAY', 1)
                 end
+                
+                -- Move PvP and status icons to icon container (above border)
                 if leaderIcon then
-                    leaderIcon:SetParent(borderFrame)
-                    leaderIcon:SetDrawLayer('OVERLAY', 11)
+                    leaderIcon:SetParent(frame.DragonUI_IconContainer)
+                    leaderIcon:SetDrawLayer('OVERLAY', 1)
                 end
                 if masterLooterIcon then
-                    masterLooterIcon:SetParent(borderFrame)
-                    masterLooterIcon:SetDrawLayer('OVERLAY', 11)
+                    masterLooterIcon:SetParent(frame.DragonUI_IconContainer)
+                    masterLooterIcon:SetDrawLayer('OVERLAY', 1)
                 end
                 if pvpIcon then
-                    pvpIcon:SetParent(borderFrame)
-                    pvpIcon:SetDrawLayer('OVERLAY', 11)
+                    pvpIcon:SetParent(frame.DragonUI_IconContainer)
+                    pvpIcon:SetDrawLayer('OVERLAY', 1)
                 end
                 if statusIcon then 
-                    statusIcon:SetParent(borderFrame)
-                    statusIcon:SetDrawLayer('OVERLAY', 11)
+                    statusIcon:SetParent(frame.DragonUI_IconContainer)
+                    statusIcon:SetDrawLayer('OVERLAY', 1)
                 end
                 if blizzardRoleIcon then
-                    blizzardRoleIcon:SetParent(borderFrame)
-                    blizzardRoleIcon:SetDrawLayer('OVERLAY', 11)
+                    blizzardRoleIcon:SetParent(frame.DragonUI_IconContainer)
+                    blizzardRoleIcon:SetDrawLayer('OVERLAY', 1)
                 end
                 if guideIcon then
-                    guideIcon:SetParent(borderFrame)
-                    guideIcon:SetDrawLayer('OVERLAY', 11)
+                    guideIcon:SetParent(frame.DragonUI_IconContainer)
+                    guideIcon:SetDrawLayer('OVERLAY', 1)
                 end
 
                 frame.DragonUIStyled = true
@@ -1328,6 +1348,33 @@ local function SetupPartyHooks()
             -- Always hide Blizzard texts and ensure our custom texts exist
             HideBlizzardTexts(frame)
             CreateCustomTexts(frame)
+            
+            -- Force reparent icons to icon container (for dynamic PvP icons)
+            if frame.DragonUI_IconContainer then
+                local pvpIcon = _G[frame:GetName() .. 'PVPIcon']
+                local leaderIcon = _G[frame:GetName() .. 'LeaderIcon']
+                local masterIcon = _G[frame:GetName() .. 'MasterIcon']
+                local statusIcon = _G[frame:GetName() .. 'StatusIcon']
+                local guideIcon = _G[frame:GetName() .. 'GuideIcon']
+                local roleIcon = _G[frame:GetName() .. 'RoleIcon']
+                
+                if pvpIcon then
+                    pvpIcon:SetParent(frame.DragonUI_IconContainer)
+                    pvpIcon:SetDrawLayer('OVERLAY', 1)
+                end
+                if statusIcon then
+                    statusIcon:SetParent(frame.DragonUI_IconContainer)
+                    statusIcon:SetDrawLayer('OVERLAY', 1)
+                end
+                if guideIcon then
+                    guideIcon:SetParent(frame.DragonUI_IconContainer)
+                    guideIcon:SetDrawLayer('OVERLAY', 1)
+                end
+                if roleIcon then
+                    roleIcon:SetParent(frame.DragonUI_IconContainer)
+                    roleIcon:SetDrawLayer('OVERLAY', 1)
+                end
+            end
             
             -- Update our custom texts - AÑADIDA ACTUALIZACIÓN AQUÍ
             local healthbar = _G[frame:GetName() .. 'HealthBar']
