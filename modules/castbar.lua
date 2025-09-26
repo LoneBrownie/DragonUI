@@ -913,24 +913,50 @@ function CastbarModule:OnUpdate(unitType, castbar, elapsed)
     
     if not cfg or not cfg.enabled then return end
     
-    -- Para PLAYER, verificar si cast se interrumpió por pérdida de target
+    -- Para PLAYER, verificar si cast se interrumpió por pérdida de target o eventos de UI
     if unitType == "player" and (state.casting or state.isChanneling) then
         -- Verificación adicional: si player está casteando pero el servidor dice que no
         local now = GetTime()
-        if (now - state.lastServerCheck) > 0.1 then  -- Cada 100ms para player
+        if (now - state.lastServerCheck) > 0.1 then  -- Más frecuente: cada 50ms para player
             state.lastServerCheck = now
             
-            local serverName
+            local serverName, serverTexture, serverStartTime, serverEndTime
             if state.casting and not state.isChanneling then
-                serverName = UnitCastingInfo("player")
+                serverName, _, _, serverTexture, serverStartTime, serverEndTime = UnitCastingInfo("player")
             elseif state.isChanneling then
-                serverName = UnitChannelInfo("player")
+                serverName, _, _, serverTexture, serverStartTime, serverEndTime = UnitChannelInfo("player")
             end
             
-            -- Si no hay cast en servidor, el cast se interrumpió (target fuera de rango, etc.)
+            -- Si no hay cast en servidor, el cast se interrumpió (target fuera de rango, mapa abierto, etc.)
             if not serverName then
                 self:HideCastbar(unitType)
                 return
+            end
+            
+            -- NUEVO: Verificar si los tiempos del servidor cambiaron (pausa por mapa/UI)
+            if serverName == state.spellName and serverStartTime and serverEndTime then
+                local serverStart = serverStartTime / 1000
+                local serverEnd = serverEndTime / 1000
+                local serverDuration = serverEnd - serverStart
+                
+                -- Si la duración cambió significativamente, recalcular
+                if math.abs(serverDuration - state.maxValue) > 0.1 then
+                    state.maxValue = serverDuration
+                    state.startTime = serverStart
+                    state.endTime = serverEnd
+                    
+                    -- Recalcular progreso actual desde el servidor
+                    if state.casting and not state.isChanneling then
+                        local elapsed = now - serverStart
+                        state.currentValue = max(0, min(elapsed, serverDuration))
+                    else
+                        local remaining = serverEnd - now
+                        state.currentValue = max(0, min(remaining, serverDuration))
+                    end
+                    
+                    frames.castbar:SetMinMaxValues(0, state.maxValue)
+                    frames.castbar:SetValue(state.currentValue)
+                end
             end
         end
     end
@@ -1019,16 +1045,42 @@ function CastbarModule:OnUpdate(unitType, castbar, elapsed)
     
     -- Update casting/channeling
     if state.casting or state.isChanneling then
-        -- Update progress
-        if state.casting and not state.isChanneling then
-            state.currentValue = min(state.currentValue + elapsed, state.maxValue)
-        elseif state.isChanneling then
-            state.currentValue = max(state.currentValue - elapsed, 0)
+        -- MEJORADO: Calcular progreso basado en tiempo del servidor para mayor precisión
+        local now = GetTime()
+        local shouldUpdateFromTime = false
+        
+        -- Para player, usar tiempo del servidor cuando sea posible
+        if unitType == "player" and state.startTime > 0 and state.endTime > 0 then
+            if state.casting and not state.isChanneling then
+                local elapsed = now - state.startTime
+                local serverProgress = max(0, min(elapsed, state.maxValue))
+                -- Solo actualizar si la diferencia es significativa (evita micro-actualizaciones)
+                if math.abs(serverProgress - state.currentValue) > 0.01 then
+                    state.currentValue = serverProgress
+                    shouldUpdateFromTime = true
+                end
+            elseif state.isChanneling then
+                local remaining = state.endTime - now
+                local serverProgress = max(0, min(remaining, state.maxValue))
+                if math.abs(serverProgress - state.currentValue) > 0.01 then
+                    state.currentValue = serverProgress
+                    shouldUpdateFromTime = true
+                end
+            end
+        end
+        
+        -- Fallback: actualización incremental normal si no hay datos del servidor
+        if not shouldUpdateFromTime then
+            if state.casting and not state.isChanneling then
+                state.currentValue = min(state.currentValue + elapsed, state.maxValue)
+            elseif state.isChanneling then
+                state.currentValue = max(state.currentValue - elapsed, 0)
+            end
         end
         
         castbar:SetValue(state.currentValue)
         
-        local progress = state.currentValue / state.maxValue
+        local progress = state.maxValue > 0 and (state.currentValue / state.maxValue) or 0
         if castbar.UpdateTextureClipping then
             castbar:UpdateTextureClipping(progress, state.isChanneling)
         end
@@ -1464,6 +1516,15 @@ local function OnEvent(self, event, unit, ...)
         CastbarModule:HandleTargetChanged()
     elseif event == 'PLAYER_FOCUS_CHANGED' then
         CastbarModule:HandleFocusChanged()
+    elseif event == 'WORLD_MAP_UPDATE' or event == 'ADDON_LOADED' then
+        -- NUEVO: Sincronizar castbars cuando se abren ventanas de UI que pueden pausar casting
+        if IsEnabled("player") then
+            local state = CastbarModule.states.player
+            if state.casting or state.isChanneling then
+                -- Forzar verificación del estado del servidor
+                state.lastServerCheck = 0
+            end
+        end
     elseif event == 'PLAYER_ENTERING_WORLD' then
         addon.core:ScheduleTimer(function()
             CastbarModule:RefreshCastbar("player")
@@ -1509,7 +1570,8 @@ local events = {
     'UNIT_SPELLCAST_SUCCEEDED',
     'UNIT_AURA',
     'PLAYER_TARGET_CHANGED',
-    'PLAYER_FOCUS_CHANGED'
+    'PLAYER_FOCUS_CHANGED',
+    'WORLD_MAP_UPDATE'
 }
 
 for _, event in ipairs(events) do
@@ -1535,10 +1597,35 @@ if TargetFrameSpellBar then
     TargetFrameSpellBar:SetScript("OnShow", function(self)
         local cfg = GetConfig("target")
         if cfg and cfg.enabled then
-            DebugPrint("BLOCKING Blizzard TargetFrameSpellBar:Show()")
             self:Hide()
         end
     end)
+end
+
+-- NUEVO: Hook para detectar apertura del mapa mundial que puede pausar casting
+if WorldMapFrame then
+    local originalShow = WorldMapFrame.Show
+    local originalHide = WorldMapFrame.Hide
+    
+    WorldMapFrame.Show = function(self)
+        if originalShow then originalShow(self) end
+        
+        -- Sincronizar castbar del player cuando se abre el mapa
+        local state = CastbarModule.states.player
+        if state and (state.casting or state.isChanneling) then
+            state.lastServerCheck = 0  -- Forzar verificación inmediata
+        end
+    end
+    
+    WorldMapFrame.Hide = function(self)
+        if originalHide then originalHide(self) end
+        
+        -- Sincronizar castbar del player cuando se cierra el mapa
+        local state = CastbarModule.states.player
+        if state and (state.casting or state.isChanneling) then
+            state.lastServerCheck = 0  -- Forzar verificación inmediata
+        end
+    end
 end
 
 -- ============================================================================
