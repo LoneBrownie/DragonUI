@@ -608,9 +608,7 @@ function addon:CreateOptionsTable()
                                         end,
                                         set = function(info, value)
                                             addon.db.profile.buttons.pages.show = value
-                                            if addon.RefreshMainbars then
-                                                addon.RefreshMainbars()
-                                            end
+                                            StaticPopup_Show("DRAGONUI_RELOAD_UI")
                                         end,
                                         order = 1
                                     }
