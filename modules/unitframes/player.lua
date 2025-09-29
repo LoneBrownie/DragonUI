@@ -1163,13 +1163,18 @@ end
 
 --  FUNCIÓN PARA APLICAR POSICIÓN DESDE WIDGETS (COMO MINIMAP)
 local function ApplyWidgetPosition()
+    -- Ensure auxiliary frame exists
+    if not Module.playerFrame then
+        Module.playerFrame = addon.CreateUIFrame(200, 75, "PlayerFrame")
+    end
+    
     local widgetConfig = addon:GetConfigValue("widgets", "player")
     if not widgetConfig then
-        -- Si no hay widgets config, usar defaults
+        -- Si no hay widgets config, usar defaults correctos de database
         widgetConfig = {
             anchor = "TOPLEFT",
-            posX = -19,
-            posY = -4
+            posX = 10,
+            posY = -9
         }
     end
 
@@ -1179,13 +1184,13 @@ local function ApplyWidgetPosition()
         widgetConfig.anchor or "TOPLEFT", 
         UIParent, 
         widgetConfig.anchor or "TOPLEFT",
-        widgetConfig.posX or -19,
-        widgetConfig.posY or -4
+        widgetConfig.posX or 10,
+        widgetConfig.posY or -9
     )
     
     --  CLAVE: Anclar PlayerFrame al auxiliar (sistema RetailUI)
     PlayerFrame:ClearAllPoints()
-    PlayerFrame:SetPoint("CENTER", Module.playerFrame, "CENTER", -15, -7)
+    PlayerFrame:SetPoint("CENTER", Module.playerFrame, "CENTER", 0, 0)
 
     
 end

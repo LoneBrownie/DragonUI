@@ -1,13 +1,32 @@
 local addon = select(2,...);
 
 -- =================================================================
--- DRAGONUI GAME MENU BUTTON MODULE (WOW 3.3.5A)
+-- DRAGONUI GAME MENU BUTTON MODULE (WOW 3.3.5A + ASCENSION)
 -- =================================================================
 
 -- Variables locales para compatibilidad WoW 3.3.5a
 local CreateFrame = CreateFrame
-local GameMenuFrame = GameMenuFrame
+local GameMenuFrame = GameMenuFrame  -- May be nil on some versions/servers
 local HideUIPanel = HideUIPanel
+local EscapeMenu = EscapeMenu -- Ascension-specific
+local EscapeMenuSection = EscapeMenuSection -- Ascension-specific
+
+-- Debug: Check available API methods
+local function DebugGameMenuAPI()
+    print("DragonUI: Debugging Game Menu API availability:")
+    print("  - GameMenuFrame:", GameMenuFrame and "Available" or "Not Available")
+    print("  - EscapeMenu:", EscapeMenu and "Available" or "Not Available")
+    print("  - EscapeMenuSection:", EscapeMenuSection and "Available" or "Not Available")
+    if EscapeMenuSection then
+        print("  - EscapeMenuSection.AddOns:", EscapeMenuSection.AddOns and "Available" or "Not Available")
+    end
+    if EscapeMenu then
+        print("  - EscapeMenu:AddButton:", EscapeMenu.AddButton and "Available" or "Not Available")
+    end
+end
+
+-- Run debug check on load
+DebugGameMenuAPI()
 
 -- Estado del botón
 local dragonUIButton = nil
@@ -63,7 +82,7 @@ end
 
 -- Función para posicionar el botón DragonUI de forma muy conservadora
 local function PositionDragonUIButton()
-    if not dragonUIButton then return end
+    if not dragonUIButton or not GameMenuFrame then return end
     
     -- IMPORTANTE: Solo posicionar una vez para evitar acumulación de desplazamientos
     if buttonPositioned then 
@@ -98,8 +117,10 @@ end
 
 -- Función para abrir la interfaz de configuración de DragonUI
 local function OpenDragonUIConfig()
-    -- Cerrar el game menu primero
-    HideUIPanel(GameMenuFrame)
+    -- Cerrar el game menu primero (only if it exists)
+    if GameMenuFrame then
+        HideUIPanel(GameMenuFrame)
+    end
     
     -- Intentar múltiples métodos para abrir la configuración
     
@@ -252,6 +273,44 @@ local function TryCreateButton()
     attempt()
 end
 
+-- Función para crear el botón usando el método Ascension
+local function CreateAscensionMenuButton()
+    if buttonAdded then 
+        print("DragonUI: Button already added, skipping Ascension method")
+        return true 
+    end
+    
+    print("DragonUI: Attempting to create button using Ascension method")
+    
+    -- Verificar que EscapeMenu y EscapeMenuSection existen (específico para Ascension)
+    if not EscapeMenu or not EscapeMenuSection then
+        print("DragonUI: EscapeMenu or EscapeMenuSection not available")
+        return false
+    end
+    
+    -- Crear el botón usando la API de Ascension
+    dragonUIButton = EscapeMenu:AddButton("DragonUI", EscapeMenuSection.AddOns, function()
+        print("DragonUI: Button clicked - opening config")
+        OpenDragonUIConfig()
+    end, nil, true)
+    
+    if dragonUIButton then
+        print("DragonUI: Successfully created button using Ascension method")
+        buttonAdded = true
+        return true
+    else
+        print("DragonUI: Failed to create button using Ascension method")
+    end
+    
+    return false
+end
+
+-- Función de fallback para WoW vanilla/no-Ascension
+local function CreateVanillaMenuButton()
+    print("DragonUI: Attempting to create button using vanilla method")
+    return CreateDragonUIButton()
+end
+
 -- Event frame para manejar la inicialización
 local eventFrame = CreateFrame("Frame")
 eventFrame:RegisterEvent("ADDON_LOADED")
@@ -259,10 +318,15 @@ eventFrame:RegisterEvent("PLAYER_LOGIN")
 
 eventFrame:SetScript("OnEvent", function(self, event, arg1)
     if event == "ADDON_LOADED" and arg1 == "DragonUI" then
-        -- Intentar agregar el botón después de que DragonUI se cargue
-        TryCreateButton()
+        print("DragonUI: Addon loaded event received")
+        -- Intentar primero el método Ascension, después el método vanilla
+        if not CreateAscensionMenuButton() then
+            print("DragonUI: Ascension method failed, trying vanilla method")
+            TryCreateButton() -- Fallback al método vanilla
+        end
         
     elseif event == "PLAYER_LOGIN" then
+        print("DragonUI: Player login event received")
         -- Segundo intento después del login
         local frame = CreateFrame("Frame")
         local elapsed = 0
@@ -271,7 +335,14 @@ eventFrame:SetScript("OnEvent", function(self, event, arg1)
             if elapsed >= 1.0 then
                 self:SetScript("OnUpdate", nil)
                 if not buttonAdded then
-                    TryCreateButton()
+                    print("DragonUI: Retry after login - button not added yet")
+                    -- Intentar primero el método Ascension, después el método vanilla
+                    if not CreateAscensionMenuButton() then
+                        print("DragonUI: Ascension method failed on retry, trying vanilla method")
+                        TryCreateButton() -- Fallback al método vanilla
+                    end
+                else
+                    print("DragonUI: Button already added, skipping retry")
                 end
             end
         end)
@@ -280,15 +351,18 @@ eventFrame:SetScript("OnEvent", function(self, event, arg1)
     end
 end)
 
--- Hook al GameMenuFrame para intentar agregar el botón cuando se abre
-local originalGameMenuShow = GameMenuFrame.Show
-if originalGameMenuShow then
+-- Hook al GameMenuFrame para intentar agregar el botón cuando se abre (solo para método vanilla)
+-- Safety check for GameMenuFrame existence (compatibility with different WoW versions)
+if GameMenuFrame and GameMenuFrame.Show then
+    local originalGameMenuShow = GameMenuFrame.Show
     GameMenuFrame.Show = function(self)
         originalGameMenuShow(self)
         
-        -- Intentar crear el botón si no existe
+        -- Intentar crear el botón si no existe (solo método vanilla)
         if not buttonAdded then
-            CreateDragonUIButton()
+            if not CreateAscensionMenuButton() then
+                CreateDragonUIButton()
+            end
         elseif dragonUIButton then
             -- Si ya existe, asegurar que esté visible PERO NO reposicionar
             dragonUIButton:Show()

@@ -2618,8 +2618,8 @@ function addon:CreateOptionsTable()
                                     end
                                     addon.db.profile.widgets.player = {
                                         anchor = "TOPLEFT",
-                                        posX = -19,
-                                        posY = -4
+                                        posX = 10,
+                                        posY = -9
                                     }
                                     if addon.PlayerFrame then
                                         addon.PlayerFrame.Refresh()

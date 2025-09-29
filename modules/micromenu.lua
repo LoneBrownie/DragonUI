@@ -2,6 +2,12 @@
     DragonUI MicroMenu Module
     Refactored version maintaining all functionality with better organization
     Now with module enable/disable system
+    
+    Ascension Compatibility Updates:
+    - Added PathToAscensionMicroButton and ChallengesMicroButton to MICRO_BUTTONS table
+    - Added event unregistration for Ascension-specific buttons  
+    - Added button mappings for pathtoascension and challenges atlas keys
+    - Compatible with Ascension's AscensionSpellbookFrame and AscensionCharacterFrame
 ]] local addon = select(2, ...);
 local config = addon.config;
 
@@ -55,10 +61,11 @@ local MainMenuBarBackpackButton = _G.MainMenuBarBackpackButton;
 local HelpMicroButton = _G.HelpMicroButton;
 local KeyRingButton = _G.KeyRingButton;
 
--- Button collections
+-- Button collections (Updated for Ascension)
 local MICRO_BUTTONS = {_G.CharacterMicroButton, _G.SpellbookMicroButton, _G.TalentMicroButton,
                        _G.AchievementMicroButton, _G.QuestLogMicroButton, _G.SocialsMicroButton, _G.LFDMicroButton,
-                       _G.CollectionsMicroButton, _G.PVPMicroButton, _G.MainMenuMicroButton, _G.HelpMicroButton};
+                       _G.CollectionsMicroButton, _G.PVPMicroButton, _G.PathToAscensionMicroButton, 
+                       _G.ChallengesMicroButton, _G.MainMenuMicroButton, _G.HelpMicroButton};
 
 local bagslots = {_G.CharacterBag0Slot, _G.CharacterBag1Slot, _G.CharacterBag2Slot, _G.CharacterBag3Slot};
 
@@ -148,6 +155,8 @@ local function GetAtlasKey(buttonName)
         lfd = "UI-HUD-MicroMenu-Groupfinder",
         collections = "UI-HUD-MicroMenu-Collections",
         pvp = nil,
+        pathtoascension = nil,  -- Ascension-specific button
+        challenges = nil,       -- Ascension-specific button
         mainmenu = "UI-HUD-MicroMenu-Shop",
         help = "UI-HUD-MicroMenu-GameMenu"
     }
@@ -725,20 +734,20 @@ local function ApplyMicromenuSystem()
         -- Add background for PVP button
         if not button.DragonUIBackground then
             local backgroundTexture = 'Interface\\AddOns\\DragonUI\\Textures\\Micromenu\\uimicromenu2x'
-            local dx, dy = -1, 1
+            local dx, dy = 0, 0  -- Center the background properly
             local offX, offY = button:GetPushedTextOffset()
             local sizeX, sizeY = button:GetSize()
 
             local bg = button:CreateTexture('DragonUIBackground', 'BACKGROUND')
             bg:SetTexture(backgroundTexture)
-            bg:SetSize(sizeX, sizeY + 1)
+            bg:SetSize(sizeX, sizeY)  -- Remove the +1 to prevent size mismatch
             bg:SetTexCoord(0.0654297, 0.12793, 0.330078, 0.490234)
             bg:SetPoint('CENTER', dx, dy)
             button.DragonUIBackground = bg
 
             local bgPushed = button:CreateTexture('DragonUIBackgroundPushed', 'BACKGROUND')
             bgPushed:SetTexture(backgroundTexture)
-            bgPushed:SetSize(sizeX, sizeY + 1)
+            bgPushed:SetSize(sizeX, sizeY)  -- Remove the +1 to prevent size mismatch
             bgPushed:SetTexCoord(0.0654297, 0.12793, 0.494141, 0.654297)
             bgPushed:SetPoint('CENTER', dx + offX, dy + offY)
             bgPushed:Hide()
@@ -822,20 +831,20 @@ local function ApplyMicromenuSystem()
         -- PASO 2: Solo background (como otros botones)
         if not button.DragonUIBackground then
             local microTexture = 'Interface\\AddOns\\DragonUI\\Textures\\Micromenu\\uimicromenu2x'
-            local dx, dy = -1, 1
+            local dx, dy = 0, 0  -- Center the background properly
             local offX, offY = button:GetPushedTextOffset()
             local sizeX, sizeY = button:GetSize()
 
             local bg = button:CreateTexture('DragonUIBackground', 'BACKGROUND')
             bg:SetTexture(microTexture)
-            bg:SetSize(sizeX, sizeY + 1)
+            bg:SetSize(sizeX, sizeY)  -- Remove the +1 to prevent size mismatch
             bg:SetTexCoord(0.0654297, 0.12793, 0.330078, 0.490234)
             bg:SetPoint('CENTER', dx, dy)
             button.DragonUIBackground = bg
 
             local bgPushed = button:CreateTexture('DragonUIBackgroundPushed', 'BACKGROUND')
             bgPushed:SetTexture(microTexture)
-            bgPushed:SetSize(sizeX, sizeY + 1)
+            bgPushed:SetSize(sizeX, sizeY)  -- Remove the +1 to prevent size mismatch
             bgPushed:SetTexCoord(0.0654297, 0.12793, 0.494141, 0.654297)
             bgPushed:SetPoint('CENTER', dx + offX, dy + offY)
             bgPushed:Hide()
@@ -1248,9 +1257,9 @@ local function ApplyMicromenuSystem()
             button:SetParent(menu)
 
             if useGrayscale then
-                button:SetSize(14, 19)
+                button:SetSize(18, 24)  -- Improved aspect ratio for grayscale mode
             else
-                button:SetSize(32, 40)
+                button:SetSize(32, 40)  -- Standard size for normal mode
             end
 
             button:ClearAllPoints()
@@ -1268,12 +1277,13 @@ local function ApplyMicromenuSystem()
 
             local isCharacterButton = (buttonName == "Character")
             local isPVPButton = (buttonName == "PVP")
+            local hasAtlasTextures = GetAtlasKey(name) ~= nil  -- Check if button has atlas textures
 
             local upCoords = not isCharacterButton and not isPVPButton and GetColoredTextureCoords(name, "Up") or nil
-            local shouldUseGrayscale = useGrayscale or (not isPVPButton and not upCoords and not isCharacterButton)
+            local shouldUseGrayscale = useGrayscale or (not isPVPButton and not upCoords and not isCharacterButton and hasAtlasTextures)
 
-            if shouldUseGrayscale then
-                -- Grayscale icons
+            if shouldUseGrayscale and hasAtlasTextures then
+                -- Grayscale icons (only for buttons that have atlas textures)
                 local normalTexture = button:GetNormalTexture()
                 local pushedTexture = button:GetPushedTexture()
                 local disabledTexture = button:GetDisabledTexture()
@@ -1295,8 +1305,8 @@ local function ApplyMicromenuSystem()
                 SetupPVPButton(button)
             elseif isCharacterButton then
                 SetupCharacterButton(button)
-            else
-                -- Colored icons
+            elseif hasAtlasTextures then
+                -- Colored icons (only for buttons that have atlas textures)
                 local microTexture = 'Interface\\AddOns\\DragonUI\\Textures\\Micromenu\\uimicromenu2x'
 
                 local downCoords = GetColoredTextureCoords(name, "Down")
@@ -1304,44 +1314,86 @@ local function ApplyMicromenuSystem()
                 local mouseoverCoords = GetColoredTextureCoords(name, "Mouseover")
 
                 if upCoords and #upCoords >= 4 then
-                    button:GetNormalTexture():SetTexture(microTexture)
-                    button:GetNormalTexture():SetTexCoord(upCoords[1], upCoords[2], upCoords[3], upCoords[4])
+                    local normalTexture = button:GetNormalTexture()
+                    if normalTexture then
+                        normalTexture:SetTexture(microTexture)
+                        normalTexture:SetTexCoord(upCoords[1], upCoords[2], upCoords[3], upCoords[4])
+                        normalTexture:ClearAllPoints()
+                        normalTexture:SetPoint('CENTER', 0, 0)
+                        local buttonWidth, buttonHeight = button:GetSize()
+                        normalTexture:SetSize(buttonWidth, buttonHeight)
+                    end
                 end
 
                 if downCoords and #downCoords >= 4 then
-                    button:GetPushedTexture():SetTexture(microTexture)
-                    button:GetPushedTexture():SetTexCoord(downCoords[1], downCoords[2], downCoords[3], downCoords[4])
+                    local pushedTexture = button:GetPushedTexture()
+                    if pushedTexture then
+                        pushedTexture:SetTexture(microTexture)
+                        pushedTexture:SetTexCoord(downCoords[1], downCoords[2], downCoords[3], downCoords[4])
+                        pushedTexture:ClearAllPoints()
+                        pushedTexture:SetPoint('CENTER', 0, 0)
+                        local buttonWidth, buttonHeight = button:GetSize()
+                        pushedTexture:SetSize(buttonWidth, buttonHeight)
+                    end
                 end
 
                 if disabledCoords and #disabledCoords >= 4 then
-                    button:GetDisabledTexture():SetTexture(microTexture)
-                    button:GetDisabledTexture():SetTexCoord(disabledCoords[1], disabledCoords[2], disabledCoords[3],
-                        disabledCoords[4])
+                    local disabledTexture = button:GetDisabledTexture()
+                    if disabledTexture then
+                        disabledTexture:SetTexture(microTexture)
+                        disabledTexture:SetTexCoord(disabledCoords[1], disabledCoords[2], disabledCoords[3], disabledCoords[4])
+                        disabledTexture:ClearAllPoints()
+                        disabledTexture:SetPoint('CENTER', 0, 0)
+                        local buttonWidth, buttonHeight = button:GetSize()
+                        disabledTexture:SetSize(buttonWidth, buttonHeight)
+                    end
                 end
 
                 if mouseoverCoords and #mouseoverCoords >= 4 then
-                    button:GetHighlightTexture():SetTexture(microTexture)
-                    button:GetHighlightTexture():SetTexCoord(mouseoverCoords[1], mouseoverCoords[2], mouseoverCoords[3],
-                        mouseoverCoords[4])
+                    local highlightTexture = button:GetHighlightTexture()
+                    if highlightTexture then
+                        highlightTexture:SetTexture(microTexture)
+                        highlightTexture:SetTexCoord(mouseoverCoords[1], mouseoverCoords[2], mouseoverCoords[3], mouseoverCoords[4])
+                        highlightTexture:ClearAllPoints()
+                        highlightTexture:SetPoint('CENTER', 0, 0)
+                        local buttonWidth, buttonHeight = button:GetSize()
+                        highlightTexture:SetSize(buttonWidth, buttonHeight)
+                    end
                 end
 
                 -- Add background
                 if not button.DragonUIBackground then
                     local backgroundTexture = 'Interface\\AddOns\\DragonUI\\Textures\\Micromenu\\uimicromenu2x'
-                    local dx, dy = -1, 1
+                    local dx, dy = 0, 0  -- Center the background properly
                     local offX, offY = button:GetPushedTextOffset()
                     local sizeX, sizeY = button:GetSize()
 
                     local bg = button:CreateTexture('DragonUIBackground', 'BACKGROUND')
                     bg:SetTexture(backgroundTexture)
-                    bg:SetSize(sizeX, sizeY + 1)
+                    bg:SetSize(sizeX, sizeY)  -- Remove the +1 to prevent size mismatch
+                    bg:SetTexCoord(0.0654297, 0.12793, 0.330078, 0.490234)
+                    bg:SetPoint('CENTER', dx, dy)
+                    button.DragonUIBackground = bg
+                end
+            else
+                -- Default handling for buttons without atlas textures (PathToAscension, Challenges, etc.)
+                -- These buttons will keep their default Blizzard textures and use basic background
+                if not button.DragonUIBackground then
+                    local backgroundTexture = 'Interface\\AddOns\\DragonUI\\Textures\\Micromenu\\uimicromenu2x'
+                    local dx, dy = 0, 0  -- Center the background properly
+                    local offX, offY = button:GetPushedTextOffset()
+                    local sizeX, sizeY = button:GetSize()
+
+                    local bg = button:CreateTexture('DragonUIBackground', 'BACKGROUND')
+                    bg:SetTexture(backgroundTexture)
+                    bg:SetSize(sizeX, sizeY)  -- Remove the +1 to prevent size mismatch
                     bg:SetTexCoord(0.0654297, 0.12793, 0.330078, 0.490234)
                     bg:SetPoint('CENTER', dx, dy)
                     button.DragonUIBackground = bg
 
                     local bgPushed = button:CreateTexture('DragonUIBackgroundPushed', 'BACKGROUND')
                     bgPushed:SetTexture(backgroundTexture)
-                    bgPushed:SetSize(sizeX, sizeY + 1)
+                    bgPushed:SetSize(sizeX, sizeY)  -- Remove the +1 to prevent size mismatch
                     bgPushed:SetTexCoord(0.0654297, 0.12793, 0.494141, 0.654297)
                     bgPushed:SetPoint('CENTER', dx + offX, dy + offY)
                     bgPushed:Hide()
@@ -1801,6 +1853,14 @@ end
         else
             xOffset = -166
         end
+        
+        -- Handle Ascension-specific button events
+        if _G.PathToAscensionMicroButton then
+            _G.PathToAscensionMicroButton:UnregisterEvent('UPDATE_BINDINGS')
+        end
+        if _G.ChallengesMicroButton then
+            _G.ChallengesMicroButton:UnregisterEvent('UPDATE_BINDINGS')
+        end
 
         setupMicroButtons(xOffset);
 
@@ -1836,6 +1896,14 @@ end
         end
     else
         xOffset = -166
+    end
+    
+    -- Handle Ascension-specific button events
+    if _G.PathToAscensionMicroButton then
+        _G.PathToAscensionMicroButton:UnregisterEvent('UPDATE_BINDINGS')
+    end
+    if _G.ChallengesMicroButton then
+        _G.ChallengesMicroButton:UnregisterEvent('UPDATE_BINDINGS')
     end
 
     setupMicroButtons(xOffset)

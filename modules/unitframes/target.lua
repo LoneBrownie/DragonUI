@@ -19,26 +19,27 @@ local Module = {
 
 --  FUNCIÓN PARA APLICAR POSICIÓN DESDE WIDGETS (COMO PLAYER.LUA)
 local function ApplyWidgetPosition()
+    -- Ensure auxiliary frame exists
     if not Module.targetFrame then
-        return
+        Module.targetFrame = addon.CreateUIFrame(130, 65, "TargetFrame")
     end
-
+    
     local widgetConfig = addon.db and addon.db.profile.widgets and addon.db.profile.widgets.target
     
     if widgetConfig then
         Module.targetFrame:ClearAllPoints()
         Module.targetFrame:SetPoint(widgetConfig.anchor or "TOPLEFT", UIParent, widgetConfig.anchor or "TOPLEFT", 
-                                   widgetConfig.posX or 250, widgetConfig.posY or -4)
+                                   widgetConfig.posX or 230, widgetConfig.posY or -9)
         
         -- También aplicar al frame de Blizzard
         TargetFrame:ClearAllPoints()
-        TargetFrame:SetPoint("CENTER", Module.targetFrame, "CENTER", 20, -7)
+        TargetFrame:SetPoint("CENTER", Module.targetFrame, "CENTER", 0, 0)
         
         
     else
         -- Fallback a posición por defecto
         Module.targetFrame:ClearAllPoints()
-        Module.targetFrame:SetPoint("TOPLEFT", UIParent, "TOPLEFT", 250, -4)
+        Module.targetFrame:SetPoint("TOPLEFT", UIParent, "TOPLEFT", 230, -9)
         TargetFrame:ClearAllPoints()
         TargetFrame:SetPoint("CENTER", Module.targetFrame, "CENTER", 0, 0)
         
@@ -951,8 +952,8 @@ local function ResetFrame()
     end
     addon.db.profile.widgets.target = {
         anchor = "TOPLEFT",
-        posX = 250,
-        posY = -4
+        posX = 230,
+        posY = -9
     }
 
     -- Re-apply position using widgets system
