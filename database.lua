@@ -11,60 +11,60 @@ local defaults = {
                 posY = 0
             },
             player = {
-                anchor = "TOPLEFT",
-                posX = 10,
-                posY = -9
+                anchor = "BOTTOM",
+                posX = -241.3721133999036,
+                posY = 204.6268144878855
             },
             target = {
-                anchor = "TOPLEFT",
-                posX = 230,
-                posY = -9
+                anchor = "BOTTOM",
+                posX = 245.2933684638762,
+                posY = 204.6272280316506
             },
             focus = {
-                anchor = "TOPLEFT",
-                posX = 250,
-                posY = -170
+                anchor = "TOPLEFT", -- Default anchor since not specified in save
+                posX = 436.9804150842156,
+                posY = -20.0387221704431
             },
             party = {
-                anchor = "TOPLEFT",
-                posX = 10,
-                posY = -200
+                anchor = "LEFT",
+                posX = 199.4900550478444,
+                posY = 107.8432400326906
             },
             buffs = {
-                anchor = "TOPRIGHT",
-                posX = -260,
-                posY = -20
+                anchor = "TOPRIGHT", -- Default anchor since not specified in save
+                posX = -260.0000268803447,
+                posY = -20 -- Using default Y value
             },
             pet = {
-                anchor = "TOPLEFT",
-                posX = 63,
-                posY = -80
+                anchor = "BOTTOM",
+                posX = -468.0784099655776,
+                posY = 113.8038530906452
             },
             petbar = {
-                anchor = "BOTTOM",
-                posX = 1,
-                posY = 148
+                anchor = "BOTTOM", -- Default anchor since not specified in save
+                posX = -452.6473055814451,
+                posY = 9.333518394168205
             },
             playerCastbar = {
-                anchor = "BOTTOM",
-                posX = 0,
-                posY = 200
+                anchor = "BOTTOM", -- Default anchor since not specified in save
+                posX = 0, -- Using default X value
+                posY = 200.0000041354377
             },
 
             mainbar = {
-                anchor = "BOTTOM",
-                posX = 0,
-                posY = 22
+                anchor = "BOTTOM", -- Default anchor since not specified in save
+                posX = 0, -- Using default X value
+                posY = 21.99999896614059
             },
             rightbar = {
-                anchor = "RIGHT",
-                posX = -5,
-                posY = -70
+                anchor = "RIGHT", -- Default anchor since not specified in save
+                posX = -5, -- Using default X value
+                posY = -69.99999896614058
             },
             leftbar = {
-                anchor = "RIGHT",
-                posX = -45,
-                posY = -70
+                anchor = "RIGHT", -- Default anchor since not specified in save
+                posX = -44.99999638149205,
+                posY = -69.99999896614058
             },
             bottombarleft = {
                 anchor = "BOTTOM",
@@ -72,19 +72,19 @@ local defaults = {
                 posY = 64
             },
             bottombarright = {
-                anchor = "BOTTOM",
-                posX = -10,
-                posY = 105
+                anchor = "BOTTOM", -- Default anchor since not specified in save
+                posX = -10, -- Using default X value
+                posY = 105.0000025846485
             },
             micromenu = {
-                anchor = "BOTTOMRIGHT",
-                posX = -3,
-                posY = 3
+                anchor = "BOTTOMRIGHT", -- Default anchor since not specified in save
+                posX = 0.1376565392383247,
+                posY = -0.7646554741046648
             },
             bagsbar = {
-                anchor = "BOTTOMRIGHT",
-                posX = -3,
-                posY = 45
+                anchor = "BOTTOMRIGHT", -- Default anchor since not specified in save
+                posX = -3, -- Using default X value
+                posY = 44.99999638149205
             },
             repexpbar = {
                 anchor = "BOTTOM",
@@ -124,17 +124,19 @@ local defaults = {
             grayscale_icons = false,
 
             -- Grayscale icons configuration
+            -- Based on Wyleannia's optimal positioning for 13-button layout
             grayscale = {
                 scale_menu = 1.5,
-                x_position = 5,
+                x_position = 0, -- Wyleannia's preferred position (essentially centered)
                 y_position = -54,
                 icon_spacing = 15 -- Gap between icons
             },
 
             -- Normal colored icons configuration  
+            -- Based on Wyleannia's optimal positioning for 13-button layout
             normal = {
                 scale_menu = 0.9,
-                x_position = -113,
+                x_position = 0, -- Wyleannia's preferred position (essentially centered)
                 y_position = -53,
                 icon_spacing = 26
             }

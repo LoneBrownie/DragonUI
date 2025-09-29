@@ -8,6 +8,7 @@
     - Added event unregistration for Ascension-specific buttons  
     - Added button mappings for pathtoascension and challenges atlas keys
     - Compatible with Ascension's AscensionSpellbookFrame and AscensionCharacterFrame
+    - Adjusted positioning offsets to prevent button cutoff (DragonUI has 13 buttons vs standard 9)
 ]] local addon = select(2, ...);
 local config = addon.config;
 
@@ -1176,7 +1177,7 @@ local function ApplyMicromenuSystem()
 
         if not menu.registeredInEditor then
             -- Crear frame contenedor usando el sistema estándar
-            local microMenuFrame = addon.CreateUIFrame(240, 40, "MicroMenu")
+            local microMenuFrame = addon.CreateUIFrame(350, 45, "MicroMenu") -- Further reduced for better proportions
 
             -- CORREGIDO: Aplicar posición desde widgets O usar fallback
             local microMenuConfig = addon.db and addon.db.profile.widgets and addon.db.profile.widgets.micromenu
@@ -1194,7 +1195,7 @@ local function ApplyMicromenuSystem()
             -- Asegurar que el menú real siga al frame contenedor
             menu:SetParent(UIParent)
             menu:ClearAllPoints()
-            menu:SetPoint("CENTER", microMenuFrame, "CENTER", -140, -70) -- Ajustar posición: izquierda y arriba
+            menu:SetPoint("CENTER", microMenuFrame, "CENTER", -90, -55) -- Better centering for 13 buttons
 
             -- Hook para que el menú siga al contenedor cuando se mueva
             microMenuFrame:HookScript("OnDragStop", function(self)
@@ -1226,7 +1227,7 @@ local function ApplyMicromenuSystem()
                     
                     -- Actualizar posición del menú real
                     menu:ClearAllPoints()
-                    menu:SetPoint("CENTER", microMenuFrame, "CENTER", -140, -70)
+                    menu:SetPoint("CENTER", microMenuFrame, "CENTER", -90, -55)
                 end
             end
 
@@ -1511,16 +1512,22 @@ local function ApplyMicromenuSystem()
             local useGrayscale = addon.db.profile.micromenu.grayscale_icons
             local configMode = useGrayscale and "grayscale" or "normal"
             local config = addon.db.profile.micromenu[configMode]
-            local xOffset = IsAddOnLoaded('ezCollections') and -180 or -166
+            
+            -- Adjusted offsets to account for Ascension-specific buttons
+            -- DragonUI has 13 buttons total (2 more than ElvUI's 11)
+            -- PathToAscensionMicroButton, ChallengesMicroButton, CollectionsMicroButton, PVPMicroButton
+            local baseOffset = IsAddOnLoaded('ezCollections') and -180 or -166
+            local extraButtonOffset = useGrayscale and (4 * 15) or (4 * 26) -- 4 extra buttons * spacing
+            local xOffset = baseOffset - extraButtonOffset
             
             frameInfo.frame:ClearAllPoints()
             frameInfo.frame:SetPoint("BOTTOMRIGHT", UIParent, "BOTTOMRIGHT", 
                 xOffset + config.x_position, config.y_position)
         end
 
-        -- Asegurar que el menú siga al contenedor con posicionamiento corregido
+        -- Asegurar que el menú siga al contenedor con posicionamiento corregido para 13 buttons
         _G.pUiMicroMenu:ClearAllPoints()
-        _G.pUiMicroMenu:SetPoint("CENTER", frameInfo.frame, "CENTER", -50, 10)
+        _G.pUiMicroMenu:SetPoint("CENTER", frameInfo.frame, "CENTER", -90, -55)
     else
         -- Fallback al método anterior si no hay contenedor
         local useGrayscale = addon.db.profile.micromenu.grayscale_icons
@@ -1529,7 +1536,17 @@ local function ApplyMicromenuSystem()
         
         local microMenu = _G.pUiMicroMenu
         microMenu:SetScale(config.scale_menu)
-        local xOffset = IsAddOnLoaded('ezCollections') and -180 or -166
+        
+        -- Adjusted offsets to account for Ascension-specific buttons
+        -- DragonUI has 13 buttons total (2 more than ElvUI's 11)
+        -- PathToAscensionMicroButton, ChallengesMicroButton, CollectionsMicroButton, PVPMicroButton
+        local baseOffset = IsAddOnLoaded('ezCollections') and -180 or -166
+        local extraButtonOffset = useGrayscale and (4 * 15) or (4 * 26) -- 4 extra buttons * spacing
+        local xOffset = baseOffset - extraButtonOffset
+        local baseOffset = IsAddOnLoaded('ezCollections') and -180 or -166
+        local extraButtonOffset = useGrayscale and (2 * 15) or (2 * 26) -- 2 buttons * spacing
+        local xOffset = baseOffset - extraButtonOffset
+        
         microMenu:ClearAllPoints()
         microMenu:SetPoint('BOTTOMLEFT', UIParent, 'BOTTOMRIGHT', 
             xOffset + config.x_position, config.y_position)
