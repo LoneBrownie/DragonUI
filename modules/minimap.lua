@@ -289,6 +289,43 @@ local function ReplaceBlizzardFrame(frame)
     disabledTexture:SetAllPoints(zoomOutButton)
     SetAtlasTexture(disabledTexture, 'Minimap-ZoomOut-Pushed')
 
+-- faction taking progress bar
+    local WorldStateCaptureBar1 = _G['WorldStateCaptureBar1']
+    if WorldStateCaptureBar1 then
+
+        WorldStateCaptureBar1:ClearAllPoints()
+        WorldStateCaptureBar1:SetPoint('CENTER', minimapFrame, 'BOTTOM', 0, -20)
+
+            -- Hook SetPoint to prevent other code from overriding our positioning - HACKY
+            -- SOMETHING likely Blizzard frame is trying to reposition the bar periodically so we need to block it
+            local originalSetPoint = WorldStateCaptureBar1.SetPoint
+            WorldStateCaptureBar1.SetPoint = function(self, ...)
+                -- Only allow our specific positioning, ignore all others
+                if select(1, ...) == 'CENTER' and select(2, ...) == minimapFrame and select(3, ...) == 'BOTTOM' then
+                    originalSetPoint(self, ...)
+                end
+                -- Silently ignore all other SetPoint calls
+            end
+            return true
+        end
+        return false
+    end
+
+    -- Try to setup immediately
+    if not SetupWorldStateCaptureBar() then
+        -- If frame doesn't exist yet, wait for it to be created
+        local checkFrame = CreateFrame("Frame")
+        checkFrame:RegisterEvent("ADDON_LOADED")
+        checkFrame:RegisterEvent("PLAYER_ENTERING_WORLD")
+        checkFrame:RegisterEvent("ZONE_CHANGED_NEW_AREA")
+        checkFrame:SetScript("OnEvent", function(self, event)
+            if SetupWorldStateCaptureBar() then
+                -- Successfully set up, unregister events
+                self:UnregisterAllEvents()
+            end
+        end)
+    end
+
     --  Add right-click functionality to clear tracking
     minimapTrackingButton:SetScript("OnClick", function(self, button)
         if button == "RightButton" then
@@ -296,7 +333,7 @@ local function ReplaceBlizzardFrame(frame)
             SetTracking()
             -- Update the tracking display
             MinimapModule:UpdateTrackingIcon()
-            
+
         else
             -- Left click - use default behavior
             ToggleDropDownMenu(1, nil, MiniMapTrackingDropDown, "MiniMapTrackingButton")
