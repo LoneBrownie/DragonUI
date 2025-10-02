@@ -289,12 +289,12 @@ local function ReplaceBlizzardFrame(frame)
     disabledTexture:SetAllPoints(zoomOutButton)
     SetAtlasTexture(disabledTexture, 'Minimap-ZoomOut-Pushed')
 
--- faction taking progress bar
-    local WorldStateCaptureBar1 = _G['WorldStateCaptureBar1']
-    if WorldStateCaptureBar1 then
-
-        WorldStateCaptureBar1:ClearAllPoints()
-        WorldStateCaptureBar1:SetPoint('CENTER', minimapFrame, 'BOTTOM', 0, -20)
+    -- Define the function locally within ReplaceBlizzardFrame scope
+    local function SetupWorldStateCaptureBar()
+        local WorldStateCaptureBar1 = _G['WorldStateCaptureBar1']
+        if WorldStateCaptureBar1 then
+            WorldStateCaptureBar1:ClearAllPoints()
+            WorldStateCaptureBar1:SetPoint('CENTER', minimapFrame, 'BOTTOM', 0, -20)
 
             -- Hook SetPoint to prevent other code from overriding our positioning - HACKY
             -- SOMETHING likely Blizzard frame is trying to reposition the bar periodically so we need to block it
@@ -372,7 +372,8 @@ local function ReplaceBlizzardFrame(frame)
 
     -- Hook al cierre del dropdown
     hooksecurefunc("CloseDropDownMenus", ResetTrackingIconPosition)
-end
+
+end -- End of ReplaceBlizzardFrame function
 
 local function CreateMinimapBorderFrame(width, height)
     local minimapBorderFrame = CreateFrame('Frame', UIParent)
