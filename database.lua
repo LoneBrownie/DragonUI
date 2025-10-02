@@ -109,6 +109,15 @@ local defaults = {
                 horizontal = false
             },
 
+            -- Button count settings - how many buttons to show per bar
+            buttons = {
+                main = 12,        -- Main action bar (ActionButton1-12)
+                right = 12,       -- Right bar (MultiBarRightButton1-12) 
+                left = 12,        -- Left bar (MultiBarLeftButton1-12)
+                bottomleft = 12,  -- Bottom left bar (MultiBarBottomLeftButton1-12)
+                bottomright = 12  -- Bottom right bar (MultiBarBottomRightButton1-12)
+            },
+
             scale_actionbar = 0.9,
             scale_rightbar = 0.9,
             scale_leftbar = 0.9,

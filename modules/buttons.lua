@@ -95,6 +95,15 @@ local function handleActionButton(button, wowAlwaysShow)
     end
 end
 
+-- Get configured button count for main action bar
+local function GetMainActionBarButtonCount()
+    local db = addon.db and addon.db.profile and addon.db.profile.mainbars and addon.db.profile.mainbars.buttons
+    if not db then
+        return 12 -- Default fallback
+    end
+    return db.main or 12
+end
+
 function addon.actionbuttons_grid()
     if not IsModuleEnabled() then return end
     
@@ -108,7 +117,9 @@ function addon.actionbuttons_grid()
     local db = GetButtonsConfig()
     local hideMainBg = db and db.hide_main_bar_background
     
-    for index = 1, NUM_ACTIONBAR_BUTTONS do
+    -- Only process visible main action bar buttons
+    local visibleButtons = GetMainActionBarButtonCount()
+    for index = 1, math.min(visibleButtons, 12) do
         local button = _G[format('ActionButton%d', index)]
         if button then
             handleActionButton(button, wowAlwaysShow)

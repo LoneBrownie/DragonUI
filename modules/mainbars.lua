@@ -90,7 +90,8 @@ local function InitializeMainbars()
         originalPositions = {},
         originalTextures = {},
         originalVisibility = {},
-        actionBarFrames = nil
+        actionBarFrames = nil,
+        pendingButtonRefresh = false
     }
 
     -- CORE COMPONENTS
@@ -98,6 +99,326 @@ local function InitializeMainbars()
     local event = addon.package;
     local do_action = addon.functions;
     local select = select;
+
+    -- Main bar sizing constants
+    local MAINBAR_BUTTON_SIZE = 36
+    local MAINBAR_BUTTON_SPACING = 7
+    local MAINBAR_FIRST_BUTTON_OFFSET = 2
+    local BASE_MAIN_BUTTONS = 12
+
+    -- Capture baseline dimensions from the original Blizzard frame
+    local existingMainBarFrame = _G.pUiMainBar
+    MainbarsModule.baseMainBarWidth = existingMainBarFrame and existingMainBarFrame:GetWidth()
+    if not MainbarsModule.baseMainBarWidth or MainbarsModule.baseMainBarWidth <= 0 then
+        MainbarsModule.baseMainBarWidth = 600
+    end
+
+    MainbarsModule.baseMainBarHeight = existingMainBarFrame and existingMainBarFrame:GetHeight()
+    if not MainbarsModule.baseMainBarHeight or MainbarsModule.baseMainBarHeight <= 0 then
+        MainbarsModule.baseMainBarHeight = 40
+    end
+
+    local baseExpWidth = MainMenuExpBar and MainMenuExpBar:GetWidth()
+    if not baseExpWidth or baseExpWidth <= 0 then
+        baseExpWidth = 537
+    end
+    MainbarsModule.baseExpRepWidth = baseExpWidth
+
+    local baseButtonSpan = MAINBAR_FIRST_BUTTON_OFFSET + (MAINBAR_BUTTON_SIZE * BASE_MAIN_BUTTONS) +
+        (MAINBAR_BUTTON_SPACING * (BASE_MAIN_BUTTONS - 1))
+
+    MainbarsModule.mainbarExtraPadding = math.max((MainbarsModule.baseMainBarWidth or 0) - baseButtonSpan, 0)
+    MainbarsModule.expRepPadding = math.max((MainbarsModule.baseMainBarWidth or 0) - (baseExpWidth or 0), 0)
+
+    -- Get configured button count for a specific action bar
+    local function GetActionBarButtonCount(barType)
+        local db = addon.db and addon.db.profile and addon.db.profile.mainbars and addon.db.profile.mainbars.buttons
+        if not db then
+            return 12 -- Default fallback
+        end
+        return db[barType] or 12
+    end
+
+    local function ClampButtonCount(count)
+        if not count then
+            return BASE_MAIN_BUTTONS
+        end
+        if count < 1 then
+            return 1
+        elseif count > 12 then
+            return 12
+        end
+        return count
+    end
+
+    local function CalculateMainBarWidth(buttonCount)
+        buttonCount = ClampButtonCount(buttonCount)
+        local buttonSpan = MAINBAR_FIRST_BUTTON_OFFSET + (MAINBAR_BUTTON_SIZE * buttonCount) +
+            (MAINBAR_BUTTON_SPACING * (buttonCount - 1))
+        local padding = MainbarsModule.mainbarExtraPadding or 0
+        return math.max(buttonSpan + padding, 200)
+    end
+
+    local function CalculateMainBarVisuals()
+        local buttonCount = GetActionBarButtonCount("main")
+        local mainWidth = CalculateMainBarWidth(buttonCount)
+        local expWidth = math.max(mainWidth - (MainbarsModule.expRepPadding or 0), 120)
+        return mainWidth, expWidth
+    end
+
+    local function EnsureExpRepBarSize(targetHeight)
+        local mainWidth = MainbarsModule.currentMainBarWidth
+        local expWidth = MainbarsModule.currentExpRepWidth
+
+        if not mainWidth or not expWidth then
+            mainWidth, expWidth = CalculateMainBarVisuals()
+            MainbarsModule.currentMainBarWidth = mainWidth
+            MainbarsModule.currentExpRepWidth = expWidth
+        end
+
+        local height = targetHeight or 10
+
+        if MainMenuExpBar then
+            MainMenuExpBar:SetSize(expWidth, height)
+        end
+        if ReputationWatchStatusBar then
+            ReputationWatchStatusBar:SetSize(expWidth, height)
+        end
+        if ReputationWatchBar then
+            ReputationWatchBar:SetWidth(expWidth)
+        end
+    end
+
+    local function UpdateMainBarDimensions()
+        local mainWidth, expWidth = CalculateMainBarVisuals()
+        MainbarsModule.currentMainBarWidth = mainWidth
+        MainbarsModule.currentExpRepWidth = expWidth
+
+        local mainHeight = MainbarsModule.baseMainBarHeight or pUiMainBar:GetHeight() or 40
+
+        if addon.ActionBarFrames and addon.ActionBarFrames.mainbar then
+            addon.ActionBarFrames.mainbar:SetSize(mainWidth, mainHeight)
+        end
+
+        if addon.ActionBarFrames and addon.ActionBarFrames.repexpbar then
+            addon.ActionBarFrames.repexpbar:SetWidth(mainWidth)
+        end
+
+        if pUiMainBar then
+            pUiMainBar:SetWidth(mainWidth)
+        end
+        if pUiMainBarArt then
+            pUiMainBarArt:SetWidth(mainWidth)
+        end
+        if MainMenuBarArtFrame then
+            MainMenuBarArtFrame:SetWidth(mainWidth)
+        end
+
+        EnsureExpRepBarSize(10)
+    end
+
+    local function ApplyDragonUIExpRepBarStyling()
+        -- Always use NEW style system only
+
+        -- Setup both exp and rep bars with NEW styling system
+        for _, bar in pairs({MainMenuExpBar, ReputationWatchStatusBar}) do
+            if bar then
+                bar:GetStatusBarTexture():SetDrawLayer('BORDER')
+
+                -- Create status texture if it doesn't exist
+                if not bar.status then
+                    bar.status = bar:CreateTexture(nil, 'ARTWORK')
+                end
+
+                -- Always apply NEW style (537x10 size)
+                bar:SetSize(537, 10)
+                bar.status:SetPoint('CENTER', 0, -2)
+                bar.status:set_atlas('ui-hud-experiencebar-round', true)
+
+                -- Apply custom textures for reputation bar
+                if bar == ReputationWatchStatusBar then
+                    bar:SetStatusBarTexture(addon._dir .. 'statusbarfill.tga')
+                    if ReputationWatchStatusBarBackground then
+                        ReputationWatchStatusBarBackground:set_atlas('ui-hud-experiencebar-background', true)
+                    end
+                end
+            end
+        end
+
+        -- Apply background styling for NEW style for MainMenuExpBar
+        if MainMenuExpBar then
+            -- Ensure MainMenuExpBar is properly centered
+            MainMenuExpBar:ClearAllPoints()
+            if addon.ActionBarFrames.repexpbar then
+                MainMenuExpBar:SetPoint('CENTER', addon.ActionBarFrames.repexpbar, 'CENTER', 0, 0)
+            end
+
+            for _, obj in pairs({MainMenuExpBar:GetRegions()}) do
+                if obj:GetObjectType() == 'Texture' and obj:GetDrawLayer() == 'BACKGROUND' then
+                    obj:set_atlas('ui-hud-experiencebar-background', true)
+                end
+            end
+        end
+
+        EnsureExpRepBarSize(10)
+    end
+
+    local function ApplyModernExpBarVisual()
+        local exhaustionStateID = GetRestState()
+        local mainMenuExpBar = MainMenuExpBar
+
+        if not mainMenuExpBar then
+            return
+        end
+
+        -- Always apply NEW style custom texture system
+        mainMenuExpBar:SetStatusBarTexture(addon._dir .. "uiexperiencebar")
+        mainMenuExpBar:SetStatusBarColor(1, 1, 1, 1)
+
+        -- Configure ExhaustionLevelFillBar
+        if ExhaustionLevelFillBar then
+            ExhaustionLevelFillBar:SetHeight(mainMenuExpBar:GetHeight())
+            ExhaustionLevelFillBar:set_atlas('ui-hud-experiencebar-fill-prediction')
+        end
+
+        -- Apply exhaustion-based TexCoords
+        if exhaustionStateID == 1 then
+            -- Rested state
+            mainMenuExpBar:GetStatusBarTexture():SetTexCoord(574 / 2048, 1137 / 2048, 34 / 64, 43 / 64)
+            if ExhaustionLevelFillBar then
+                ExhaustionLevelFillBar:SetVertexColor(0.0, 0, 1, 0.45)
+            end
+        elseif exhaustionStateID == 2 then
+            -- Tired state
+            mainMenuExpBar:GetStatusBarTexture():SetTexCoord(1 / 2048, 570 / 2048, 42 / 64, 51 / 64)
+            if ExhaustionLevelFillBar then
+                ExhaustionLevelFillBar:SetVertexColor(0.58, 0.0, 0.55, 0.45)
+            end
+        else
+            -- Normal state
+            mainMenuExpBar:GetStatusBarTexture():SetTexCoord(0, 1, 0, 1)
+        end
+
+        -- Never show ExhaustionTick (as requested)
+        if ExhaustionTick then
+            ExhaustionTick:Hide()
+        end
+    end
+
+    -- ============================================================================
+    -- CONFIGURABLE BUTTON COUNT FUNCTIONS (AVAILABLE TO ALL FUNCTIONS)
+    -- ============================================================================
+
+    -- Update button visibility based on configuration
+    local function UpdateActionBarButtonVisibility(barPrefix, barType)
+        if InCombatLockdown() then
+            return -- Can't modify button visibility during combat
+        end
+
+        local visibleCount = GetActionBarButtonCount(barType)
+        
+        for i = 1, 12 do -- WoW 3.3.5a has max 12 buttons per bar
+            local button = _G[barPrefix .. i]
+            if button then
+                if i <= visibleCount then
+                    button:Show()
+                    -- Ensure button is properly enabled for interaction
+                    button:EnableMouse(true)
+                    button:SetAlpha(1)
+                else
+                    button:Hide()
+                    -- Disable interaction for hidden buttons
+                    button:EnableMouse(false)
+                end
+            end
+        end
+    end
+
+    -- Calculate dynamic frame sizes based on button counts
+    local function GetActionBarFrameSize(barType, isVertical)
+        local buttonCount = GetActionBarButtonCount(barType)
+        
+        -- Ensure we have a valid button count
+        if not buttonCount or buttonCount < 1 or buttonCount > 12 then
+            buttonCount = 12
+        end
+        
+        local buttonSize = 36 -- Standard button size
+        local spacing = 7 -- Space between buttons
+        
+        if isVertical then
+            local height = (buttonCount * buttonSize) + ((buttonCount - 1) * spacing)
+            return 40, math.max(height, 40) -- min 40 height
+        else
+            local width = (buttonCount * buttonSize) + ((buttonCount - 1) * spacing)
+            return math.max(width, 40), 40 -- min 40 width
+        end
+    end
+
+    -- Update action bar frame sizes based on button counts
+    local function UpdateActionBarFrameSizes()
+        if not addon.ActionBarFrames then return end
+
+        -- Update main bar and art dimensions first
+        UpdateMainBarDimensions()
+        
+        -- Update right bar size (check if it should be vertical)
+        local db = addon.db and addon.db.profile and addon.db.profile.mainbars
+        if addon.ActionBarFrames.rightbar and db then
+            local isVertical = not db.right.horizontal
+            local width, height = GetActionBarFrameSize("right", isVertical)
+            addon.ActionBarFrames.rightbar:SetSize(width, height)
+        end
+        
+        -- Update left bar size (check if it should be vertical)
+        if addon.ActionBarFrames.leftbar and db then
+            local isVertical = not db.left.horizontal
+            local width, height = GetActionBarFrameSize("left", isVertical)
+            addon.ActionBarFrames.leftbar:SetSize(width, height)
+        end
+        
+        -- Update bottom bars (always horizontal)
+        if addon.ActionBarFrames.bottombarleft then
+            local width, height = GetActionBarFrameSize("bottomleft", false)
+            addon.ActionBarFrames.bottombarleft:SetSize(width, height)
+        end
+        
+        if addon.ActionBarFrames.bottombarright then
+            local width, height = GetActionBarFrameSize("bottomright", false)
+            addon.ActionBarFrames.bottombarright:SetSize(width, height)
+        end
+    end
+
+    -- Refresh all action bar button visibility
+    function addon.RefreshActionBarButtons()
+        if InCombatLockdown() then
+            -- Schedule refresh for after combat
+            MainbarsModule.pendingButtonRefresh = true
+            return
+        end
+
+        -- Update frame sizes first
+        UpdateActionBarFrameSizes()
+
+        -- Update visibility for all action bars
+        UpdateActionBarButtonVisibility("ActionButton", "main")
+        UpdateActionBarButtonVisibility("MultiBarRightButton", "right")
+        UpdateActionBarButtonVisibility("MultiBarLeftButton", "left")
+        UpdateActionBarButtonVisibility("MultiBarBottomLeftButton", "bottomleft")
+        UpdateActionBarButtonVisibility("MultiBarBottomRightButton", "bottomright")
+
+        -- Also update positioning to account for hidden buttons
+        addon.PositionActionBars()
+        
+        -- Update action button grid settings for visible buttons only (safely)
+        if addon.actionbuttons_grid and not InCombatLockdown() then
+            C_Timer.After(0.05, function()
+                if addon.actionbuttons_grid then
+                    addon.actionbuttons_grid()
+                end
+            end)
+        end
+    end
     local pairs = pairs;
     local ipairs = ipairs;
     local format = string.format;
@@ -211,6 +532,15 @@ local function InitializeMainbars()
                 end
             end
             MainbarsModule.actionBarFrames = nil
+        end
+        
+        -- Clear global ActionBarFrames reference only if module is truly being disabled
+        if addon.ActionBarFrames then
+            for name, frame in pairs(addon.ActionBarFrames) do
+                if frame and frame.Hide then
+                    frame:Hide()
+                end
+            end
             addon.ActionBarFrames = nil
         end
 
@@ -267,7 +597,8 @@ local function InitializeMainbars()
         obj:SetParent(pUiMainBar)
     end
 
-    for index = 1, NUM_ACTIONBAR_BUTTONS do
+    -- Set frame references for all potential buttons (even if they'll be hidden)
+    for index = 1, 12 do
         pUiMainBar:SetFrameRef('ActionButton' .. index, _G['ActionButton' .. index])
     end
 
@@ -276,26 +607,54 @@ local function InitializeMainbars()
                                 addon.db.profile.buttons.hide_main_bar_background
     
     if not shouldHideBackground then
-        for index = 1, NUM_ACTIONBAR_BUTTONS - 1 do
+        -- Apply SetThreeSlice to visible buttons only
+        local visibleMainButtons = GetActionBarButtonCount("main")
+        for index = 1, math.min(visibleMainButtons - 1, 11) do
             local ActionButtons = _G['ActionButton' .. index]
-            do_action.SetThreeSlice(ActionButtons);
+            if ActionButtons then
+                do_action.SetThreeSlice(ActionButtons);
+            end
         end
     end
 
-    for index = 2, NUM_ACTIONBAR_BUTTONS do
+    -- Position main action bar buttons
+    local visibleMainButtons = GetActionBarButtonCount("main")
+    for index = 2, math.min(visibleMainButtons, 12) do
         local ActionButtons = _G['ActionButton' .. index]
-        ActionButtons:SetParent(pUiMainBar)
-        ActionButtons:SetClearPoint('LEFT', _G['ActionButton' .. (index - 1)], 'RIGHT', 7, 0)
-
-        local BottomLeftButtons = _G['MultiBarBottomLeftButton' .. index]
-        BottomLeftButtons:SetClearPoint('LEFT', _G['MultiBarBottomLeftButton' .. (index - 1)], 'RIGHT', 7, 0)
-
-        local BottomRightButtons = _G['MultiBarBottomRightButton' .. index]
-        BottomRightButtons:SetClearPoint('LEFT', _G['MultiBarBottomRightButton' .. (index - 1)], 'RIGHT', 7, 0)
-
-        local BonusActionButtons = _G['BonusActionButton' .. index]
-        BonusActionButtons:SetClearPoint('LEFT', _G['BonusActionButton' .. (index - 1)], 'RIGHT', 7, 0)
+        if ActionButtons then
+            ActionButtons:SetParent(pUiMainBar)
+            ActionButtons:SetClearPoint('LEFT', _G['ActionButton' .. (index - 1)], 'RIGHT', 7, 0)
+        end
     end
+
+    -- Position bottom left bar buttons
+    local visibleBottomLeftButtons = GetActionBarButtonCount("bottomleft")
+    for index = 2, math.min(visibleBottomLeftButtons, 12) do
+        local BottomLeftButtons = _G['MultiBarBottomLeftButton' .. index]
+        if BottomLeftButtons then
+            BottomLeftButtons:SetClearPoint('LEFT', _G['MultiBarBottomLeftButton' .. (index - 1)], 'RIGHT', 7, 0)
+        end
+    end
+
+    -- Position bottom right bar buttons
+    local visibleBottomRightButtons = GetActionBarButtonCount("bottomright")
+    for index = 2, math.min(visibleBottomRightButtons, 12) do
+        local BottomRightButtons = _G['MultiBarBottomRightButton' .. index]
+        if BottomRightButtons then
+            BottomRightButtons:SetClearPoint('LEFT', _G['MultiBarBottomRightButton' .. (index - 1)], 'RIGHT', 7, 0)
+        end
+    end
+
+    -- Position bonus action buttons (maintain all for compatibility)
+    for index = 2, 12 do
+        local BonusActionButtons = _G['BonusActionButton' .. index]
+        if BonusActionButtons then
+            BonusActionButtons:SetClearPoint('LEFT', _G['BonusActionButton' .. (index - 1)], 'RIGHT', 7, 0)
+        end
+    end
+
+    -- Note: Button visibility will be set later in the initialization sequence
+    -- to avoid interfering with frame registration and XP bar setup
 end
 
     function MainMenuBarMixin:actionbar_art_setup()
@@ -319,8 +678,9 @@ end
     local alpha = (addon.db and addon.db.profile and addon.db.profile.buttons and
                       addon.db.profile.buttons.hide_main_bar_background) and 0 or 1
 
-    -- handle button background textures
-    for i = 1, NUM_ACTIONBAR_BUTTONS do
+    -- handle button background textures for visible buttons only
+    local visibleMainButtons = GetActionBarButtonCount("main")
+    for i = 1, math.min(visibleMainButtons, 12) do
         local button = _G["ActionButton" .. i]
         if button then
             if button.NormalTexture then
@@ -432,11 +792,15 @@ end
             return
         end
 
+        -- Update frame sizes when orientation changes
+        UpdateActionBarFrameSizes()
+
         -- Configure MultiBarRight orientation
         if MultiBarRight then
+            local visibleRightButtons = GetActionBarButtonCount("right")
             if db.right.horizontal then
                 -- Horizontal mode: buttons go from left to right
-                for i = 2, 12 do
+                for i = 2, math.min(visibleRightButtons, 12) do
                     local button = _G["MultiBarRightButton" .. i]
                     if button then
                         button:ClearAllPoints()
@@ -445,7 +809,7 @@ end
                 end
             else
                 -- Vertical mode: buttons go from top to bottom (default)
-                for i = 2, 12 do
+                for i = 2, math.min(visibleRightButtons, 12) do
                     local button = _G["MultiBarRightButton" .. i]
                     if button then
                         button:ClearAllPoints()
@@ -457,9 +821,10 @@ end
 
         -- Configure MultiBarLeft orientation
         if MultiBarLeft then
+            local visibleLeftButtons = GetActionBarButtonCount("left")
             if db.left.horizontal then
                 -- Horizontal mode: buttons go from left to right
-                for i = 2, 12 do
+                for i = 2, math.min(visibleLeftButtons, 12) do
                     local button = _G["MultiBarLeftButton" .. i]
                     if button then
                         button:ClearAllPoints()
@@ -468,7 +833,7 @@ end
                 end
             else
                 -- Vertical mode: buttons go from top to bottom (default)
-                for i = 2, 12 do
+                for i = 2, math.min(visibleLeftButtons, 12) do
                     local button = _G["MultiBarLeftButton" .. i]
                     if button then
                         button:ClearAllPoints()
@@ -498,8 +863,6 @@ end
         if MainMenuExpBar then
             MainMenuExpBar:SetClearPoint('BOTTOM', UIParent, 0, 6)
             MainMenuExpBar:SetFrameLevel(1) -- Lower level for editor overlay visibility
-            -- Set NEW style size immediately
-            MainMenuExpBar:SetSize(537, 10)
 
             if MainMenuBarExpText then
                 MainMenuBarExpText:SetParent(MainMenuExpBar)
@@ -510,13 +873,8 @@ end
         -- Setup reputation bar with NEW style sizes
         if ReputationWatchBar then
             ReputationWatchBar:SetFrameLevel(1) -- Lower level for editor overlay visibility
-            -- Set NEW style size immediately
-            ReputationWatchBar:SetSize(537, 10)
 
             if ReputationWatchStatusBar then
-                -- Set NEW style size for status bar too
-                ReputationWatchStatusBar:SetSize(537, 10)
-
                 -- CRITICAL: Configure reputation text properly from the start
                 if ReputationWatchStatusBarText then
                     -- Ensure correct parent
@@ -530,6 +888,8 @@ end
                 end
             end
         end
+
+        UpdateMainBarDimensions()
     end
 
     -- Connect XP/Rep bars to the editor system
@@ -574,6 +934,8 @@ end
                 end
             end
         end
+
+        EnsureExpRepBarSize(10)
     end
 
     -- Force reputation text configuration (ensures text is properly configured but hidden by default)
@@ -636,6 +998,8 @@ end
                 mainMenuExpBar:SetPoint("CENTER", addon.ActionBarFrames.repexpbar, "CENTER", 0, 0)
             end
         end
+
+        EnsureExpRepBarSize(10)
     end
    -- Función específica para deshabilitar MainMenuBarMaxLevelBar
     local function DisableMaxLevelBar()
@@ -680,19 +1044,41 @@ end
         self:statusbar_setup();
     end
 
+    -- ============================================================================
+    -- CONFIGURABLE BUTTON COUNT FUNCTIONS (CONTINUED)
+    -- ============================================================================
+
     -- Create action bar container frames (RetailUI pattern)
     local function CreateActionBarFrames()
-        -- Main bar - create a NEW container frame instead of using pUiMainBar directly
-        addon.ActionBarFrames.mainbar = addon.CreateUIFrame(pUiMainBar:GetWidth(), pUiMainBar:GetHeight(), "MainBar")
+        -- Ensure CreateUIFrame is available
+        if not addon.CreateUIFrame then
+            return
+        end
 
-        -- Create other action bar containers
-        addon.ActionBarFrames.rightbar = addon.CreateUIFrame(40, 490, "RightBar")
-        addon.ActionBarFrames.leftbar = addon.CreateUIFrame(40, 490, "LeftBar")
-        addon.ActionBarFrames.bottombarleft = addon.CreateUIFrame(490, 40, "BottomBarLeft")
-        addon.ActionBarFrames.bottombarright = addon.CreateUIFrame(490, 40, "BottomBarRight")
+        -- Ensure ActionBarFrames table exists
+        if not addon.ActionBarFrames then
+            addon.ActionBarFrames = {}
+        end
+
+        -- Create frames with dynamic sizes based on button counts
+    local mainWidth, _ = CalculateMainBarVisuals()
+    local mainHeight = MainbarsModule.baseMainBarHeight or pUiMainBar:GetHeight()
+    addon.ActionBarFrames.mainbar = addon.CreateUIFrame(mainWidth, mainHeight, "MainBar")
+        
+        -- Create other action bar containers with dynamic sizing
+        local rightWidth, rightHeight = GetActionBarFrameSize("right", true) -- Usually vertical
+        local leftWidth, leftHeight = GetActionBarFrameSize("left", true) -- Usually vertical
+        local bottomLeftWidth, bottomLeftHeight = GetActionBarFrameSize("bottomleft", false)
+        local bottomRightWidth, bottomRightHeight = GetActionBarFrameSize("bottomright", false)
+        
+        addon.ActionBarFrames.rightbar = addon.CreateUIFrame(rightWidth, rightHeight, "RightBar")
+        addon.ActionBarFrames.leftbar = addon.CreateUIFrame(leftWidth, leftHeight, "LeftBar")
+        addon.ActionBarFrames.bottombarleft = addon.CreateUIFrame(bottomLeftWidth, bottomLeftHeight, "BottomBarLeft")
+        addon.ActionBarFrames.bottombarright = addon.CreateUIFrame(bottomRightWidth, bottomRightHeight, "BottomBarRight")
 
         -- RepExp bar container (RetailUI pattern)
-        addon.ActionBarFrames.repexpbar = addon.CreateUIFrame(addon.ActionBarFrames.mainbar:GetWidth(), 10, "RepExpBar")
+    addon.ActionBarFrames.repexpbar = addon.CreateUIFrame(mainWidth, 20, "RepExpBar")
+    UpdateMainBarDimensions()
     end
 
     -- Position action bars to their container frames (initialization only - safe during addon load)
@@ -806,6 +1192,11 @@ end
 
     -- Register action bar frames with the centralized system (RetailUI pattern)
     local function RegisterActionBarFrames()
+        -- Check if RegisterEditableFrame is available
+        if not addon.RegisterEditableFrame then
+            return
+        end
+
         -- Register all action bar frames
         local frameRegistrations = {{
             name = "mainbar",
@@ -907,14 +1298,26 @@ end
         ApplyActionBarPositions()
         RegisterActionBarFrames()
 
+        -- Set up XP/Rep bars immediately after frame creation
+        ConnectBarsToEditor()
+        ApplyDragonUIExpRepBarStyling()
+        ForceReputationTextConfiguration()
+
+        -- Apply button visibility after all frames are set up
+        if not InCombatLockdown() then
+            -- Small delay to ensure frames are fully initialized
+            C_Timer.After(0.1, function()
+                addon.RefreshActionBarButtons()
+                -- Re-apply XP bar theming after button changes to ensure it sticks
+                ApplyModernExpBarVisual()
+                UpdateBarPositions()
+            end)
+        end
+
         -- Note: Gryphon frame levels will be set after all positioning is complete
 
         -- Set up hooks for XP/Rep bars - RESTORED FUNCTIONALITY
-        -- Connect bars to editor system first
-        ConnectBarsToEditor()
-
-        -- Force reputation text configuration
-        ForceReputationTextConfiguration()
+        -- Note: ConnectBarsToEditor is called earlier in the sequence
 
         -- Hook for maintaining editor connection
         hooksecurefunc('MainMenuExpBar_Update', UpdateBarPositions)
@@ -951,6 +1354,8 @@ end
                     end
                 end
             end
+
+            EnsureExpRepBarSize(10)
         end)
 
         -- Position action bars immediately
@@ -1009,91 +1414,6 @@ end
     ApplyMainbarsSystem()
 
     -- Set up event handlers - NEW style only system
-    local function ApplyDragonUIExpRepBarStyling()
-        -- Always use NEW style system only
-
-        -- Setup both exp and rep bars with NEW styling system
-        for _, bar in pairs({MainMenuExpBar, ReputationWatchStatusBar}) do
-            if bar then
-                bar:GetStatusBarTexture():SetDrawLayer('BORDER')
-
-                -- Create status texture if it doesn't exist
-                if not bar.status then
-                    bar.status = bar:CreateTexture(nil, 'ARTWORK')
-                end
-
-                -- Always apply NEW style (537x10 size)
-                bar:SetSize(537, 10)
-                bar.status:SetPoint('CENTER', 0, -2)
-                bar.status:set_atlas('ui-hud-experiencebar-round', true)
-
-                -- Apply custom textures for reputation bar
-                if bar == ReputationWatchStatusBar then
-                    bar:SetStatusBarTexture(addon._dir .. 'statusbarfill.tga')
-                    if ReputationWatchStatusBarBackground then
-                        ReputationWatchStatusBarBackground:set_atlas('ui-hud-experiencebar-background', true)
-                    end
-                end
-            end
-        end
-
-        -- Apply background styling for NEW style for MainMenuExpBar
-        if MainMenuExpBar then
-            -- Ensure MainMenuExpBar is properly centered
-            MainMenuExpBar:ClearAllPoints()
-            if addon.ActionBarFrames.repexpbar then
-                MainMenuExpBar:SetPoint('CENTER', addon.ActionBarFrames.repexpbar, 'CENTER', 0, 0)
-            end
-
-            for _, obj in pairs({MainMenuExpBar:GetRegions()}) do
-                if obj:GetObjectType() == 'Texture' and obj:GetDrawLayer() == 'BACKGROUND' then
-                    obj:set_atlas('ui-hud-experiencebar-background', true)
-                end
-            end
-        end
-    end
-
-    local function ApplyModernExpBarVisual()
-        local exhaustionStateID = GetRestState()
-        local mainMenuExpBar = MainMenuExpBar
-
-        if not mainMenuExpBar then
-            return
-        end
-
-        -- Always apply NEW style custom texture system
-        mainMenuExpBar:SetStatusBarTexture(addon._dir .. "uiexperiencebar")
-        mainMenuExpBar:SetStatusBarColor(1, 1, 1, 1)
-
-        -- Configure ExhaustionLevelFillBar
-        if ExhaustionLevelFillBar then
-            ExhaustionLevelFillBar:SetHeight(mainMenuExpBar:GetHeight())
-            ExhaustionLevelFillBar:set_atlas('ui-hud-experiencebar-fill-prediction')
-        end
-
-        -- Apply exhaustion-based TexCoords
-        if exhaustionStateID == 1 then
-            -- Rested state
-            mainMenuExpBar:GetStatusBarTexture():SetTexCoord(574 / 2048, 1137 / 2048, 34 / 64, 43 / 64)
-            if ExhaustionLevelFillBar then
-                ExhaustionLevelFillBar:SetVertexColor(0.0, 0, 1, 0.45)
-            end
-        elseif exhaustionStateID == 2 then
-            -- Tired state
-            mainMenuExpBar:GetStatusBarTexture():SetTexCoord(1 / 2048, 570 / 2048, 42 / 64, 51 / 64)
-            if ExhaustionLevelFillBar then
-                ExhaustionLevelFillBar:SetVertexColor(0.58, 0.0, 0.55, 0.45)
-            end
-        else
-            -- Normal state
-            mainMenuExpBar:GetStatusBarTexture():SetTexCoord(0, 1, 0, 1)
-        end
-
-        -- Never show ExhaustionTick (as requested)
-        if ExhaustionTick then
-            ExhaustionTick:Hide()
-        end
-    end
     -- Single event handler for addon initialization
     local initFrame = CreateFrame("Frame")
     initFrame:RegisterEvent("ADDON_LOADED")
@@ -1215,6 +1535,12 @@ end
             if IsModuleEnabled() then
                 ApplyActionBarPositions()
                 PositionActionBarsToContainers()
+                
+                -- Execute pending button refresh if needed
+                if MainbarsModule.pendingButtonRefresh then
+                    MainbarsModule.pendingButtonRefresh = false
+                    addon.RefreshActionBarButtons()
+                end
             end
 
         elseif event == "UPDATE_FACTION" then
@@ -1366,7 +1692,20 @@ function addon.RefreshMainbarsSystem()
             addon.PositionActionBarsToContainers()
         end
     end
+
+    -- Ensure current profile button counts are applied after any refresh
+    if addon.RefreshActionBarButtons then
+        addon.RefreshActionBarButtons()
+    end
 end
 
 -- Alias for compatibility
 addon.RefreshMainbars = addon.RefreshMainbarsSystem
+
+-- Make button refresh function globally accessible
+-- This ensures RefreshActionBarButtons is available before the module loads
+if not addon.RefreshActionBarButtons then
+    addon.RefreshActionBarButtons = function()
+        -- Placeholder until the real function is available
+    end
+end

@@ -477,11 +477,133 @@ function addon:CreateOptionsTable()
                             }
                         }
                     },
+                    button_counts = {
+                        type = 'group',
+                        name = "Button Counts",
+                        inline = true,
+                        order = 2.5,
+                        args = {
+                            description = {
+                                type = 'description',
+                                name = "|cffFFD700Configure how many buttons to show on each action bar|r\n\nSet the number of visible buttons for each action bar (1-12).",
+                                order = 0
+                            },
+                            main_buttons = {
+                                type = 'range',
+                                name = "Main Bar Buttons",
+                                desc = "Number of buttons to show on the main action bar",
+                                min = 1,
+                                max = 12,
+                                step = 1,
+                                get = function()
+                                    return addon.db.profile.mainbars.buttons.main
+                                end,
+                                set = function(info, value)
+                                    addon.db.profile.mainbars.buttons.main = value
+                                    if addon.RefreshActionBarButtons then
+                                        addon.RefreshActionBarButtons()
+                                    end
+                                end,
+                                order = 1
+                            },
+                            right_buttons = {
+                                type = 'range',
+                                name = "Right Bar Buttons",
+                                desc = "Number of buttons to show on the right action bar",
+                                min = 1,
+                                max = 12,
+                                step = 1,
+                                get = function()
+                                    return addon.db.profile.mainbars.buttons.right
+                                end,
+                                set = function(info, value)
+                                    addon.db.profile.mainbars.buttons.right = value
+                                    if addon.RefreshActionBarButtons then
+                                        addon.RefreshActionBarButtons()
+                                    end
+                                end,
+                                order = 2
+                            },
+                            left_buttons = {
+                                type = 'range',
+                                name = "Left Bar Buttons",
+                                desc = "Number of buttons to show on the left action bar",
+                                min = 1,
+                                max = 12,
+                                step = 1,
+                                get = function()
+                                    return addon.db.profile.mainbars.buttons.left
+                                end,
+                                set = function(info, value)
+                                    addon.db.profile.mainbars.buttons.left = value
+                                    if addon.RefreshActionBarButtons then
+                                        addon.RefreshActionBarButtons()
+                                    end
+                                end,
+                                order = 3
+                            },
+                            bottomleft_buttons = {
+                                type = 'range',
+                                name = "Bottom Left Bar Buttons",
+                                desc = "Number of buttons to show on the bottom left action bar",
+                                min = 1,
+                                max = 12,
+                                step = 1,
+                                get = function()
+                                    return addon.db.profile.mainbars.buttons.bottomleft
+                                end,
+                                set = function(info, value)
+                                    addon.db.profile.mainbars.buttons.bottomleft = value
+                                    if addon.RefreshActionBarButtons then
+                                        addon.RefreshActionBarButtons()
+                                    end
+                                end,
+                                order = 4
+                            },
+                            bottomright_buttons = {
+                                type = 'range',
+                                name = "Bottom Right Bar Buttons",
+                                desc = "Number of buttons to show on the bottom right action bar",
+                                min = 1,
+                                max = 12,
+                                step = 1,
+                                get = function()
+                                    return addon.db.profile.mainbars.buttons.bottomright
+                                end,
+                                set = function(info, value)
+                                    addon.db.profile.mainbars.buttons.bottomright = value
+                                    if addon.RefreshActionBarButtons then
+                                        addon.RefreshActionBarButtons()
+                                    end
+                                end,
+                                order = 5
+                            },
+                            reset_buttons = {
+                                type = 'execute',
+                                name = "Reset All Button Counts",
+                                desc = "Reset all action bar button counts to their default values (12)",
+                                func = function()
+                                    addon.db.profile.mainbars.buttons.main = 12
+                                    addon.db.profile.mainbars.buttons.right = 12
+                                    addon.db.profile.mainbars.buttons.left = 12
+                                    addon.db.profile.mainbars.buttons.bottomleft = 12
+                                    addon.db.profile.mainbars.buttons.bottomright = 12
+                                    
+                                    if addon.RefreshActionBarButtons then
+                                        addon.RefreshActionBarButtons()
+                                    end
+                                    
+                                    print("|cFF00FF00[DragonUI]|r All action bar button counts reset to default values (12)")
+                                end,
+                                order = 6
+                            }
+                        }
+                    },
                     buttons = {
                         type = 'group',
                         name = "Button Appearance",
                         inline = true,
-                        order = 2,
+                        order = 3,
                         args = {
                             only_actionbackground = {
                                 type = 'toggle',

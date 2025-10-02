@@ -1172,51 +1172,54 @@ local function ApplyMicromenuSystem()
         end
         menu:SetScale(menuScale)
         menu:SetSize(10, 10)
-        menu:ClearAllPoints()
-        menu:SetPoint('BOTTOMLEFT', UIParent, 'BOTTOMRIGHT', xPosition, yPosition)
 
         if not menu.registeredInEditor then
             -- Crear frame contenedor usando el sistema estándar
-            local microMenuFrame = addon.CreateUIFrame(350, 45, "MicroMenu") -- Further reduced for better proportions
+            local microMenuFrame = addon.CreateUIFrame(350, 45, "MicroMenu")
 
-            -- CORREGIDO: Aplicar posición desde widgets O usar fallback
+            -- FIXED: Always ensure proper initial positioning regardless of widget config status
             local microMenuConfig = addon.db and addon.db.profile.widgets and addon.db.profile.widgets.micromenu
+            
+            -- Set initial position with proper fallback
+            microMenuFrame:ClearAllPoints()
             if microMenuConfig and microMenuConfig.posX and microMenuConfig.posY then
-                -- Usar posición guardada del editor
+                -- Use saved position from editor
                 microMenuFrame:SetPoint(microMenuConfig.anchor or "BOTTOMRIGHT", UIParent,
                     microMenuConfig.anchor or "BOTTOMRIGHT", 
                     microMenuConfig.posX, microMenuConfig.posY)
             else
-                -- Usar posición por defecto solo si no hay configuración de widgets
-                microMenuFrame:SetPoint("BOTTOMRIGHT", UIParent, "BOTTOMRIGHT", 
-                    xOffset + config.x_position, config.y_position)
+                -- FIXED: Use the correct xOffset calculation for DragonUI's 13 buttons
+                -- The xOffset parameter already accounts for ezCollections, but we need to adjust for our extra buttons
+                local extraButtonOffset = useGrayscale and (2 * 15) or (2 * 26) -- Account for 2 additional Ascension buttons
+                local calculatedX = xOffset - extraButtonOffset + config.x_position
+                microMenuFrame:SetPoint("BOTTOMRIGHT", UIParent, "BOTTOMRIGHT", calculatedX, config.y_position)
             end
 
-            -- Asegurar que el menú real siga al frame contenedor
+            -- FIXED: Center menu frame within container for proper edit mode behavior
             menu:SetParent(UIParent)
             menu:ClearAllPoints()
-            menu:SetPoint("CENTER", microMenuFrame, "CENTER", -90, -55) -- Better centering for 13 buttons
+            menu:SetPoint("CENTER", microMenuFrame, "CENTER", 0, 0) -- Center within container
 
             -- Hook para que el menú siga al contenedor cuando se mueva
             microMenuFrame:HookScript("OnDragStop", function(self)
                 menu:ClearAllPoints()
-                menu:SetPoint("CENTER", self, "CENTER", -140, -70)
+                menu:SetPoint("CENTER", self, "CENTER", 0, 0)
             end)
 
             microMenuFrame:HookScript("OnShow", function(self)
                 menu:ClearAllPoints()
-                menu:SetPoint("CENTER", self, "CENTER", -140, -70)
+                menu:SetPoint("CENTER", self, "CENTER", 0, 0)
             end)
 
             -- Hook continuo para mantener la posición
             microMenuFrame:HookScript("OnUpdate", function(self)
                 if not menu:GetPoint() then
                     menu:ClearAllPoints()
-                    menu:SetPoint("CENTER", self, "CENTER", -140, -70)
+                    menu:SetPoint("CENTER", self, "CENTER", 0, 0)
                 end
             end)
 
-            -- CORREGIDO: Añadir función de actualización de widgets
+            -- FIXED: Enhanced widget update function for proper edit mode behavior
             local function UpdateMicroMenuWidgets()
                 local microMenuConfig = addon.db and addon.db.profile.widgets and addon.db.profile.widgets.micromenu
                 if microMenuConfig and microMenuConfig.posX and microMenuConfig.posY then
@@ -1225,9 +1228,24 @@ local function ApplyMicromenuSystem()
                         microMenuConfig.anchor or "BOTTOMRIGHT", 
                         microMenuConfig.posX, microMenuConfig.posY)
                     
-                    -- Actualizar posición del menú real
+                    -- Ensure menu stays centered in container
                     menu:ClearAllPoints()
-                    menu:SetPoint("CENTER", microMenuFrame, "CENTER", -90, -55)
+                    menu:SetPoint("CENTER", microMenuFrame, "CENTER", 0, 0)
+                    
+                    -- FIXED: Force button repositioning with appropriate spacing for container
+                    local buttonxOffset = 0
+                    local useGrayscale = addon.db.profile.micromenu.grayscale_icons
+                    local containerSpacing = useGrayscale and 20 or 25 -- Fixed spacing that works well
+                    local totalWidth = (containerSpacing * (13 - 1))
+                    local startOffset = -totalWidth / 2
+                    
+                    for _, button in pairs(MICRO_BUTTONS) do
+                        if button:GetParent() == menu then
+                            button:ClearAllPoints()
+                            button:SetPoint('CENTER', menu, 'CENTER', startOffset + buttonxOffset, 0)
+                            buttonxOffset = buttonxOffset + containerSpacing
+                        end
+                    end
                 end
             end
 
@@ -1241,6 +1259,38 @@ local function ApplyMicromenuSystem()
             })
 
             menu.registeredInEditor = true
+            
+            -- FIXED: Add delayed positioning update to ensure proper initial alignment (3.3.5a compatible)
+            local positioningFrame = CreateFrame("Frame")
+            local positioningElapsed = 0
+            positioningFrame:SetScript("OnUpdate", function(self, elapsed)
+                positioningElapsed = positioningElapsed + elapsed
+                if positioningElapsed >= 0.5 then
+                    self:SetScript("OnUpdate", nil)
+                    
+                    if microMenuFrame and microMenuFrame:IsShown() then
+                        local currentConfig = addon.db and addon.db.profile.widgets and addon.db.profile.widgets.micromenu
+                        if not currentConfig or not currentConfig.posX or not currentConfig.posY then
+                            -- Force correct initial positioning if widget config is missing
+                            local useGrayscale = addon.db.profile.micromenu.grayscale_icons
+                            local configMode = useGrayscale and "grayscale" or "normal"
+                            local config = addon.db.profile.micromenu[configMode]
+                            
+                            -- Use the same xOffset that was passed to setupMicroButtons
+                            local baseOffset = IsAddOnLoaded('ezCollections') and -180 or -166
+                            local extraButtonOffset = useGrayscale and (2 * 15) or (2 * 26)
+                            local calculatedX = baseOffset - extraButtonOffset + config.x_position
+                            
+                            microMenuFrame:ClearAllPoints()
+                            microMenuFrame:SetPoint("BOTTOMRIGHT", UIParent, "BOTTOMRIGHT", calculatedX, config.y_position)
+                            
+                            -- FIXED: Update menu position to center within container
+                            menu:ClearAllPoints()
+                            menu:SetPoint("CENTER", microMenuFrame, "CENTER", 0, 0)
+                        end
+                    end
+                end
+            end)
         end
 
         for _, button in pairs(MICRO_BUTTONS) do
@@ -1264,7 +1314,11 @@ local function ApplyMicromenuSystem()
             end
 
             button:ClearAllPoints()
-            button:SetPoint('BOTTOMLEFT', menu, 'BOTTOMRIGHT', buttonxOffset, 55)
+            -- FIXED: Position buttons with appropriate spacing for 13 buttons in 350px container
+            local containerSpacing = useGrayscale and 20 or 25 -- Fixed spacing that works well
+            local totalWidth = (containerSpacing * (13 - 1)) -- Total width with container spacing
+            local startOffset = -totalWidth / 2 -- Start position to center the button group
+            button:SetPoint('CENTER', menu, 'CENTER', startOffset + buttonxOffset, 0)
             button.SetPoint = addon._noop
             button:SetHitRectInsets(0, 0, 0, 0)
 
@@ -1460,7 +1514,9 @@ local function ApplyMicromenuSystem()
                 RestoreOriginalHandlers(button)
             end
 
-            buttonxOffset = buttonxOffset + iconSpacing
+            -- FIXED: Use container spacing instead of config spacing
+            local containerSpacing = useGrayscale and 20 or 25
+            buttonxOffset = buttonxOffset + containerSpacing
         end
         UpdateCharacterPortraitVisibility()
     end
@@ -1482,7 +1538,12 @@ local function ApplyMicromenuSystem()
         local buttonxOffset = 0
         for _, button in pairs(MICRO_BUTTONS) do
             button:ClearAllPoints()
-            button:SetPoint('BOTTOMLEFT', _G.pUiMicroMenu, 'BOTTOMRIGHT', buttonxOffset, 55)
+            -- FIXED: Position buttons with appropriate spacing for 13 buttons in 350px container
+            local useGrayscale = addon.db.profile.micromenu.grayscale_icons
+            local containerSpacing = useGrayscale and 20 or 25 -- Fixed spacing that works well
+            local totalWidth = (containerSpacing * (13 - 1)) -- Total width with container spacing
+            local startOffset = -totalWidth / 2 -- Start position to center the button group
+            button:SetPoint('CENTER', _G.pUiMicroMenu, 'CENTER', startOffset + buttonxOffset, 0)
             buttonxOffset = buttonxOffset + iconSpacing
         end
     end
@@ -1513,21 +1574,18 @@ local function ApplyMicromenuSystem()
             local configMode = useGrayscale and "grayscale" or "normal"
             local config = addon.db.profile.micromenu[configMode]
             
-            -- Adjusted offsets to account for Ascension-specific buttons
-            -- DragonUI has 13 buttons total (2 more than ElvUI's 11)
-            -- PathToAscensionMicroButton, ChallengesMicroButton, CollectionsMicroButton, PVPMicroButton
+            -- FIXED: Use consistent calculation matching setupMicroButtons 
             local baseOffset = IsAddOnLoaded('ezCollections') and -180 or -166
-            local extraButtonOffset = useGrayscale and (4 * 15) or (4 * 26) -- 4 extra buttons * spacing
-            local xOffset = baseOffset - extraButtonOffset
+            local extraButtonOffset = useGrayscale and (2 * 15) or (2 * 26) -- 2 additional buttons * spacing
+            local calculatedX = baseOffset - extraButtonOffset + config.x_position
             
             frameInfo.frame:ClearAllPoints()
-            frameInfo.frame:SetPoint("BOTTOMRIGHT", UIParent, "BOTTOMRIGHT", 
-                xOffset + config.x_position, config.y_position)
+            frameInfo.frame:SetPoint("BOTTOMRIGHT", UIParent, "BOTTOMRIGHT", calculatedX, config.y_position)
         end
 
-        -- Asegurar que el menú siga al contenedor con posicionamiento corregido para 13 buttons
+        -- FIXED: Center menu within container frame for proper edit mode behavior
         _G.pUiMicroMenu:ClearAllPoints()
-        _G.pUiMicroMenu:SetPoint("CENTER", frameInfo.frame, "CENTER", -90, -55)
+        _G.pUiMicroMenu:SetPoint("CENTER", frameInfo.frame, "CENTER", 0, 0)
     else
         -- Fallback al método anterior si no hay contenedor
         local useGrayscale = addon.db.profile.micromenu.grayscale_icons
@@ -1537,19 +1595,13 @@ local function ApplyMicromenuSystem()
         local microMenu = _G.pUiMicroMenu
         microMenu:SetScale(config.scale_menu)
         
-        -- Adjusted offsets to account for Ascension-specific buttons
-        -- DragonUI has 13 buttons total (2 more than ElvUI's 11)
-        -- PathToAscensionMicroButton, ChallengesMicroButton, CollectionsMicroButton, PVPMicroButton
+        -- FIXED: Use consistent calculation matching setupMicroButtons
         local baseOffset = IsAddOnLoaded('ezCollections') and -180 or -166
-        local extraButtonOffset = useGrayscale and (4 * 15) or (4 * 26) -- 4 extra buttons * spacing
-        local xOffset = baseOffset - extraButtonOffset
-        local baseOffset = IsAddOnLoaded('ezCollections') and -180 or -166
-        local extraButtonOffset = useGrayscale and (2 * 15) or (2 * 26) -- 2 buttons * spacing
-        local xOffset = baseOffset - extraButtonOffset
+        local extraButtonOffset = useGrayscale and (2 * 15) or (2 * 26) -- 2 additional buttons * spacing
+        local calculatedX = baseOffset - extraButtonOffset + config.x_position
         
         microMenu:ClearAllPoints()
-        microMenu:SetPoint('BOTTOMLEFT', UIParent, 'BOTTOMRIGHT', 
-            xOffset + config.x_position, config.y_position)
+        microMenu:SetPoint('BOTTOMLEFT', UIParent, 'BOTTOMRIGHT', calculatedX, config.y_position)
     end
 
     updateMicroButtonSpacing()
@@ -1658,7 +1710,12 @@ end
         end
 
         button:ClearAllPoints()
-        button:SetPoint('BOTTOMLEFT', _G.pUiMicroMenu, 'BOTTOMRIGHT', buttonxOffset, 55)
+        -- FIXED: Position buttons with appropriate spacing for 13 buttons in 350px container
+        local useGrayscale = addon.db.profile.micromenu.grayscale_icons
+        local containerSpacing = useGrayscale and 20 or 25 -- Fixed spacing that works well
+        local totalWidth = (containerSpacing * (13 - 1)) -- Total width with container spacing
+        local startOffset = -totalWidth / 2 -- Start position to center the button group
+        button:SetPoint('CENTER', _G.pUiMicroMenu, 'CENTER', startOffset + buttonxOffset, 0)
 
         if originalSetPoint == addon._noop then
             button.SetPoint = originalSetPoint
@@ -2001,6 +2058,19 @@ end
 
                     ScheduleHideFrames(0.2)
                     ScheduleHideFrames(0.5)
+                    
+                    -- FIXED: Ensure proper micromenu positioning after world loading (3.3.5a compatible)
+                    if addon.RefreshMicromenuPosition then
+                        local positionUpdateFrame = CreateFrame("Frame")
+                        local positionUpdateElapsed = 0
+                        positionUpdateFrame:SetScript("OnUpdate", function(self, elapsed)
+                            positionUpdateElapsed = positionUpdateElapsed + elapsed
+                            if positionUpdateElapsed >= 0.1 then
+                                self:SetScript("OnUpdate", nil)
+                                addon.RefreshMicromenuPosition()
+                            end
+                        end)
+                    end
                 end
             end)
         end
@@ -2043,23 +2113,29 @@ local function LoadDefaultWidgetSettings()
     end
     
     if not addon.db.profile.widgets.micromenu then
-        -- Calcular posición por defecto basada en configuración actual
+        -- Calcular posición por defecto basada en configuración actual para 13 botones
         local useGrayscale = addon.db.profile.micromenu and addon.db.profile.micromenu.grayscale_icons
         local configMode = useGrayscale and "grayscale" or "normal"
         local config = addon.db.profile.micromenu and addon.db.profile.micromenu[configMode]
         
         if config then
-            local xOffset = IsAddOnLoaded('ezCollections') and -180 or -166
+            -- FIXED: Use consistent offset calculation matching setupMicroButtons
+            local baseOffset = IsAddOnLoaded('ezCollections') and -180 or -166
+            local extraButtonOffset = useGrayscale and (2 * 15) or (2 * 26) -- 2 additional buttons * spacing
+            local calculatedX = baseOffset - extraButtonOffset + config.x_position
+            
             addon.db.profile.widgets.micromenu = {
                 anchor = "BOTTOMRIGHT",
-                posX = xOffset + config.x_position,
+                posX = calculatedX,
                 posY = config.y_position
             }
         else
-            -- Fallback absoluto
+            -- FIXED: Fallback with proper positioning for 13 buttons
+            local baseOffset = IsAddOnLoaded('ezCollections') and -180 or -166
+            local extraButtonOffset = 2 * 26 -- Default to normal mode spacing for 2 extra buttons
             addon.db.profile.widgets.micromenu = {
                 anchor = "BOTTOMRIGHT", 
-                posX = -166,
+                posX = baseOffset - extraButtonOffset,
                 posY = 4
             }
         end
