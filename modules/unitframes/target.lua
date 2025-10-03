@@ -259,13 +259,6 @@ local function SetupBarHooks()
                 return
             end
 
-            -- ELIMINAR THROTTLING: Actualización inmediata para formas de druida
-            -- local now = GetTime()
-            -- if now - updateCache.lastPowerUpdate < 0.05 then
-            --     return
-            -- end
-            -- updateCache.lastPowerUpdate = now
-
             local texture = self:GetStatusBarTexture()
             if not texture then
                 return
@@ -275,7 +268,7 @@ local function SetupBarHooks()
             local powerType = UnitPowerType("target")
             local powerName = POWER_MAP[powerType] or "Mana"
             local texturePath = TEXTURES.BAR_PREFIX .. powerName
-
+            
             -- FORZAR TEXTURA INMEDIATAMENTE (como en focus.lua)
             texture:SetTexture(texturePath)
             texture:SetDrawLayer("ARTWORK", 1)
@@ -373,8 +366,6 @@ local function UpdateClassification()
             --  THROTTLE: Solo mostrar mensaje una vez por target + cooldown
             local now = GetTime()
             if updateCache.lastFamousTarget ~= name or (now - updateCache.lastFamousMessage) > 5 then
-                
-                
                 updateCache.lastFamousMessage = now
                 updateCache.lastFamousTarget = name
             end
@@ -587,41 +578,6 @@ local function InitializeFrame()
     ApplyWidgetPosition()
 
     Module.configured = true
-    --  HOOK CRÍTICO: Proteger contra resets de Blizzard (SIN C_Timer)
-    if not Module.classificationHooked then
-        -- Hook la función que Blizzard usa para cambiar clasificaciones
-        if _G.TargetFrame_CheckClassification then
-            hooksecurefunc("TargetFrame_CheckClassification", function()
-                --  SIN C_Timer - Usar frame con OnUpdate para delay mínimo
-                if UnitExists("target") then
-                    local delayFrame = CreateFrame("Frame")
-                    local elapsed = 0
-                    delayFrame:SetScript("OnUpdate", function(self, dt)
-                        elapsed = elapsed + dt
-                        if elapsed >= 0.1 then -- 100ms delay
-                            if UnitExists("target") then
-                                UpdateClassification()
-                            end
-                            delayFrame:SetScript("OnUpdate", nil)
-                            delayFrame = nil
-                        end
-                    end)
-                end
-            end)
-        end
-
-        -- Hook para actualizaciones de modelo/forma
-        if _G.TargetFrame_Update then
-            hooksecurefunc("TargetFrame_Update", function()
-                if UnitExists("target") then
-                    UpdateClassification()
-                end
-            end)
-        end
-
-        Module.classificationHooked = true
-        
-    end
 
     --  MÉTODOS ShowTest Y HideTest EXACTAMENTE COMO RETAILUI
     if not TargetFrame.ShowTest then
@@ -831,6 +787,33 @@ local function OnEvent(self, event, ...)
         end
 
     elseif event == "PLAYER_TARGET_CHANGED" then
+        -- Force re-anchoring to combat Blizzard's UI resets for certain units
+        if Module.configured then
+            TargetFramePortrait:ClearAllPoints()
+            TargetFramePortrait:SetPoint("TOPRIGHT", TargetFrame, "TOPRIGHT", -47, -15)
+
+            TargetFrameHealthBar:ClearAllPoints()
+            TargetFrameHealthBar:SetPoint("RIGHT", TargetFramePortrait, "LEFT", -1, 0)
+
+            TargetFrameManaBar:ClearAllPoints()
+            TargetFrameManaBar:SetPoint("RIGHT", TargetFramePortrait, "LEFT", 6.5, -16.5)
+
+            if TargetFrameTextureFrameName then
+                TargetFrameTextureFrameName:ClearAllPoints()
+                TargetFrameTextureFrameName:SetPoint("BOTTOM", TargetFrameHealthBar, "TOP", 10, 3)
+            end
+
+            if TargetFrameTextureFrameLevelText then
+                TargetFrameTextureFrameLevelText:ClearAllPoints()
+                TargetFrameTextureFrameLevelText:SetPoint("BOTTOMRIGHT", TargetFrameHealthBar, "TOPLEFT", 18, 3)
+            end
+
+            if TargetFrameNameBackground then
+                TargetFrameNameBackground:ClearAllPoints()
+                TargetFrameNameBackground:SetPoint("BOTTOMLEFT", TargetFrameHealthBar, "TOPLEFT", -2, -5)
+            end
+        end
+
         UpdateNameBackground()
         UpdateClassification()
         UpdateThreat()
