@@ -158,6 +158,55 @@ local function SafeCall(func, ...)
 end
 
 -- ============================================================================
+-- FIX: REAPPLY ELEMENT POSITIONS
+-- ============================================================================
+-- Tato funkce násilně znovu aplikuje pozice všech prvků, aby přepsala
+-- jakékoli změny provedené výchozím UI, zejména u speciálních jednotek.
+local function ReapplyElementPositions()
+    if not UnitExists("target") then return end
+
+    -- Portrait
+    if TargetFramePortrait then
+        TargetFramePortrait:ClearAllPoints()
+        TargetFramePortrait:SetSize(56, 56)
+        TargetFramePortrait:SetPoint("TOPRIGHT", TargetFrame, "TOPRIGHT", -47, -15)
+    end
+
+    -- Health Bar
+    if TargetFrameHealthBar then
+        TargetFrameHealthBar:ClearAllPoints()
+        TargetFrameHealthBar:SetSize(125, 20)
+        TargetFrameHealthBar:SetPoint("RIGHT", TargetFramePortrait, "LEFT", -1, 0)
+    end
+
+    -- Power Bar
+    if TargetFrameManaBar then
+        TargetFrameManaBar:ClearAllPoints()
+        TargetFrameManaBar:SetSize(132, 9)
+        TargetFrameManaBar:SetPoint("RIGHT", TargetFramePortrait, "LEFT", 6.5, -16.5)
+    end
+
+    -- Name Text
+    if TargetFrameTextureFrameName then
+        TargetFrameTextureFrameName:ClearAllPoints()
+        TargetFrameTextureFrameName:SetPoint("BOTTOM", TargetFrameHealthBar, "TOP", 10, 3)
+    end
+
+    -- Level Text
+    if TargetFrameTextureFrameLevelText then
+        TargetFrameTextureFrameLevelText:ClearAllPoints()
+        TargetFrameTextureFrameLevelText:SetPoint("BOTTOMRIGHT", TargetFrameHealthBar, "TOPLEFT", 18, 3)
+    end
+
+    -- Name Background
+    if TargetFrameNameBackground then
+        TargetFrameNameBackground:ClearAllPoints()
+        TargetFrameNameBackground:SetPoint("BOTTOMLEFT", TargetFrameHealthBar, "TOPLEFT", -2, -5)
+    end
+end
+
+
+-- ============================================================================
 -- CLASS COLORS
 -- ============================================================================
 
@@ -511,46 +560,29 @@ local function InitializeFrame()
         frameElements.elite:Hide()
     end
 
-    -- Configure name background ONCE
+    -- Configure name background ONCE (Size, Texture, etc. Position is handled by ReapplyElementPositions)
     if TargetFrameNameBackground then
-        TargetFrameNameBackground:ClearAllPoints()
-        TargetFrameNameBackground:SetPoint("BOTTOMLEFT", TargetFrameHealthBar, "TOPLEFT", -2, -5)
         TargetFrameNameBackground:SetSize(135, 18)
         TargetFrameNameBackground:SetTexture(TEXTURES.NAME_BACKGROUND)
         TargetFrameNameBackground:SetDrawLayer("BORDER", 1)
         TargetFrameNameBackground:SetBlendMode("ADD")
     end
-
-    -- Configure portrait ONCE
-    TargetFramePortrait:ClearAllPoints()
-    TargetFramePortrait:SetSize(56, 56)
-    TargetFramePortrait:SetPoint("TOPRIGHT", TargetFrame, "TOPRIGHT", -47, -15)
-    TargetFramePortrait:SetDrawLayer("ARTWORK", 1)
-
-    -- Configure health bar ONCE
-    TargetFrameHealthBar:ClearAllPoints()
-    TargetFrameHealthBar:SetSize(125, 20)
-    TargetFrameHealthBar:SetPoint("RIGHT", TargetFramePortrait, "LEFT", -1, 0)
+    
+    -- Set FrameLevels for bars
     TargetFrameHealthBar:SetFrameLevel(TargetFrame:GetFrameLevel())
-
-    -- Configure power bar ONCE
-    TargetFrameManaBar:ClearAllPoints()
-    TargetFrameManaBar:SetSize(132, 9)
-    TargetFrameManaBar:SetPoint("RIGHT", TargetFramePortrait, "LEFT", 6.5, -16.5)
     TargetFrameManaBar:SetFrameLevel(TargetFrame:GetFrameLevel())
-
-    -- Configure text elements ONCE
+    
+    -- Set DrawLayers for texts and portrait
+    TargetFramePortrait:SetDrawLayer("ARTWORK", 1)
     if TargetFrameTextureFrameName then
-        TargetFrameTextureFrameName:ClearAllPoints()
-        TargetFrameTextureFrameName:SetPoint("BOTTOM", TargetFrameHealthBar, "TOP", 10, 3)
         TargetFrameTextureFrameName:SetDrawLayer("OVERLAY", 2)
     end
-
     if TargetFrameTextureFrameLevelText then
-        TargetFrameTextureFrameLevelText:ClearAllPoints()
-        TargetFrameTextureFrameLevelText:SetPoint("BOTTOMRIGHT", TargetFrameHealthBar, "TOPLEFT", 18, 3)
         TargetFrameTextureFrameLevelText:SetDrawLayer("OVERLAY", 2)
     end
+
+    -- Apply initial positions for all elements
+    ReapplyElementPositions()
 
     -- Setup bar hooks ONCE
     SetupBarHooks()
@@ -822,6 +854,7 @@ local function OnEvent(self, event, ...)
         end
         
         if UnitExists("target") then
+            ReapplyElementPositions() -- Force position on login
             UpdateNameBackground()
             UpdateClassification()
             UpdateThreat()
@@ -831,6 +864,10 @@ local function OnEvent(self, event, ...)
         end
 
     elseif event == "PLAYER_TARGET_CHANGED" then
+        if UnitExists("target") then
+            -- FIX: Forcefully re-apply element positions to override Blizzard's repositioning.
+            ReapplyElementPositions()
+        end
         UpdateNameBackground()
         UpdateClassification()
         UpdateThreat()
@@ -929,6 +966,7 @@ local function RefreshFrame()
 
     -- Only update dynamic content
     if UnitExists("target") then
+        ReapplyElementPositions() -- Ensure correct positions on refresh
         UpdateNameBackground()
         UpdateClassification()
         UpdateThreat()
