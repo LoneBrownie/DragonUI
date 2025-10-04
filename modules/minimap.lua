@@ -31,9 +31,32 @@ local DEFAULT_MINIMAP_HEIGHT = Minimap:GetHeight() * 1.36
 local blipScale = 1.12
 local BORDER_SIZE = 71 * 2 * 2 ^ 0.5
 
+local ADDON_ORBIT_RADIUS = 15
+
 local MINIMAP_TEXTURES = {
     BORDER = "Interface\\AddOns\\DragonUI\\assets\\uiminimapborder"
 }
+
+--  ADDON ICON SKINNING: Definir whitelist y función ANTES de ReplaceBlizzardFrame
+local WHITE_LIST = {
+    'MiniMapBattlefieldFrame','MiniMapTrackingButton','MiniMapMailFrame','HelpOpenTicketButton',
+    'GatherMatePin','HandyNotesPin','TimeManagerClockButton','Archy','GatherNote','MinimMap',
+    'Spy_MapNoteList_mini','ZGVMarker','poiWorldMapPOIFrame','WorldMapPOIFrame','QuestMapPOI',
+    'GameTimeFrame'
+}
+
+local function IsFrameWhitelisted(frameName)
+    if not frameName then return false end
+    
+    for i, buttons in pairs(WHITE_LIST) do
+        if frameName ~= nil then
+            if frameName:match(buttons) then 
+                return true 
+            end
+        end
+    end
+    return false
+end
 
 --  VERIFICAR FUNCIÓN ATLAS AL INICIO
 local function GetAtlasFunction()
@@ -206,7 +229,11 @@ local function ReplaceBlizzardFrame(frame)
 
     for _, regions in ipairs {Minimap:GetChildren()} do
         if regions ~= WatchFrame and regions ~= _G.WatchFrame then
-            regions:SetScale(1 / blipScale)
+            if regions:GetObjectType() == "Button" and not IsFrameWhitelisted(regions:GetName()) then
+                regions:SetScale((1 / blipScale) * (1 + ADDON_ORBIT_RADIUS / 100))
+            else
+                regions:SetScale(1 / blipScale)
+            end
         end
     end
 
@@ -395,26 +422,7 @@ local function CreateMinimapBorderFrame(width, height)
     return minimapBorderFrame
 end
 
---  ADDON ICON SKINNING: Aplicar borders personalizados a iconos de addons (del minimap_core.lua)
-local WHITE_LIST = {
-    'MiniMapBattlefieldFrame','MiniMapTrackingButton','MiniMapMailFrame','HelpOpenTicketButton',
-    'GatherMatePin','HandyNotesPin','TimeManagerClockButton','Archy','GatherNote','MinimMap',
-    'Spy_MapNoteList_mini','ZGVMarker','poiWorldMapPOIFrame','WorldMapPOIFrame','QuestMapPOI',
-    'GameTimeFrame'
-}
 
-local function IsFrameWhitelisted(frameName)
-    if not frameName then return false end
-    
-    for i, buttons in pairs(WHITE_LIST) do
-        if frameName ~= nil then
-            if frameName:match(buttons) then 
-                return true 
-            end
-        end
-    end
-    return false
-end
 
 -- Funciones de fade para hover effect
 local function fadein(self) 
