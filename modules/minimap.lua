@@ -143,7 +143,7 @@ local function ReplaceBlizzardFrame(frame)
 
     local minimapInstanceFrame = MiniMapInstanceDifficulty
     minimapInstanceFrame:ClearAllPoints()
-    minimapInstanceFrame:SetPoint("TOP", minimapBorderTop, 'BOTTOMRIGHT', -18, 9)
+    minimapInstanceFrame:SetPoint("TOP", minimapBorderTop, 'BOTTOMRIGHT', -18, 0)
 
     local minimapTracking = MiniMapTracking
     minimapTracking:ClearAllPoints()
