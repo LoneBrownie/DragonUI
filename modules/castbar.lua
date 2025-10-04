@@ -88,7 +88,8 @@ for _, unitType in ipairs({"player", "target", "focus"}) do
         unitGUID = nil,
         endTime = 0,
         startTime = 0,
-        lastServerCheck = 0
+        lastServerCheck = 0,
+        delay = 0  -- Accumulated delay from knockbacks/pushbacks
     }
     CastbarModule.frames[unitType] = {}
     CastbarModule.lastRefreshTime[unitType] = 0
@@ -671,6 +672,7 @@ function CastbarModule:HandleCastStart(unitType, unit)
     state.holdTime = 0
     state.spellName = name
     state.selfInterrupt = false
+    state.delay = 0  -- Reset delay on new cast
     
     if unitType == "player" then
         state.castSucceeded = false
@@ -768,6 +770,7 @@ function CastbarModule:HandleChannelStart(unitType, unit)
     state.holdTime = 0
     state.spellName = name
     state.selfInterrupt = false
+    state.delay = 0  -- Reset delay on new channel
     
     if unitType == "player" then
         state.castSucceeded = false
@@ -1289,6 +1292,7 @@ function CastbarModule:HideCastbar(unitType)
     state.startTime = 0
     state.lastServerCheck = 0
     state.spellName = ""
+    state.delay = 0  -- Reset delay
     
     if unitType == "player" then
         state.castSucceeded = false
@@ -1479,7 +1483,7 @@ function CastbarModule:HandleFocusChanged()
 end
 
 -- ============================================================================
--- Función de manejo de delays 
+-- Función de manejo de delays (knockback/pushback)
 -- ============================================================================
 
 function CastbarModule:HandleCastDelayed(unitType, unit)
@@ -1501,11 +1505,33 @@ function CastbarModule:HandleCastDelayed(unitType, unit)
     -- Verificar que sigue siendo el mismo spell
     if not name or name ~= state.spellName then return end
     
-    -- Actualizar tiempos desde el servidor
+    -- Parsear nuevos tiempos del servidor
     local start, finish, duration = ParseCastTimes(startTime, endTime)
-    state.maxValue = duration
     
-    -- Recalcular progreso actual
+    -- Calcular el delay (diferencia entre tiempo esperado y nuevo tiempo)
+    local delta = 0
+    if state.casting and not state.isChanneling then
+        delta = start - state.startTime
+    else
+        -- Para channels, el delay afecta el endTime
+        delta = finish - state.endTime
+    end
+    
+    -- Prevenir deltas negativos (solo acumular delays positivos)
+    if delta < 0 then
+        delta = 0
+    end
+    
+    -- Acumular el delay total
+    state.delay = state.delay + delta
+    
+    -- Actualizar tiempos del estado
+    state.startTime = start
+    state.endTime = finish
+    state.maxValue = duration
+    state.lastServerCheck = GetTime()  -- Actualizar para evitar conflictos con OnUpdate
+    
+    -- Recalcular progreso actual basado en GetTime()
     local currentTime = GetTime()
     
     if state.casting and not state.isChanneling then
@@ -1518,23 +1544,17 @@ function CastbarModule:HandleCastDelayed(unitType, unit)
         state.currentValue = max(0, min(remaining, duration))
     end
     
-    -- Actualizar barra inmediatamente
+    -- Actualizar barra de progreso
     frames.castbar:SetMinMaxValues(0, state.maxValue)
     frames.castbar:SetValue(state.currentValue)
     
-    -- Actualizar elementos visuales
+    -- Calcular progreso para elementos visuales
     local progress = state.maxValue > 0 and (state.currentValue / state.maxValue) or 0
-    if frames.castbar.UpdateTextureClipping then
-        frames.castbar:UpdateTextureClipping(progress, state.isChanneling)
-    end
     
-    -- Actualizar spark
-    if frames.spark and frames.spark:IsShown() then
-        local actualWidth = frames.castbar:GetWidth() * progress
-        frames.spark:ClearAllPoints()
-        frames.spark:SetPoint('CENTER', frames.castbar, 'LEFT', actualWidth, 0)
-    end
+    -- Actualizar clipping de textura
+    UpdateCastbarVisuals(unitType, progress)
     
+    -- Actualizar texto de tiempo
     UpdateTimeText(unitType)
 end
 
